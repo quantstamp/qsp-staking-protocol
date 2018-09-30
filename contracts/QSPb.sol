@@ -4,8 +4,10 @@ pragma solidity ^0.4.19;
 /// @author Sebastian Banescu
 
 import "./LinkedListLib.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract QSPb {
+contract QSPb is Ownable {
   using LinkedListLib for LinkedListLib.LinkedList;
   
   // constants used by LinkedListLib
@@ -14,7 +16,6 @@ contract QSPb {
   bool constant internal PREV = false;
   bool constant internal NEXT = true;
 		
-  address public owner;
   uint public balance;  
 	
   struct Pool {
@@ -25,7 +26,10 @@ contract QSPb {
     uint timeOfInit;
   }
 
-  constructor() public {
-    owner = msg.sender;
+  function createPool(address c, uint maxPayout, uint minStake, uint iniDeposit, 
+                      uint bonusExpert, uint bonusFirstExp, uint payPeriod, 
+                      uint minStkTime, uint minStkPeriod, uint timeout) public {
+
   }
+
 }

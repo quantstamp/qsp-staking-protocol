@@ -4,4 +4,5 @@ const LinkedListLib = artifacts.require('LinkedListLib');
 module.exports = function(deployer) {
   deployer.deploy(LinkedListLib)
     .then(() => deployer.link(LinkedListLib, QSPb));
+  deplozer.deploy(QSPb);
 };
