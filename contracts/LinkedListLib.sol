@@ -1,23 +1,28 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 /**
  * @title LinkedListLib
- * @author Majoolr.io
+ * @author Darryl Morris (o0ragman0o) and Modular.network
  *
- * version 1.0.0
- * Copyright (c) 2017 Modular, LLC
+ * This utility library was forked from https://github.com/o0ragman0o/LibCLL
+ * into the Modular-Network ethereum-libraries repo at https://github.com/Modular-Network/ethereum-libraries
+ * It has been updated to add additional functionality and be more compatible with solidity 0.4.18
+ * coding patterns.
+ *
+ * version 1.1.1
+ * Copyright (c) 2017 Modular Inc.
  * The MIT License (MIT)
- * https://github.com/Majoolr/ethereum-libraries/blob/master/LICENSE
- * 
+ * https://github.com/Modular-network/ethereum-libraries/blob/master/LICENSE
+ *
  * The LinkedListLib provides functionality for implementing data indexing using
  * a circlular linked list
  *
- * Majoolr provides smart contract services and security reviews for contract
+ * Modular provides smart contract services and security reviews for contract
  * deployments in addition to working on open source projects in the Ethereum
  * community. Our purpose is to test, document, and deploy reusable code onto the
  * blockchain and improve both security and usability. We also educate non-profits,
  * schools, and other community members about the application of blockchain
- * technology. For further information: majoolr.io
+ * technology. For further information: modular.network
  *
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
@@ -36,7 +41,7 @@ library LinkedListLib {
     uint256 constant HEAD = 0;
     bool constant PREV = false;
     bool constant NEXT = true;
-    
+
     struct LinkedList{
         mapping (uint256 => mapping (bool => uint256)) list;
     }
@@ -44,7 +49,7 @@ library LinkedListLib {
     /// @dev returns true if the list exists
     /// @param self stored linked list from contract
     function listExists(LinkedList storage self)
-        internal
+        public
         view returns (bool)
     {
         // if the head nodes previous or next pointers both point to itself, then there are no items in the list
@@ -58,8 +63,8 @@ library LinkedListLib {
     /// @dev returns true if the node exists
     /// @param self stored linked list from contract
     /// @param _node a node to search for
-    function nodeExists(LinkedList storage self, uint256 _node) 
-        internal
+    function nodeExists(LinkedList storage self, uint256 _node)
+        public
         view returns (bool)
     {
         if (self.list[_node][PREV] == HEAD && self.list[_node][NEXT] == HEAD) {
@@ -72,10 +77,10 @@ library LinkedListLib {
             return true;
         }
     }
-    
+
     /// @dev Returns the number of elements in the list
     /// @param self stored linked list from contract
-    function sizeOf(LinkedList storage self) internal view returns (uint256 numElements) {
+    function sizeOf(LinkedList storage self) public view returns (uint256 numElements) {
         bool exists;
         uint256 i;
         (exists,i) = getAdjacent(self, HEAD, NEXT);
@@ -90,7 +95,7 @@ library LinkedListLib {
     /// @param self stored linked list from contract
     /// @param _node id of the node to get
     function getNode(LinkedList storage self, uint256 _node)
-        internal view returns (bool,uint256,uint256)
+        public view returns (bool,uint256,uint256)
     {
         if (!nodeExists(self,_node)) {
             return (false,0,0);
@@ -104,7 +109,7 @@ library LinkedListLib {
     /// @param _node id of the node to step from
     /// @param _direction direction to step in
     function getAdjacent(LinkedList storage self, uint256 _node, bool _direction)
-        internal view returns (bool,uint256)
+        public view returns (bool,uint256)
     {
         if (!nodeExists(self,_node)) {
             return (false,0);
@@ -120,7 +125,7 @@ library LinkedListLib {
     /// @param _direction direction to seek in
     //  @return next first node beyond '_node' in direction `_direction`
     function getSortedSpot(LinkedList storage self, uint256 _node, uint256 _value, bool _direction)
-        internal view returns (uint256)
+        public view returns (uint256)
     {
         if (sizeOf(self) == 0) { return 0; }
         require((_node == 0) || nodeExists(self,_node));
@@ -135,7 +140,7 @@ library LinkedListLib {
     /// @param self stored linked list from contract
     /// @param _node first node for linking
     /// @param _link  node to link to in the _direction
-    function createLink(LinkedList storage self, uint256 _node, uint256 _link, bool _direction) internal  {
+    function createLink(LinkedList storage self, uint256 _node, uint256 _link, bool _direction) private  {
         self.list[_link][!_direction] = _node;
         self.list[_node][_direction] = _link;
     }
@@ -155,7 +160,7 @@ library LinkedListLib {
             return false;
         }
     }
-    
+
     /// @dev removes an entry from the linked list
     /// @param self stored linked list from contract
     /// @param _node node to remove from the list
@@ -174,7 +179,7 @@ library LinkedListLib {
     function push(LinkedList storage self, uint256 _node, bool _direction) internal  {
         insert(self, HEAD, _node, _direction);
     }
-    
+
     /// @dev pops the first entry from the linked list
     /// @param self stored linked list from contract
     /// @param _direction pop from the head (NEXT) or the tail (PREV)
