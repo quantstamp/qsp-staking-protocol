@@ -17,7 +17,7 @@ contract QSPb is Ownable {
     uint256 constant internal HEAD = 0;
     bool constant internal PREV = false;
     bool constant internal NEXT = true;
-		
+
     uint public balance;  
   
     constructor() public {
