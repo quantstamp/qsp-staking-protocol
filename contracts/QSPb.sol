@@ -13,13 +13,13 @@ contract QSPb is Ownable {
     using SafeMath for uint256;
 
     struct Stake {
-      address staker;
-      uint amount;
+        address staker;
+        uint amount;
     }
 
     struct Pool {
         address c;
-	address contractPolicy;
+        address contractPolicy;
         address owner;
         uint maxPayout;
         uint minStake;
@@ -33,7 +33,7 @@ contract QSPb is Ownable {
     }
 
     // store sha3(Pool) as the key of the mapping
-    mapping (bytes32 => Stake[]) stakes; 
+    mapping (bytes32 => Stake[]) public stakes; 
 
     // constants used by LinkedListLib
     uint256 constant internal NULL = 0;
@@ -52,12 +52,11 @@ contract QSPb is Ownable {
         return pools.length;
     }
 
-    function createPool(address c, address contractPolicy, uint maxPayout, uint minStake,
-                      uint bonusExpert, uint bonusFirstExp, uint payPeriod,
-                      uint minStkTime, uint timeout) public payable {
+    function createPool(address c, address contractPolicy, uint maxPayout, uint minStake, uint bonusExpert, 
+                        uint bonusFirstExp, uint payPeriod, uint minStkTime, uint timeout) public payable {
 
-        Pool memory p = Pool(c, contractPolicy, msg.sender, maxPayout, minStake, msg.value, 
-			     bonusExpert, bonusFirstExp, payPeriod, minStkTime, timeout, now);
+        Pool memory p = Pool(c, contractPolicy, msg.sender, maxPayout, minStake, msg.value, bonusExpert, 
+                        bonusFirstExp, payPeriod, minStkTime, timeout, now);
         pools.push(p);
     }
 
