@@ -18,7 +18,7 @@ contract QSPb is Ownable {
     }
 
     struct Pool {
-        address c;
+        address candidateContract;
         address contractPolicy;
         address owner;
         uint maxPayout;
@@ -27,9 +27,10 @@ contract QSPb is Ownable {
         uint bonusExpert;
         uint bonusFirstExpert;
         uint payPeriod;
-        uint minSktTime;
+        uint minStakeTime;
         uint timeout;
         uint timeOfInit;
+        string urlOfAuditReport;
     }
 
     // store sha3(Pool) as the key of the mapping
@@ -42,7 +43,7 @@ contract QSPb is Ownable {
     bool constant internal NEXT = true;
 
     uint public balance;  
-    Pool[] public pools;
+    Pool[] internal pools;
   
     constructor() public {
         balance = 0;
@@ -52,15 +53,89 @@ contract QSPb is Ownable {
         return pools.length;
     }
 
-    function createPool(address c, address contractPolicy, uint maxPayout, uint minStake, uint bonusExpert, 
-                        uint bonusFirstExp, uint payPeriod, uint minStkTime, uint timeout) public payable {
-
-        Pool memory p = Pool(c, contractPolicy, msg.sender, maxPayout, minStake, msg.value, bonusExpert, 
-                        bonusFirstExp, payPeriod, minStkTime, timeout, now);
-        pools.push(p);
+    function getPoolCandidateContract(uint index) public constant returns(address) {
+        return pools[index].candidateContract;
     }
 
-    function stakeFunds(bytes32 poolHash) public payable {
-        stakes[poolHash].push(Stake(msg.sender, msg.value)); 
+    function getPoolContractPolicy(uint index) public constant returns(address) {
+        return pools[index].contractPolicy;
+    }
+
+    function getPoolOwner(uint index) public constant returns(address) {
+        return pools[index].owner;
+    }
+
+    function getPoolMaxPayout(uint index) public constant returns(uint) {
+        return pools[index].maxPayout;
+    }
+
+    function getPoolMinStake(uint index) public constant returns(uint) {
+        return pools[index].minStake;
+    }
+
+    function getPoolDeposit(uint index) public constant returns(uint) {
+        return pools[index].deposit;
+    }
+
+    function getPoolBonusExpert(uint index) public constant returns(uint) {
+        return pools[index].bonusExpert;
+    }
+
+    function getPoolBonusFirstExpert(uint index) public constant returns(uint) {
+        return pools[index].bonusFirstExpert;
+    }
+
+    function getPoolPayPeriod(uint index) public constant returns(uint) {
+        return pools[index].payPeriod;
+    }
+
+    function getPoolMinStakeTime(uint index) public constant returns(uint) {
+        return pools[index].minStakeTime;
+    }
+
+    function getPoolTimeout(uint index) public constant returns(uint) {
+        return pools[index].timeout;
+    }
+
+    function getPoolTimeOfInit(uint index) public constant returns(uint) {
+        return pools[index].timeOfInit;
+    }
+
+    function getPoolUrlOfAuditReport(uint index) public constant returns(string) {
+        return pools[index].urlOfAuditReport;
+    }
+
+    function createPool(
+        address candidateContract, 
+        address contractPolicy, 
+        uint maxPayout, 
+        uint minStake, 
+        uint bonusExpert, 
+        uint bonusFirstExpert, 
+        uint payPeriod, 
+        uint minStakeTime, 
+        uint timeout,
+        bool audit
+    ) public payable {
+        string memory urlOfAuditReport = "";
+        if (audit) { 
+            //TODO: QSP.requestAudit(candidateContract); 
+            urlOfAuditReport = "";
+        }
+        Pool memory p = Pool(
+            candidateContract, 
+            contractPolicy, 
+            msg.sender, 
+            maxPayout, 
+            minStake, 
+            msg.value, 
+            bonusExpert, 
+            bonusFirstExpert, 
+            payPeriod, 
+            minStakeTime, 
+            timeout, 
+            now, 
+            urlOfAuditReport);
+        pools.push(p);
     }
 }
