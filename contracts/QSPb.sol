@@ -18,9 +18,16 @@ contract QSPb is Ownable {
     bool constant internal PREV = false;
     bool constant internal NEXT = true;
 
-    uint public balance;  
+    uint public balance;
+
+    address public tcr;  
   
-    constructor() public {
+    constructor(address tcrAddress) public {
         balance = 0;
+        tcr = tcrAddress;
+    }
+
+    function isExpert(address addr) public view returns(bool) {
+        return tcr.isWhitelisted(addr);
     }
 }
