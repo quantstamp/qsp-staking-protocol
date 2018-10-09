@@ -23,7 +23,6 @@ Quantstamp Staking Protocol contract.
     1. `ln -s -f $(git rev-parse --show-toplevel)/pre-commit $(git rev-parse --show-toplevel)/.git/hooks/pre-commit`
     1. `chmod +x $(git rev-parse --show-toplevel)/.git/hooks/pre-commit`
 
-
 ## CI Tests
 
 The file `buildspec-ci.yml` contains the commands to run on each push.
