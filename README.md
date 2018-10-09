@@ -39,7 +39,7 @@ This includes running Truffle tests and collecting coverage report for [Coverall
 
 ## Deploy to Ganache
 
-`npm test` automatically deploys the contract to Ganache and runs tests against it. To deploy the contract to Ganache manually (e.g., for purposes of manual testing), do `truffle test --network development`
+`npm test` automatically deploys the contract to Ganache and runs tests against it. To deploy the contract to Ganache manually (e.g., for purposes of manual testing), do `truffle test --migrate development`
 
 ## Hardware wallet
 
