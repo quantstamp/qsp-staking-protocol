@@ -140,7 +140,11 @@ contract Registry {
     @dev		Initialize an exit timer for a listing to leave the whitelist
     @param _listingHash	A listing hash msg.sender is the owner of
     */
+<<<<<<< HEAD
     function initExit(bytes32 _listingHash) external {
+=======
+    function initExit(bytes32 _listingHash) external {	
+>>>>>>> SP-4 add gitignore; import TCR and related files
         Listing storage listing = listings[_listingHash];
 
         require(msg.sender == listing.owner);
@@ -173,7 +177,11 @@ contract Registry {
 
         // Make sure the exit was initialized
         require(listing.exitTime > 0);
+<<<<<<< HEAD
         // Time to exit has to be after exit delay but before the exitPeriodLen is over
+=======
+        // Time to exit has to be after exit delay but before the exitPeriodLen is over 
+>>>>>>> SP-4 add gitignore; import TCR and related files
         require(listing.exitTime < now && now < listing.exitTimeExpiry);
 
         resetListing(_listingHash);
@@ -482,7 +490,11 @@ contract Registry {
         address owner = listing.owner;
         uint unstakedDeposit = listing.unstakedDeposit;
         delete listings[_listingHash];
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> SP-4 add gitignore; import TCR and related files
         // Transfers any remaining balance back to the owner
         if (unstakedDeposit > 0){
             require(token.transfer(owner, unstakedDeposit));

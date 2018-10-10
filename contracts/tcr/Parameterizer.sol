@@ -79,7 +79,11 @@ contract Parameterizer {
 
         // minimum deposit for listing to be whitelisted
         set("minDeposit", _parameters[0]);
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> SP-4 add gitignore; import TCR and related files
         // minimum deposit to propose a reparameterization
         set("pMinDeposit", _parameters[1]);
 
@@ -91,10 +95,17 @@ contract Parameterizer {
 
         // length of commit period for voting
         set("commitStageLen", _parameters[4]);
+<<<<<<< HEAD
 
         // length of commit period for voting in parameterizer
         set("pCommitStageLen", _parameters[5]);
 
+=======
+        
+        // length of commit period for voting in parameterizer
+        set("pCommitStageLen", _parameters[5]);
+        
+>>>>>>> SP-4 add gitignore; import TCR and related files
         // length of reveal period for voting
         set("revealStageLen", _parameters[6]);
 
@@ -113,7 +124,11 @@ contract Parameterizer {
         // type of majority out of 100 necessary for proposal success in parameterizer
         set("pVoteQuorum", _parameters[11]);
 
+<<<<<<< HEAD
         // minimum length of time user has to wait to exit the registry
+=======
+        // minimum length of time user has to wait to exit the registry 
+>>>>>>> SP-4 add gitignore; import TCR and related files
         set("exitTimeDelay", _parameters[12]);
 
         // maximum length of time user can wait to exit the registry
@@ -206,7 +221,11 @@ contract Parameterizer {
         address propOwner = prop.owner;
         uint propDeposit = prop.deposit;
 
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> SP-4 add gitignore; import TCR and related files
         // Before any token transfers, deleting the proposal will ensure that if reentrancy occurs the
         // prop.owner and prop.deposit will be 0, thereby preventing theft
         if (canBeSet(_propID)) {
@@ -396,3 +415,7 @@ contract Parameterizer {
         params[keccak256(abi.encodePacked(_name))] = _value;
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> SP-4 add gitignore; import TCR and related files
