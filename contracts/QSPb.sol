@@ -8,6 +8,7 @@ import "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 contract QSPb is Ownable {
     using LinkedListLib for LinkedListLib.LinkedList;
     using SafeMath for uint256;
