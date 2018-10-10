@@ -4,9 +4,9 @@ pragma solidity 0.4.24;
 /// @author Sebastian Banescu
 
 import "./LinkedListLib.sol";
+import "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
 
 contract QSPb is Ownable {
     using LinkedListLib for LinkedListLib.LinkedList;
@@ -20,14 +20,14 @@ contract QSPb is Ownable {
 
     uint public balance;
 
-    address public tcr;  
+    Registry public tcr;  
   
     constructor(address tcrAddress) public {
         balance = 0;
-        tcr = tcrAddress;
+        tcr = Registry(tcrAddress);
     }
 
     function isExpert(address addr) public view returns(bool) {
-        return tcr.isWhitelisted(addr);
+        return tcr.isWhitelisted(bytes32(addr));
     }
 }
