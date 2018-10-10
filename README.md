@@ -54,5 +54,5 @@ for installing your device's drivers.
 For accepting a wallet PIN, make sure a recent version of [JRE](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html)
 is executable from the command-line. A successful execution of `java -version` shows the validity of this fact.
 
-Without using a  hardware wallet, one alternatively use `HDWalletProvider` for signing transactions. This wallet accepts 
+Without using a hardware wallet, one alternatively use `HDWalletProvider` for signing transactions. This wallet accepts 
 a mnemonic key and a web3 provider address for signing transactions.  
