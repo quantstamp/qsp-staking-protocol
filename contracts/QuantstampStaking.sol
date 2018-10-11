@@ -138,6 +138,6 @@ contract QuantstampStaking is Ownable {
             block.number, 
             urlOfAuditReport);
         pools.push(p);
-	balanceQspWei = balanceQspWei.add(depositQspWei);
+        balanceQspWei = balanceQspWei.add(depositQspWei);
     }
 }
