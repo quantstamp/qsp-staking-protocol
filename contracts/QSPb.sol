@@ -6,13 +6,13 @@ pragma solidity 0.4.24;
 import "./LinkedListLib.sol";
 import "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract QSPb is Ownable {
     using LinkedListLib for LinkedListLib.LinkedList;
     using SafeMath for uint256;
- 
+
     // constants used by LinkedListLib
     uint256 constant internal NULL = 0;
     uint256 constant internal HEAD = 0;
@@ -21,8 +21,8 @@ contract QSPb is Ownable {
 
     uint public balance;
 
-    Registry public tcr;  
-  
+    Registry public tcr;
+
     constructor(address tcrAddress) public {
         balance = 0;
         tcr = Registry(tcrAddress);
