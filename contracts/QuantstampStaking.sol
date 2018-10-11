@@ -39,7 +39,10 @@ contract QuantstampStaking is Ownable {
     uint public balanceQspWei;  
 
     // All pools including active and canceled pools
-    Pool[] internal pools;
+    mapping (uint => Pool) internal pools;
+    
+    // Current number of pools
+    uint internal currentPoolNumber;
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract 
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
@@ -47,12 +50,13 @@ contract QuantstampStaking is Ownable {
   
     constructor(address tokenAddress) public {
         balanceQspWei = 0;
+        currentPoolNumber = 0;
         require(tokenAddress != address(0));
         token = StandardToken(tokenAddress);
     }
 
     function getPoolsLength() public view returns (uint) {
-        return pools.length;
+        return currentPoolNumber;
     }
 
     function getPoolCandidateContract(uint index) public view returns(address) {
@@ -137,7 +141,8 @@ contract QuantstampStaking is Ownable {
             timeoutInBlocks, 
             block.number, 
             urlOfAuditReport);
-        pools.push(p);
+        pools[currentPoolNumber] = p;
+        currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
     }
 }
