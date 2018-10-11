@@ -141,10 +141,14 @@ contract Registry {
     @param _listingHash	A listing hash msg.sender is the owner of
     */
 <<<<<<< HEAD
+<<<<<<< HEAD
     function initExit(bytes32 _listingHash) external {
 =======
     function initExit(bytes32 _listingHash) external {	
 >>>>>>> SP-4 add gitignore; import TCR and related files
+=======
+    function initExit(bytes32 _listingHash) external {
+>>>>>>> SP-4 Add truffle install to CI
         Listing storage listing = listings[_listingHash];
 
         require(msg.sender == listing.owner);
@@ -178,10 +182,14 @@ contract Registry {
         // Make sure the exit was initialized
         require(listing.exitTime > 0);
 <<<<<<< HEAD
+<<<<<<< HEAD
         // Time to exit has to be after exit delay but before the exitPeriodLen is over
 =======
         // Time to exit has to be after exit delay but before the exitPeriodLen is over 
 >>>>>>> SP-4 add gitignore; import TCR and related files
+=======
+        // Time to exit has to be after exit delay but before the exitPeriodLen is over
+>>>>>>> SP-4 Add truffle install to CI
         require(listing.exitTime < now && now < listing.exitTimeExpiry);
 
         resetListing(_listingHash);
@@ -491,10 +499,14 @@ contract Registry {
         uint unstakedDeposit = listing.unstakedDeposit;
         delete listings[_listingHash];
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
         
 >>>>>>> SP-4 add gitignore; import TCR and related files
+=======
+
+>>>>>>> SP-4 Add truffle install to CI
         // Transfers any remaining balance back to the owner
         if (unstakedDeposit > 0){
             require(token.transfer(owner, unstakedDeposit));
