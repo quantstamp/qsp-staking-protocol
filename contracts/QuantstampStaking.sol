@@ -3,6 +3,7 @@ pragma solidity 0.4.24;
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author 
 
+import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -31,13 +32,23 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
     }
 
-    // store sha3(Pool) as the key of the mapping
-    mapping (bytes32 => Stake[]) public stakes; 
-    uint public balance;  
+    // Stores the sha3(Pool) as the key of the mapping and the order of the stakes as the value.
+    mapping (uint => Stake[]) public stakes; 
+
+    // The total balance of the contract including all stakes and deposits
+    uint public balanceQspWei;  
+
+    // All pools including active and canceled pools
     Pool[] internal pools;
+
+    // Token used to make deposits and stakes. This contract assumes that the owner of the contract 
+    // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
+    StandardToken public token; 
   
-    constructor() public {
-        balance = 0;
+    constructor(address tokenAddress) public {
+        balanceQspWei = 0;
+        require(tokenAddress != address(0));
+        token = StandardToken(tokenAddress);
     }
 
     function getPoolsLength() public view returns (uint) {
@@ -100,21 +111,25 @@ contract QuantstampStaking is Ownable {
         address candidateContract, 
         address contractPolicy, 
         uint maxPayoutQspWei, 
-        uint minStakeQspWei, 
+        uint minStakeQspWei,
+        uint depositQspWei,	
         uint bonusExpertFactor, 
         uint bonusFirstExpertFactor, 
         uint payPeriodInBlocks, 
         uint minStakeTimeInBlocks, 
         uint timeoutInBlocks,
         string urlOfAuditReport
-    ) public payable {
+    ) public {
+        require(depositQspWei > 0);
+        // transfer tokens to this contract
+        token.transferFrom(msg.sender, address(this), depositQspWei);	
         Pool memory p = Pool(
             candidateContract, 
             contractPolicy, 
             msg.sender, 
             maxPayoutQspWei, 
             minStakeQspWei, 
-            msg.value, 
+            depositQspWei, 
             bonusExpertFactor, 
             bonusFirstExpertFactor, 
             payPeriodInBlocks, 
@@ -123,5 +138,6 @@ contract QuantstampStaking is Ownable {
             block.number, 
             urlOfAuditReport);
         pools.push(p);
+	balanceQspWei = balanceQspWei.add(depositQspWei);
     }
 }
