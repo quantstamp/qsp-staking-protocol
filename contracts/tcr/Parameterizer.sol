@@ -1,8 +1,7 @@
 pragma solidity^0.4.11;
 
-import "plcr-revival/contracts/PLCRVoting.sol";
+import "plcr-revival/contracts/PLCRVoting.sol"; //Imports SafeMath
 import "tokens/eip20/EIP20Interface.sol";
-//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract Parameterizer {
 

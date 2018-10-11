@@ -4,9 +4,8 @@ pragma solidity 0.4.24;
 /// @author Sebastian Banescu
 
 import "./LinkedListLib.sol";
-import "./tcr/Registry.sol";
+import "./tcr/Registry.sol"; //Imports SafeMath
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract QSPb is Ownable {
