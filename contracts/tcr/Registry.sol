@@ -2,8 +2,8 @@ pragma solidity ^0.4.11;
 
 import "./Parameterizer.sol";
 import "tokens/eip20/EIP20Interface.sol";
-import "./PLCRVoting.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "plcr-revival/contracts/PLCRVoting.sol";
+//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract Registry {
 
@@ -141,7 +141,7 @@ contract Registry {
     @dev		Initialize an exit timer for a listing to leave the whitelist
     @param _listingHash	A listing hash msg.sender is the owner of
     */
-    function initExit(bytes32 _listingHash) external {	
+    function initExit(bytes32 _listingHash) external {
         Listing storage listing = listings[_listingHash];
 
         require(msg.sender == listing.owner);
@@ -174,7 +174,7 @@ contract Registry {
 
         // Make sure the exit was initialized
         require(listing.exitTime > 0);
-        // Time to exit has to be after exit delay but before the exitPeriodLen is over 
+        // Time to exit has to be after exit delay but before the exitPeriodLen is over
         require(listing.exitTime < now && now < listing.exitTimeExpiry);
 
         resetListing(_listingHash);
@@ -483,7 +483,7 @@ contract Registry {
         address owner = listing.owner;
         uint unstakedDeposit = listing.unstakedDeposit;
         delete listings[_listingHash];
-        
+
         // Transfers any remaining balance back to the owner
         if (unstakedDeposit > 0){
             require(token.transfer(owner, unstakedDeposit));

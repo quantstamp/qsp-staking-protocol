@@ -8,6 +8,7 @@ phases:
       - export PATH="$PATH:./node_modules/.bin"
       - echo $PATH
       - truffle version
+      - truffle install
   build:
     commands:
       - npm run lint
