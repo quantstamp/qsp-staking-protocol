@@ -31,28 +31,6 @@ function getMajorVersion() {
   return getVersion().match(/^[^\.]*/g);
 }
 
-async function contractAddress(network, contractName,  defaultArtifact) {
-  // defaultArtifact: the smart contract artifact
-  // (output of artifacts.require('<contract-name'))
-  // whose address will be used when deploying to other networks (e.g., Ganache)
-  return network === 'development' ? defaultArtifact.address : await readAddressFromMetadata(network, contractName);
-}
-
-function canDeploy(network, contractName) {
-  if (network === 'development') {
-    return true;
-  }
-
-  if (truffle.deploy[contractName] !== true) {
-    console.log(`${contractName}: Skipping deployment: deploy.${contractName} is not set to the boolean true`);
-    return false;
-  }
-
-  return true;
-}
-
 module.exports = {
   tokenAddress,
-  contractAddress,
-  canDeploy,
 };

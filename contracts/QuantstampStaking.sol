@@ -32,7 +32,7 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
     }
 
-    // Stores the sha3(Pool) as the key of the mapping and the order of the stakes as the value.
+    // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
     mapping (uint => Stake[]) public stakes; 
 
     // The total balance of the contract including all stakes and deposits

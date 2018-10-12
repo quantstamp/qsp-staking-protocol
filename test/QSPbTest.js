@@ -29,22 +29,22 @@ contract('QuantstampStaking', function(accounts){
         await quantstamp_token.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
         // balance should be 0 in the beginning
         assert.equal(await qspb.balanceQspWei.call(), 0);
-	// vars needed for creating pool
-	var maxPayableQspWei = 10;
-	var minStakeQspWei = 1;
-	var depositQspWei = Util.toQsp(100);
-	var bonusExpertFactor = 3;
-	var bonusFirstExpertFactor = 5;
-	var payPeriodInBlocks = 15;
-	var minStakeTimeInBlocks = 10000;
-	var timeoutInBlocks = 100;
-	var urlOfAuditReport = "URL";
-	// create pool
+        // vars needed for creating pool
+	    const maxPayableQspWei = 10;
+        const minStakeQspWei = 1;
+        const depositQspWei = Util.toQsp(100);
+        const bonusExpertFactor = 3;
+        const bonusFirstExpertFactor = 5;
+        const payPeriodInBlocks = 15;
+        const minStakeTimeInBlocks = 10000;
+        const timeoutInBlocks = 100;
+        const urlOfAuditReport = "URL";
+        // create pool
         await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei, 
             depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, 
-	    minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+	        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
         // check all pool properties
-	assert.equal(await qspb.getPoolsLength.call(), 1);
+        assert.equal(await qspb.getPoolsLength.call(), 1);
         assert.equal(await qspb.getPoolCandidateContract(0), candidateContract);
         assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy);
         assert.equal(await qspb.getPoolOwner(0), poolOwner);
@@ -58,7 +58,7 @@ contract('QuantstampStaking', function(accounts){
         assert.equal(await qspb.getPoolTimeoutInBlocks(0), 100);
         assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
         assert.equal(await qspb.getPoolUrlOfAuditReport(0), "URL");
-	// balance should be increased
+        // balance should be increased
         assert.equal(await qspb.balanceQspWei.call(), depositQspWei);	
     }); 
 
