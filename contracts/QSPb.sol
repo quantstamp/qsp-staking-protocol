@@ -19,7 +19,6 @@ contract QSPb is Ownable {
     bool constant internal NEXT = true;
 
     uint public balance;
-
     Registry public tcr;
 
     constructor(address tcrAddress) public {
