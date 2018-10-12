@@ -55,6 +55,10 @@ contract QuantstampStaking is Ownable {
         token = StandardToken(tokenAddress);
     }
 
+    function getToken() public view returns (address) {
+        return address(token);
+    }
+
     function getPoolsLength() public view returns (uint) {
         return currentPoolNumber;
     }

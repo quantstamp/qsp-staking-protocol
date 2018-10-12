@@ -3,8 +3,9 @@ const QuantstampToken = artifacts.require('QuantstampToken');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"))
 const Util = require("./util.js");
+const utils = require('../migrations/utils.js');
 
-contract('QuantstampStaking', function(accounts){
+contract('QuantstampStaking', function(accounts, network) {
     const owner = accounts[0]
     const candidateContract = accounts[1];
     const contractPolicy = accounts[2];
@@ -12,25 +13,23 @@ contract('QuantstampStaking', function(accounts){
     const poolOwnerBudget = Util.toQsp(100000);
 
     let qspb;
-    let quantstamp_token;
-
-    it("should never fail", async function() {
-        assert.true;
-    });
+    let quantstampToken;
 
     it("should add a pool", async function() {
         qspb = await QuantstampStaking.deployed();
-        quantstamp_token = await QuantstampToken.deployed();
+        quantstampToken = await QuantstampToken.deployed();
         // enable transfers before any payments are allowed
-        await quantstamp_token.enableTransfer({from : owner});
+        await quantstampToken.enableTransfer({from : owner});
         // transfer 100,000 QSP tokens to the requestor
-        await quantstamp_token.transfer(poolOwner, poolOwnerBudget, {from : owner});
+        await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
         // allow the audit contract use up to 65QSP for audits
-        await quantstamp_token.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+        await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
         // balance should be 0 in the beginning
         assert.equal(await qspb.balanceQspWei.call(), 0);
+        // check that the token is correct
+        assert.equal(await qspb.getToken(), quantstampToken.address);
         // vars needed for creating pool
-	    const maxPayableQspWei = 10;
+        const maxPayableQspWei = 10;
         const minStakeQspWei = 1;
         const depositQspWei = Util.toQsp(100);
         const bonusExpertFactor = 3;
@@ -42,7 +41,7 @@ contract('QuantstampStaking', function(accounts){
         // create pool
         await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei, 
             depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, 
-	        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+            minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
         // check all pool properties
         assert.equal(await qspb.getPoolsLength.call(), 1);
         assert.equal(await qspb.getPoolCandidateContract(0), candidateContract);
