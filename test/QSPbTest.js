@@ -1,9 +1,9 @@
 const QSPb = artifacts.require('QSPb');
 
-contract('QSPb', function(accounts){
+contract('QSPb', function(){
   
   beforeEach(async function () {
-    qspb = await QSPb.deployed();
+    await QSPb.deployed();
   });
 
   it("should never fail", async function() {
