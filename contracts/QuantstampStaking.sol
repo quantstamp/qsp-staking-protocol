@@ -130,7 +130,10 @@ contract QuantstampStaking is Ownable {
     ) public {
         require(depositQspWei > 0);
         // transfer tokens to this contract
-        if (!token.transferFrom(msg.sender, address(this), depositQspWei)) { revert(); }	
+        if (!token.transferFrom(msg.sender, address(this), depositQspWei)) { 
+            revert(); 
+        }
+        	
         Pool memory p = Pool(
             candidateContract, 
             contractPolicy, 

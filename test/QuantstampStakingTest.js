@@ -25,8 +25,6 @@ contract('QuantstampStaking', function(accounts) {
     await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
     // balance should be 0 in the beginning
     assert.equal(await qspb.balanceQspWei.call(), 0);
-    // check that the token is correct
-    assert.equal(await qspb.getToken(), quantstampToken.address);
     // vars needed for creating pool
     const maxPayableQspWei = 10;
     const minStakeQspWei = 1;
@@ -62,5 +60,9 @@ contract('QuantstampStaking', function(accounts) {
 
   it("should have an owner", async function() {
     assert.equal(await qspb.owner(), owner);
+  });
+
+  it("should have the right token address", async function() {
+    assert.equal(await qspb.getToken(), quantstampToken.address);
   });
 });
