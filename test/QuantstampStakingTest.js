@@ -5,7 +5,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"))
 const Util = require("./util.js");
 const utils = require('../migrations/utils.js');
 
-contract('QuantstampStaking', function(accounts, network) {
+contract('QuantstampStaking', function(accounts) {
     const owner = accounts[0]
     const candidateContract = accounts[1];
     const contractPolicy = accounts[2];
