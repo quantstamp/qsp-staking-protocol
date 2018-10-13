@@ -3,9 +3,10 @@ pragma solidity 0.4.24;
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author
 
+import {Registry} from "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract QuantstampStaking is Ownable {

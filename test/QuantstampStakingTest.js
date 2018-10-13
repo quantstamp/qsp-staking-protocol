@@ -1,5 +1,6 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
+const QuantstampStakingRegistry = artifacts.require('Registry');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require("./util.js");
@@ -15,12 +16,12 @@ contract('QuantstampStaking', function(accounts) {
 
   let qspb;
   let quantstampToken;
-  let registry;
+  let quantstampRegistry;
 
   it("should add a pool", async function() {
     qspb = await QuantstampStaking.deployed();
     quantstampToken = await QuantstampToken.deployed();
-    registry = await QuantstampStaking.deployed();
+    quantstampRegistry = await QuantstampStakingRegistry.deployed();
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // transfer 100,000 QSP tokens to the requestor
@@ -71,6 +72,6 @@ contract('QuantstampStaking', function(accounts) {
   });
 
   it("should have the right registry address", async function() {
-    assert.equal(await quantstampStaking.getStakingRegistry(), registry.address);
+    assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
   });
 });
