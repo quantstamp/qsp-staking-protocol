@@ -1,4 +1,4 @@
-pragma solidity^0.4.11;
+pragma solidity 0.4.24;
 
 import "plcr-revival/contracts/PLCRVoting.sol"; //Imports SafeMath
 import "tokens/eip20/EIP20Interface.sol";
