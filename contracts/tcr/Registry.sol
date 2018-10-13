@@ -173,7 +173,7 @@ contract Registry {
 
         // Make sure the exit was initialized
         require(listing.exitTime > 0);
-
+        
         // Time to exit has to be after exit delay but before the exitPeriodLen is over
         require(listing.exitTime < now && now < listing.exitTimeExpiry);
 
