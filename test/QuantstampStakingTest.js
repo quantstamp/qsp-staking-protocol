@@ -4,7 +4,6 @@ const QuantstampStakingRegistry = artifacts.require('Registry');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require("./util.js");
-const Registry = artifacts.require('Registry');
 
 
 contract('QuantstampStaking', function(accounts) {
