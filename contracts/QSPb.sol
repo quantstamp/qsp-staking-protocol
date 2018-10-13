@@ -19,14 +19,19 @@ contract QSPb is Ownable {
     bool constant internal NEXT = true;
 
     uint public balance;
-    Registry public tcr;
+    Registry public stakingRegistry;
 
     constructor(address tcrAddress) public {
         balance = 0;
-        tcr = Registry(tcrAddress);
+        require(tcrAddress != address(0));
+        stakingRegistry = Registry(tcrAddress);
+    }
+
+    function getStakingRegistry() public view returns (address) {
+        return address(stakingRegistry);
     }
 
     function isExpert(address addr) public view returns(bool) {
-        return tcr.isWhitelisted(bytes32(addr));
+        return stakingRegistry.isWhitelisted(bytes32(addr));
     }
 }
