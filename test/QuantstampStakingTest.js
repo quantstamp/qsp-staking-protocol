@@ -3,6 +3,8 @@ const QuantstampToken = artifacts.require('QuantstampToken');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require("./util.js");
+const Registry = artifacts.require('Registry');
+
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
@@ -13,10 +15,12 @@ contract('QuantstampStaking', function(accounts) {
 
   let qspb;
   let quantstampToken;
+  let registry;
 
   it("should add a pool", async function() {
     qspb = await QuantstampStaking.deployed();
     quantstampToken = await QuantstampToken.deployed();
+    registry = await QuantstampStaking.deployed();
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // transfer 100,000 QSP tokens to the requestor
@@ -36,8 +40,8 @@ contract('QuantstampStaking', function(accounts) {
     const timeoutInBlocks = 100;
     const urlOfAuditReport = "URL";
     // create pool
-    await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei, 
-      depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, 
+    await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei,
+      depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
     // check all pool properties
     assert.equal(await qspb.getPoolsLength.call(), 1);
@@ -55,8 +59,8 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
     assert.equal(await qspb.getPoolUrlOfAuditReport(0), "URL");
     // balance should be increased
-    assert.equal(await qspb.balanceQspWei.call(), depositQspWei);	
-  }); 
+    assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+  });
 
   it("should have an owner", async function() {
     assert.equal(await qspb.owner(), owner);
@@ -64,5 +68,9 @@ contract('QuantstampStaking', function(accounts) {
 
   it("should have the right token address", async function() {
     assert.equal(await qspb.getToken(), quantstampToken.address);
+  });
+
+  it("should have the right registry address", async function() {
+    assert.equal(await quantstampStaking.getStakingRegistry(), registry.address);
   });
 });
