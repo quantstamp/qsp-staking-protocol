@@ -6,7 +6,7 @@ pragma solidity 0.4.24;
 import {Registry} from "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-//import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract QuantstampStaking is Ownable {
