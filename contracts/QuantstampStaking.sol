@@ -8,6 +8,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+contract ContractPolicy {
+    function isViolated(address protectedContract) public view returns (bool);
+}
 
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
@@ -71,6 +74,34 @@ contract QuantstampStaking is Ownable {
         token = StandardToken(tokenAddress);
         require(tcrAddress != address(0));
         stakingRegistry = Registry(tcrAddress);
+    }
+
+    /**
+    * Gives all the staked funds to the stakeholder provided that the policy was violated and the
+    * state of the contract allows.
+    */
+    function withdrawClaim(uint poolIndex) public {
+        // todo(mderka) when PR #9 is merged, include a status check
+        address poolOwner = getPoolOwner(poolIndex);
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(poolOwner == msg.sender);
+        require(ContractPolicy(poolPolicy).isViolated(candidateContract));
+        // todo(mderka) consider design the does not require iteration over stakes
+        // return all stakes
+        bool result = false;
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            Stake storage stake = stakes[poolIndex][i];
+            result = token.transfer(poolOwner, stake.amountQspWei);
+            require(result);
+            // todo(mderka) is this attribute necessary? it can be read using balanceOf in ERC20
+            balanceQspWei = balanceQspWei - stake.amountQspWei;
+            stake.amountQspWei = 0;
+        }
+        result = token.transfer(poolOwner, getPoolDepositQspWei(poolIndex));
+        require(result);
+        balanceQspWei = balanceQspWei - getPoolDepositQspWei(poolIndex);
+        // todo(mderka) cancel the pool when PR #9 is merged
     }
 
     function getToken() public view returns (address) {
