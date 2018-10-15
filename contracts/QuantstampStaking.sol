@@ -25,7 +25,7 @@ contract QuantstampStaking is Ownable {
         ViolatedUnderfunded, // sufficient stakes, insufficient deposit, violated
         NotViolatedFunded,  // sufficient stakes, sufficient deposit
         ViolatedFunded, // sufficient stakes, sufficient deposit, violated
-        Canceled
+        Cancelled
     }
 
     struct Pool {
