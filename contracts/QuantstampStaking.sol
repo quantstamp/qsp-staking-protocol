@@ -1,8 +1,9 @@
 pragma solidity 0.4.24;
 
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
-/// @author 
+/// @author
 
+import {Registry} from "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -25,34 +26,39 @@ contract QuantstampStaking is Ownable {
         uint depositQspWei; // the current value deposited by the owner/stakeholder
         uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
         uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
-        uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach 
-        uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for 
+        uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
+        uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
         uint timeOfInitInBlocks; // the block number when the pool was initialized
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
     }
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
-    mapping (uint => Stake[]) public stakes; 
+    mapping (uint => Stake[]) public stakes;
 
     // The total balance of the contract including all stakes and deposits
-    uint public balanceQspWei;  
+    uint public balanceQspWei;
 
     // All pools including active and canceled pools
     mapping (uint => Pool) internal pools;
-    
+
     // Current number of pools
     uint internal currentPoolNumber;
 
-    // Token used to make deposits and stakes. This contract assumes that the owner of the contract 
+    // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
-    StandardToken public token; 
-  
-    constructor(address tokenAddress) public {
+    StandardToken public token;
+
+    // TCR used to list expert stakers.
+    Registry public stakingRegistry;
+
+    constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
         require(tokenAddress != address(0));
         token = StandardToken(tokenAddress);
+        require(tcrAddress != address(0));
+        stakingRegistry = Registry(tcrAddress);
     }
 
     function getToken() public view returns (address) {
@@ -115,41 +121,49 @@ contract QuantstampStaking is Ownable {
         return pools[index].urlOfAuditReport;
     }
 
+    function getStakingRegistry() public view returns (address) {
+        return address(stakingRegistry);
+    }
+
     function createPool(
-        address candidateContract, 
-        address contractPolicy, 
-        uint maxPayoutQspWei, 
+        address candidateContract,
+        address contractPolicy,
+        uint maxPayoutQspWei,
         uint minStakeQspWei,
-        uint depositQspWei,	
-        uint bonusExpertFactor, 
-        uint bonusFirstExpertFactor, 
-        uint payPeriodInBlocks, 
-        uint minStakeTimeInBlocks, 
+        uint depositQspWei,
+        uint bonusExpertFactor,
+        uint bonusFirstExpertFactor,
+        uint payPeriodInBlocks,
+        uint minStakeTimeInBlocks,
         uint timeoutInBlocks,
         string urlOfAuditReport
     ) public {
         require(depositQspWei > 0);
         // transfer tokens to this contract
-        if (!token.transferFrom(msg.sender, address(this), depositQspWei)) { 
-            revert(); 
+        if (!token.transferFrom(msg.sender, address(this), depositQspWei)) {
+            revert();
         }
-        	
+
         Pool memory p = Pool(
-            candidateContract, 
-            contractPolicy, 
-            msg.sender, 
-            maxPayoutQspWei, 
-            minStakeQspWei, 
-            depositQspWei, 
-            bonusExpertFactor, 
-            bonusFirstExpertFactor, 
-            payPeriodInBlocks, 
-            minStakeTimeInBlocks, 
-            timeoutInBlocks, 
-            block.number, 
+            candidateContract,
+            contractPolicy,
+            msg.sender,
+            maxPayoutQspWei,
+            minStakeQspWei,
+            depositQspWei,
+            bonusExpertFactor,
+            bonusFirstExpertFactor,
+            payPeriodInBlocks,
+            minStakeTimeInBlocks,
+            timeoutInBlocks,
+            block.number,
             urlOfAuditReport);
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
+    }
+
+    function isExpert(address addr) public view returns(bool) {
+        return stakingRegistry.isWhitelisted(bytes32(addr));
     }
 }

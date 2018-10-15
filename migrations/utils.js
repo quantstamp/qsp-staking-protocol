@@ -20,6 +20,19 @@ function tokenAddress(network, defaultArtifact) {
   }
 }
 
+function registryAddress(network, defaultArtifact) {
+  // defaultArtifact: the smart contract artifact
+  // (output of artifacts.require('<contract-name'))
+  // whose address will be used when deploying to other networks (e.g., Ganache)
+  switch(network) {
+    case 'development':
+      return defaultArtifact.address;
+    default:
+      return defaultArtifact.address;
+  }
+}
+
 module.exports = {
   tokenAddress,
+  registryAddress,
 };
