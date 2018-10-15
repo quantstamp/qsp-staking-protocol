@@ -17,6 +17,17 @@ contract QuantstampStaking is Ownable {
         uint amountQspWei; // the amount staked by the staker
     }
 
+    // state of the pool's lifecycle
+    enum PoolState {
+        None,
+        Initialized, // insuffucies stakes
+        NotViolatedUnderfunded, // sufficient stakes, insufficient deposit
+        ViolatedUnderfunded, // sufficient stakes, insufficient deposit, violated
+        NotViolatedFunded,  // sufficient stakes, sufficient deposit
+        ViolatedFunded, // sufficient stakes, sufficient deposit, violated
+        Canceled
+    }
+
     struct Pool {
         address candidateContract; // the contract that must be protected
         address contractPolicy; // the policy that must be respected by the candidate contract
@@ -31,6 +42,7 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
         uint timeOfInitInBlocks; // the block number when the pool was initialized
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
+        PoolState state;
     }
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
@@ -123,6 +135,9 @@ contract QuantstampStaking is Ownable {
 
     function getStakingRegistry() public view returns (address) {
         return address(stakingRegistry);
+    
+    function getPoolState(uint index) public view returns(PoolState) {
+       return pools[index].state;
     }
 
     function createPool(
@@ -145,19 +160,20 @@ contract QuantstampStaking is Ownable {
         }
 
         Pool memory p = Pool(
-            candidateContract,
-            contractPolicy,
-            msg.sender,
-            maxPayoutQspWei,
-            minStakeQspWei,
-            depositQspWei,
-            bonusExpertFactor,
-            bonusFirstExpertFactor,
-            payPeriodInBlocks,
-            minStakeTimeInBlocks,
-            timeoutInBlocks,
-            block.number,
-            urlOfAuditReport);
+            candidateContract, 
+            contractPolicy, 
+            msg.sender, 
+            maxPayoutQspWei, 
+            minStakeQspWei, 
+            depositQspWei, 
+            bonusExpertFactor, 
+            bonusFirstExpertFactor, 
+            payPeriodInBlocks, 
+            minStakeTimeInBlocks, 
+            timeoutInBlocks, 
+            block.number, 
+            urlOfAuditReport,
+            PoolState.Initialized);
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
