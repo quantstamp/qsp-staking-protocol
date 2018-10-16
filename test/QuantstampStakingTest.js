@@ -12,6 +12,15 @@ contract('QuantstampStaking', function(accounts) {
   const contractPolicy = accounts[2];
   const poolOwner = accounts[3];
   const poolOwnerBudget = Util.toQsp(100000);
+  const PoolState = Object.freeze({
+    None : 0,
+    Initialized : 1,
+    NotViolatedUnderfunded : 2,
+    ViolatedUnderfunded : 3,
+    NotViolatedFunded : 4,
+    ViolatedFunded : 5,
+    Cancelled: 6
+  });
 
   let qspb;
   let quantstampToken;
@@ -48,16 +57,17 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolCandidateContract(0), candidateContract);
     assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy);
     assert.equal(await qspb.getPoolOwner(0), poolOwner);
-    assert.equal(await qspb.getPoolMaxPayoutQspWei(0), 10);
-    assert.equal(await qspb.getPoolMinStakeQspWei(0), 1);
-    assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(100));
-    assert.equal(await qspb.getPoolBonusExpertFactor(0), 3);
-    assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), 5);
-    assert.equal(await qspb.getPoolPayPeriodInBlocks(0), 15);
-    assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), 10000);
-    assert.equal(await qspb.getPoolTimeoutInBlocks(0), 100);
+    assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayableQspWei);
+    assert.equal(await qspb.getPoolMinStakeQspWei(0), minStakeQspWei);
+    assert.equal(await qspb.getPoolDepositQspWei(0), depositQspWei);
+    assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor);
+    assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor);
+    assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
+    assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
+    assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
     assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
-    assert.equal(await qspb.getPoolUrlOfAuditReport(0), "URL");
+    assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
+    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);	
     // balance should be increased
     assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
   });
