@@ -56,4 +56,3 @@ is executable from the command-line. A successful execution of `java -version` s
 
 Without using a hardware wallet, one alternatively use `HDWalletProvider` for signing transactions. This wallet accepts 
 a mnemonic key and a web3 provider address for signing transactions.  
-
