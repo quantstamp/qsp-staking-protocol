@@ -106,13 +106,13 @@ contract QuantstampStaking is Ownable {
             require(result);
             /* todo(mderka) Is this attribute necessary? It can be read using 
                balanceOf in ERC20. Created SP-44. */
-            balanceQspWei = balanceQspWei - stake.amountQspWei;
-            total = total + stake.amountQspWei;
+            balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
+            total = total.add(stake.amountQspWei);
             stake.amountQspWei = 0;
         }
-        result = token.transfer(poolOwner, getPoolDepositQspWei(poolIndex));
+        result = token.transfer(poolOwner, total);
         require(result);
-        balanceQspWei = balanceQspWei - getPoolDepositQspWei(poolIndex);
+        balanceQspWei = balanceQspWei.sub(total);
         pools[i].state = PoolState.ViolatedFunded;
 
         emit ClaimWithdrawn(poolIndex, total);
