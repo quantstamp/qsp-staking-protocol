@@ -12,6 +12,15 @@ contract('QuantstampStaking', function(accounts) {
   const contractPolicy = accounts[2];
   const poolOwner = accounts[3];
   const poolOwnerBudget = Util.toQsp(100000);
+  const PoolState = Object.freeze({
+    None : 0,
+    Initialized : 1,
+    NotViolatedUnderfunded : 2,
+    ViolatedUnderfunded : 3,
+    NotViolatedFunded : 4,
+    ViolatedFunded : 5,
+    Cancelled: 6
+  });
 
   let qspb;
   let quantstampToken;
@@ -39,7 +48,6 @@ contract('QuantstampStaking', function(accounts) {
     const minStakeTimeInBlocks = 10000;
     const timeoutInBlocks = 100;
     const urlOfAuditReport = "URL";
-    const initializedStatus = 1;
     // create pool
     await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei,
       depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
@@ -58,8 +66,8 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
     assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
     assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
-    assert.equal(await qspb.getPoolUrlOfAuditReport(0), "URL");
-    assert.equal(await qspb.getPoolState(0), initializedStatus);	
+    assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
+    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);	
     // balance should be increased
     assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
   });

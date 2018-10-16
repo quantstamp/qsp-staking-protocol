@@ -20,7 +20,7 @@ contract QuantstampStaking is Ownable {
     // state of the pool's lifecycle
     enum PoolState {
         None,
-        Initialized, // insuffucies stakes
+        Initialized, // insuffucient stakes
         NotViolatedUnderfunded, // sufficient stakes, insufficient deposit
         ViolatedUnderfunded, // sufficient stakes, insufficient deposit, violated
         NotViolatedFunded,  // sufficient stakes, sufficient deposit
@@ -135,6 +135,7 @@ contract QuantstampStaking is Ownable {
 
     function getStakingRegistry() public view returns (address) {
         return address(stakingRegistry);
+    }
     
     function getPoolState(uint index) public view returns(PoolState) {
        return pools[index].state;
