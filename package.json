@@ -11,11 +11,9 @@
     "eslint": "5.6.1",
     "ganache-cli": "6.1.0",
     "openzeppelin-solidity": "1.10.0",
-    "plcr-revival": "0.0.1",
     "sol-tcr": "0.0.2",
     "solidity-coverage": "0.5.4",
-    "truffle": "4.1.11",
-    "eslint": "4.19.1"
+    "truffle": "4.1.11"
   },
   "devDependencies": {
     "solhint": "1.2.1"
