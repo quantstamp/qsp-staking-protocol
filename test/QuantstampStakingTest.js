@@ -102,7 +102,8 @@ contract('QuantstampStaking', function(accounts) {
   });
 
   it("pools allows claim withdraw when policy is violated and pool is funded ", 
-      async function() {
+    async function() {
     // todo(mderka) implement when appropriate contract functions are added, SP-46
-  });
+    }
+  );
 });
