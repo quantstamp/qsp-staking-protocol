@@ -99,7 +99,7 @@ contract QuantstampStaking is Ownable {
            created SP-45 */ 
         // return all stakes
         bool result = false;
-        uint total = 0;
+        uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
             result = token.transfer(poolOwner, stake.amountQspWei);
@@ -113,9 +113,6 @@ contract QuantstampStaking is Ownable {
         result = token.transfer(poolOwner, total);
         require(result);
         balanceQspWei = balanceQspWei.sub(total);
-        uint deposit = getPoolDepositQspWei(poolIndex);
-        result = token.transfer(poolOwner, deposit);
-        require(result);
         pools[i].depositQspWei = 0;
         pools[i].state = PoolState.ViolatedFunded;
 
