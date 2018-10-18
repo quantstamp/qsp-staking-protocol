@@ -87,55 +87,6 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
   });
 
-  it("should fail if a TCR with address zero is passed into the constructor", async function () {
-    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
-  });
-
-  describe("isExpert", async function() {
-
-    it("should return true if the expert is on the list", async function() {
-      // Set up the PLCR voting contract used by the TCR; should use QSP tokens
-      const voting = await Voting.deployed();
-      await voting.init(QuantstampToken.address);
-
-      // Make sure a TCR parameterizer is deployed using QSP tokens
-      const quantstampParameterizer = await QuantstampParameterizer.deployed();
-      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-
-      // Ensure the TCR uses the right token, voting, and parameterize contracts
-      await quantstampRegistry.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
-
-      // Pick some account to add themselves to the TCR.
-      const applicant = accounts[4];
-      const listing = applicant;          //Listing stores the address of applicant
-      const minDeposit = TCRUtil.minDep;
-
-      // Enable the QSP token owner to give our test applicant some QSP
-      await quantstampToken.enableTransfer({from : owner});
-
-      // transfer the minimum number of tokens to the requestor
-      await quantstampToken.transfer(applicant, minDeposit, {from : owner});
-
-      // allow the registry contract use up to minDeposit for audits
-      await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : applicant});
-
-      // allow the voting contract use up to minDeposit for audits
-      await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicant});
-
-      // Put our applicant on the list. This includes waiting for the application period to end
-      // (i.e. they apply and are not challenged, so they get on the list)
-      await TCRUtil.addToWhitelist(listing, minDeposit, applicant, quantstampRegistry);
-
-      // Make sure the Staking contract can determine that the applicant is in fact on the list
-      assert.strictEqual(await qspb.isExpert(applicant),true,'Applicant was not set as expert');
-    });
-
-    it("should return false if the expert is not on the list", async function() {
-      // Make sure an address that isn't on the TCR isn't an expert according to the Staking contracts
-      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
-    });
-  });
-
   it("should not allow claim withdraw when pool is initialized", async function() {
     // todo(mderka) implement when appropriate contract functions are added, SP-46
   });
@@ -157,4 +108,42 @@ contract('QuantstampStaking', function(accounts) {
     // todo(mderka) implement when appropriate contract functions are added, SP-46
     }
   );
+
+  it("should fail if a TCR with address zero is passed into the constructor", async function () {
+    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
+  });
+
+  describe("isExpert", async function() {
+
+    it("should return true if the expert is on the list", async function() {
+      const voting = await Voting.deployed();
+      await voting.init(QuantstampToken.address);
+
+      const quantstampParameterizer = await QuantstampParameterizer.deployed();
+      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
+      await quantstampRegistry.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+
+      const applicant = accounts[4];
+      const listing = TCRUtil.getListingHash(web3.utils.hexToAscii(applicant.address));
+      const minDeposit = TCRUtil.minDep;
+
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer the minimum number of tokens to the requestor
+      await quantstampToken.transfer(applicant, minDeposit, {from : owner});
+
+      // allow the registry contract use up to minDeposit for audits
+      await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : applicant});
+
+      // allow the voting contract use up to minDeposit for audits
+      await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicant});
+
+      await TCRUtil.addToWhitelist(listing, minDeposit, applicant, quantstampRegistry);
+
+      assert.strictEqual(await qspb.isExpert(listing),true,'Applicant was not set as expert');
+    });
+
+    it("should return false if the expert is not on the list", async function() {
+      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
+    });
+  });
 });
