@@ -5,8 +5,19 @@ function toEther (n) {
   return web3.toWei(n, "ether");
 }
 
+async function assertTxFail (promise) {
+  let txFailed = false;
+  try {
+    const result = await promise;
+    txFailed = parseInt(result.receipt.status) === 0;
+  } catch (err) {
+    txFailed = (err.message.startsWith("VM Exception while processing transaction: revert"));
+  }
+  assert.isTrue(txFailed);
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
+  assertTxFail,
 };
-

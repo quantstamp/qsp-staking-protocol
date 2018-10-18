@@ -1,10 +1,13 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
+const QuantstampParameterizer = artifacts.require('Parameterizer');
+const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
-const Util = require("./util.js");
-
+const { ZERO_ADDRESS } = require('./constants.js');
+const Util = require('./util.js');
+const TCRUtil = require('./tcrutils.js');
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
@@ -67,7 +70,7 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
     assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
     assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
-    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);	
+    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
     // balance should be increased
     assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
   });
@@ -82,5 +85,43 @@ contract('QuantstampStaking', function(accounts) {
 
   it("should have the right registry address", async function() {
     assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
+  });
+
+  it("should fail if a TCR with address zero is passed into the constructor", async function () {
+    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
+  });
+
+  describe("isExpert", async function() {
+
+    it("should return true if the expert is on the list", async function() {
+      const voting = await Voting.deployed();
+      await voting.init(QuantstampToken.address);
+
+      const quantstampParameterizer = await QuantstampParameterizer.deployed();
+      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
+      await quantstampRegistry.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+
+      const applicant = accounts[4];
+      const listing = TCRUtil.getListingHash(web3.utils.hexToAscii(applicant.address));
+      const minDeposit = TCRUtil.minDep;
+
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer the minimum number of tokens to the requestor
+      await quantstampToken.transfer(applicant, minDeposit, {from : owner});
+
+      // allow the registry contract use up to minDeposit for audits
+      await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : applicant});
+
+      // allow the voting contract use up to minDeposit for audits
+      await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicant});
+
+      await TCRUtil.addToWhitelist(listing, minDeposit, applicant, quantstampRegistry);
+
+      assert.strictEqual(await qspb.isExpert(listing),true,'Applicant was not set as expert');
+    });
+
+    it("should return false if the expert is not on the list", async function() {
+      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
+    });
   });
 });
