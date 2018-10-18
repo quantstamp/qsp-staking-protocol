@@ -102,7 +102,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampRegistry.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
 
       const applicant = accounts[4];
-      const listing = TCRUtil.getListingHash(web3.utils.hexToAscii(applicant.address));
+      const listing = applicant;
       const minDeposit = TCRUtil.minDep;
 
       await quantstampToken.enableTransfer({from : owner});
@@ -117,7 +117,7 @@ contract('QuantstampStaking', function(accounts) {
 
       await TCRUtil.addToWhitelist(listing, minDeposit, applicant, quantstampRegistry);
 
-      assert.strictEqual(await qspb.isExpert(listing),true,'Applicant was not set as expert');
+      assert.strictEqual(await qspb.isExpert(applicant),true,'Applicant was not set as expert');
     });
 
     it("should return false if the expert is not on the list", async function() {
