@@ -1,0 +1,15 @@
+pragma solidity 0.4.24;
+
+import "./CandidateContract.sol";
+import "../IPolicy.sol";
+
+contract ZeroBalancePolicy is IPolicy {
+
+    function isViolated(address contractAddress) external view returns(bool) {
+        CandidateContract candidateContract = CandidateContract(contractAddress);
+        if (candidateContract.balance() == 0)
+            return true;
+        else
+            return false; 
+    }
+}
