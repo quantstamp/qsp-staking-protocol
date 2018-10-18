@@ -4,5 +4,5 @@ const ZeroBalancePolicy = artifacts.require('test/ZeroBalancePolicy');
 module.exports = function(deployer) {
   const balance = 0;
   deployer.deploy(CandidateContract, balance)
-  .then(() => deployer.deploy(ZeroBalancePolicy));
+    .then(() => deployer.deploy(ZeroBalancePolicy));
 };
