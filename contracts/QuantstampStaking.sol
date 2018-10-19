@@ -488,4 +488,43 @@ contract QuantstampStaking is Ownable {
         setState(poolIndex, PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
+
+    /*
+    * Allows stakeholders to make additional deposit to the contract
+    */
+    function depositFunds(uint poolIndex, uint depositQspWei) {
+      address poolOwner = getPoolOwner(poolIndex);
+      require(poolOwner == msg.sender);
+      PoolState currentState = getPoolState(poolIndex);
+
+      require(currentState == PoolState.NotViolatedFunded
+                || currentState == PoolState.Initialized
+                || currentState == PoolState.NotViolatedUnderfunded
+             );
+
+      require(token.transferFrom(poolOwner, this, depositQspWei));
+      pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
+      emit DepositMade(poolIndex, poolOwner, depositQspWei);
+    }
+
+    /*
+    * Allows stakeholders to withdraw their deposits from the contract
+    * if the policy is not violated
+    */
+    function withdrawDeposit(uint poolIndex) {
+      address poolOwner = getPoolOwner(poolIndex);
+      require(poolOwner == msg.sender);
+      PoolState currentState = getPoolState(poolIndex);
+      require(currentState == PoolState.NotViolatedFunded
+                || currentState == PoolState.Initialized
+                || currentState == PoolState.NotViolatedUnderfunded
+                || currentState == PoolState.Cancelled
+             );
+
+      uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
+      require(withdrawalAmountQspWei > 0);
+      pools[poolIndex].depositQspWei = 0;
+      require(token.transfer(poolOwner, withdrawalAmountQspWei));
+      emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+    }
 }
