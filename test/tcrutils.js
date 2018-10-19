@@ -59,7 +59,10 @@ const tcrutils = {
     await tcrutils.as(actor, registry.updateStatus, domain);
   },
 
-  // Run the EVM for some time, to enable TCR challenge/voting periods to expire
+  /*
+    Run the EVM for some time, to enable TCR challenge/voting periods to expire
+    seconds   The time to wait
+  */
   increaseTime: async seconds =>
     new Promise((resolve, reject) => ethRPC.sendAsync({
       method: 'evm_increaseTime',
@@ -76,27 +79,19 @@ const tcrutils = {
         resolve();
       }))),
 
+  /*
+    Create a message on the EVM from one account that calls a function on a contract
+    actor     The message sender
+    fn        The function to call
+    ...args   The arguments for the function
+  */
   as: (actor, fn, ...args) => {
     function detectSendObject(potentialSendObj) {
-      function hasOwnProperty(obj, prop) {
-        const proto = obj.constructor.prototype;
-        return (prop in obj) &&
-          (!(prop in proto) || proto[prop] !== obj[prop]);
-      }
-      if (typeof potentialSendObj !== 'object') { return undefined; }
-      if (
-        hasOwnProperty(potentialSendObj, 'from') ||
-        hasOwnProperty(potentialSendObj, 'to') ||
-        hasOwnProperty(potentialSendObj, 'gas') ||
-        hasOwnProperty(potentialSendObj, 'gasPrice') ||
-        hasOwnProperty(potentialSendObj, 'value')
-      ) {
-        throw new Error('It is unsafe to use "as" with custom send objects');
-      }
-      return undefined;
-    }
-    detectSendObject(args[args.length - 1]);
+
+    // Set the sender
     const sendObject = { from: actor };
+
+    // Return the call
     return fn(...args, sendObject);
   },
 
