@@ -86,8 +86,6 @@ const tcrutils = {
     ...args   The arguments for the function
   */
   as: (actor, fn, ...args) => {
-    function detectSendObject(potentialSendObj) {
-
     // Set the sender
     const sendObject = { from: actor };
 
