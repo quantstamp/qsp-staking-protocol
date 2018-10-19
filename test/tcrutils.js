@@ -30,23 +30,36 @@ const parameters = [
 const BN = require('bignumber.js');
 const bigTen = number => new BN(number.toString(10), 10);
 const minDep = bigTen(paramConfig.minDeposit);
-//  const Util = require('./utils.js');
 
 const tcrutils = {
 
-  minDep,
-  parameters,
+  minDep,       //The minimum deposit for a TCR application
+  parameters,   //All parameters for the TCR
 
+  //A function for providing a hash of a string for a TCR entry.
   getListingHash: domain => (
     `0x${abi.soliditySHA3(['string'], [domain]).toString('hex')}`
   ),
 
+  /*
+    domain    The listing hash
+    deposit   The minimum deposit provided by the actor for an application
+    actor     The address submitting the application
+    registry  The TCR address
+  */
   addToWhitelist: async (domain, deposit, actor, registry) => {
+    // Have actor apply to put domain on the TCR
     await tcrutils.as(actor, registry.apply, domain, deposit, '');
+
+    // Wait for the challenge period to expire, unchallenged.
     await tcrutils.increaseTime(paramConfig.applyStageLength + 1);
+
+    // Inform the TCR that the challenge period is over, and update status of the
+    // application as appropriate (whitelisted)
     await tcrutils.as(actor, registry.updateStatus, domain);
   },
 
+  // Run the EVM for some time, to enable TCR challenge/voting periods to expire
   increaseTime: async seconds =>
     new Promise((resolve, reject) => ethRPC.sendAsync({
       method: 'evm_increaseTime',
