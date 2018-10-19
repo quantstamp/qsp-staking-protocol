@@ -64,6 +64,18 @@ contract QuantstampStaking is Ownable {
     // TCR used to list expert stakers.
     Registry public stakingRegistry;
 
+    event DepositMade(
+      uint poolIndex,
+      address actor,
+      uint amountQspWei
+    );
+
+    event DepositWithdrawn(
+      uint poolIndex,
+      address actor,
+      uint amountQspWei
+    );
+
     constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
@@ -182,5 +194,44 @@ contract QuantstampStaking is Ownable {
 
     function isExpert(address addr) public view returns(bool) {
         return stakingRegistry.isWhitelisted(bytes32(addr));
+    }
+
+    /*
+    * Allows stakeholders to make additional deposit to the contract
+    */
+    function depositFunds(uint poolIndex, uint depositQspWei) {
+      address poolOwner = getPoolOwner(poolIndex);
+      require(poolOwner == msg.sender);
+      PoolState currentState = getPoolState(poolIndex);
+
+      require(currentState == PoolState.NotViolatedFunded
+                || currentState == PoolState.Initialized
+                || currentState == PoolState.NotViolatedUnderfunded
+             );
+
+      require(token.transferFrom(poolOwner, this, depositQspWei));
+      pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
+      emit DepositMade(poolIndex, poolOwner, depositQspWei);
+    }
+
+    /*
+    * Allows stakeholders to withdraw their deposits from the contract
+    * if the policy is not violated
+    */
+    function withdrawDeposit(uint poolIndex) {
+      address poolOwner = getPoolOwner(poolIndex);
+      require(poolOwner == msg.sender);
+      PoolState currentState = getPoolState(poolIndex);
+      require(currentState == PoolState.NotViolatedFunded
+                || currentState == PoolState.Initialized
+                || currentState == PoolState.NotViolatedUnderfunded
+                || currentState == PoolState.Cancelled
+             );
+
+      uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
+      require(withdrawalAmountQspWei > 0);
+      pools[poolIndex].depositQspWei = 0;
+      require(token.transfer(poolOwner, withdrawalAmountQspWei));
+      emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 }
