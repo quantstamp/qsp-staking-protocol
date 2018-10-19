@@ -2,6 +2,9 @@ pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+/// @title CandidateContract - an example contract that must be protected according to a policy
+/// @author Sebastian Banescu
+
 contract CandidateContract {
     
     using SafeMath for uint256;
@@ -12,7 +15,7 @@ contract CandidateContract {
         balance = _balance;
     }
 
-    function withdraw(uint amount) public view {
-        balance.sub(amount);
+    function withdraw(uint amount) public {
+        balance = balance.sub(amount);
     }
 }
