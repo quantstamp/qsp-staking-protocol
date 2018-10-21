@@ -425,5 +425,9 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
       assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(maxPayoutQspWei));
     });
+
+  it("should stake funds and set pool to NotViolatedFunded", async function() {
+    await qspb.stakeFunds(0, Util.toQsp(80), {from: staker});
+    assert.equal(await qspb.getPoolState(0), PoolState.NotViolatedFunded);
   });
 });
