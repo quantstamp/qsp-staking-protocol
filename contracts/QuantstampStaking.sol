@@ -102,8 +102,6 @@ contract QuantstampStaking is Ownable {
         uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
-            result = token.transfer(poolOwner, stake.amountQspWei);
-            require(result);
             /* todo(mderka) Is this attribute necessary? It can be read using 
                balanceOf in ERC20. Created SP-44. */
             balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
