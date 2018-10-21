@@ -14,7 +14,9 @@ contract('QuantstampStaking', function(accounts) {
   const candidateContract = accounts[1];
   const contractPolicy = accounts[2];
   const poolOwner = accounts[3];
+  const staker = accounts[4]
   const poolOwnerBudget = Util.toQsp(100000);
+  const stakerBudget = Util.toQsp(100000);
   const PoolState = Object.freeze({
     None : 0,
     Initialized : 1,
@@ -35,14 +37,19 @@ contract('QuantstampStaking', function(accounts) {
     quantstampRegistry = await QuantstampStakingRegistry.deployed();
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
-    // transfer 100,000 QSP tokens to the requestor
+    // transfer 100,000 QSP tokens to the poolOwner
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
     // allow the audit contract use up to 65QSP for audits
     await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+    // transfer 100,000 QSP tokens to the staker
+    await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+    // allow the audit contract use up to 65QSP for audits
+    await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : staker});
+    
     // balance should be 0 in the beginning
     assert.equal(await qspb.balanceQspWei.call(), 0);
     // vars needed for creating pool
-    const maxPayableQspWei = 10;
+    const maxPayoutQspWei = 10;
     const minStakeQspWei = 1;
     const depositQspWei = Util.toQsp(100);
     const bonusExpertFactor = 3;
@@ -52,7 +59,7 @@ contract('QuantstampStaking', function(accounts) {
     const timeoutInBlocks = 100;
     const urlOfAuditReport = "URL";
     // create pool
-    await qspb.createPool(candidateContract, contractPolicy, maxPayableQspWei, minStakeQspWei,
+    await qspb.createPool(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei,
       depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
     // check all pool properties
@@ -60,7 +67,7 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolCandidateContract(0), candidateContract);
     assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy);
     assert.equal(await qspb.getPoolOwner(0), poolOwner);
-    assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayableQspWei);
+    assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei);
     assert.equal(await qspb.getPoolMinStakeQspWei(0), minStakeQspWei);
     assert.equal(await qspb.getPoolDepositQspWei(0), depositQspWei);
     assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor);
@@ -68,7 +75,7 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
     assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
     assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
-    assert.equal(await qspb.getPoolTimeOfInitInBlocks(0), web3.eth.getBlock("latest").number);
+    assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), web3.eth.getBlock("latest").number);
     assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
     assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
     // balance should be increased
