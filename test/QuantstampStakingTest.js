@@ -14,7 +14,7 @@ const TCRUtil = require('./tcrutils.js');
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
   const poolOwner = accounts[3];
-  const staker = accounts[4];
+  const staker = accounts[4]
   const poolOwnerBudget = Util.toQsp(100000);
   const stakerBudget = Util.toQsp(100000);
   const PoolState = Object.freeze({
