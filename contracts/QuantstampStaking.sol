@@ -307,8 +307,7 @@ contract QuantstampStaking is Ownable {
             (state == PoolState.NotViolatedUnderfunded) || 
             (state == PoolState.NotViolatedFunded));
 
-        // TODO (sebi): Should we check if the policy is violated at this point?
-        // Should we allow staking if the policy is violated?
+        // TODO: Check if the policy is violated. Staking is not allowed if this is the case.
         bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
         require(result);
 
@@ -318,28 +317,28 @@ contract QuantstampStaking is Ownable {
         balanceQspWei.add(amountQspWei);
         
         // Check if pool can be switched from the initialized state to another state
-        if (state == PoolState.Initialized) {
-            // Check if the timeout has not occured yet
-            if (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex))) {
+        if ((state == PoolState.Initialized) ||
+            (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
                 // then timeout has occured
                 setState(poolIndex, PoolState.Cancelled);
-            } else { // Timeout has not yet occured
-                // Check if there are enough funds in the pool
-                uint total = 0;
-                for (uint i = 0; i < stakes[poolIndex].length; i++) {
-                    stake = stakes[poolIndex][i];
-                    total = total.add(stake.amountQspWei);
-                }
-
-                if (total >= getPoolMinStakeQspWei(poolIndex)) {
-                    if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
-                        setState(poolIndex, PoolState.NotViolatedFunded);
-                    } else {
-                        setState(poolIndex, PoolState.NotViolatedUnderfunded);
-                    }
-                }
-                emit StakePlaced(poolIndex, msg.sender, amountQspWei);
+        } else { // Timeout has not occured
+            // Check if there are enough stakes in the pool
+            uint total = 0;
+            for (uint i = 0; i < stakes[poolIndex].length; i++) {
+                stake = stakes[poolIndex][i];
+                total = total.add(stake.amountQspWei);
             }
+
+            if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+                if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
+                    // The pool is funded by enough to pay stakers
+                    setState(poolIndex, PoolState.NotViolatedFunded);
+                } else {
+                    // The pool is does not have enough funds to pay stakers
+                    setState(poolIndex, PoolState.NotViolatedUnderfunded);
+                }
+            }
+            emit StakePlaced(poolIndex, msg.sender, amountQspWei);
         }    
     }
 }
