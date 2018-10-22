@@ -7,6 +7,7 @@ import {Registry} from "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./IPolicy.sol";
 
 contract ContractPolicy {
     function isViolated(address protectedContract) public view returns (bool);
@@ -252,69 +253,26 @@ contract QuantstampStaking is Ownable {
             (state == PoolState.NotViolatedUnderfunded) || 
             (state == PoolState.NotViolatedFunded));
 
-        // TODO: Check if the policy is violated. Staking is not allowed if this is the case.
-        bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
-        require(result);
+        // Check if the policy is violated. Staking is not allowed if this is the case.
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
 
-        // Create new Stake struct
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
-        stakes[poolIndex].push(stake);
-        balanceQspWei.add(amountQspWei);
-        
         // Check if pool can be switched from the initialized state to another state
-        if (state == PoolState.Initialized) {
-            // Check if the timeout has not occured yet
-            if (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex))) {
-                // then timeout has occured
-                setState(poolIndex, PoolState.Cancelled);
-            } else { // Timeout has not yet occured
-                // Check if there are enough funds in the pool
-                uint total = 0;
-                for (uint i = 0; i < stakes[poolIndex].length; i++) {
-                    stake = stakes[poolIndex][i];
-                    total = total.add(stake.amountQspWei);
-                }
-
-                if (total >= getPoolMinStakeQspWei(poolIndex)) {
-                    if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
-                        setState(poolIndex, PoolState.NotViolatedFunded);
-                    } else {
-                        setState(poolIndex, PoolState.NotViolatedUnderfunded);
-                    }
-                }
-                emit StakePlaced(poolIndex, msg.sender, amountQspWei);
-            }
-        }    
-    }
-
-    function setState(uint poolIndex, PoolState newState) internal {
-        pools[poolIndex].state = newState; // set the state
-        pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
-        emit StateChanged(poolIndex, newState); // emit an event that the state has changed
-    }
-
-    function stakeFunds(uint poolIndex, uint amountQspWei) public {
-        PoolState state = getPoolState(poolIndex);
-        require((state == PoolState.Initialized) || 
-            (state == PoolState.NotViolatedUnderfunded) || 
-            (state == PoolState.NotViolatedFunded));
-
-        // TODO (sebi): Should we check if the policy is violated at this point?
-        // Should we allow staking if the policy is violated?
-        bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
-        require(result);
-
-        // Create new Stake struct
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
-        stakes[poolIndex].push(stake);
-        balanceQspWei.add(amountQspWei);
-        
-        // Check if pool can be switched from the initialized state to another state
-        if ((state == PoolState.Initialized) ||
+        if ((state == PoolState.Initialized) &&
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
-                // then timeout has occured
+                // then timeout has occured and stakes are not allowed
                 setState(poolIndex, PoolState.Cancelled);
         } else { // Timeout has not occured
+            // If policy is not violated then transfer the stake
+            bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
+            require(result);
+
+            // Create new Stake struct
+            Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
+            stakes[poolIndex].push(stake);
+            balanceQspWei.add(amountQspWei);
+            
             // Check if there are enough stakes in the pool
             uint total = 0;
             for (uint i = 0; i < stakes[poolIndex].length; i++) {

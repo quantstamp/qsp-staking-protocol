@@ -3,6 +3,8 @@ const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
 const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
+const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
+const CandidateContract = artifacts.require('CandidateContract');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const { ZERO_ADDRESS } = require('./constants.js');
@@ -11,8 +13,6 @@ const TCRUtil = require('./tcrutils.js');
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
-  const candidateContract = accounts[1];
-  const contractPolicy = accounts[2];
   const poolOwner = accounts[3];
   const staker = accounts[4];
   const poolOwnerBudget = Util.toQsp(100000);
@@ -27,14 +27,29 @@ contract('QuantstampStaking', function(accounts) {
     Cancelled: 6
   });
 
+  // vars needed for creating pool
+  const maxPayoutQspWei = Util.toQsp(100);
+  const minStakeQspWei = Util.toQsp(10);
+  const depositQspWei = Util.toQsp(10);
+  const bonusExpertFactor = 3;
+  const bonusFirstExpertFactor = 5;
+  const payPeriodInBlocks = 15;
+  const minStakeTimeInBlocks = 10000;
+  const timeoutInBlocks = 5;
+  const urlOfAuditReport = "URL";
+
   let qspb;
   let quantstampToken;
   let quantstampRegistry;
+  let candidateContract;
+  let policy;
 
   it("should add a pool", async function() {
     qspb = await QuantstampStaking.deployed();
     quantstampToken = await QuantstampToken.deployed();
     quantstampRegistry = await QuantstampStakingRegistry.deployed();
+    candidateContract = await CandidateContract.deployed();
+    contractPolicy = await ZeroBalancePolicy.deployed();
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // transfer 100,000 QSP tokens to the poolOwner
@@ -48,24 +63,14 @@ contract('QuantstampStaking', function(accounts) {
     
     // balance should be 0 in the beginning
     assert.equal(await qspb.balanceQspWei.call(), 0);
-    // vars needed for creating pool
-    const maxPayoutQspWei = 10;
-    const minStakeQspWei = 1;
-    const depositQspWei = Util.toQsp(100);
-    const bonusExpertFactor = 3;
-    const bonusFirstExpertFactor = 5;
-    const payPeriodInBlocks = 15;
-    const minStakeTimeInBlocks = 10000;
-    const timeoutInBlocks = 100;
-    const urlOfAuditReport = "URL";
     // create pool
-    await qspb.createPool(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei,
+    await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
       depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
     // check all pool properties
     assert.equal(await qspb.getPoolsLength.call(), 1);
-    assert.equal(await qspb.getPoolCandidateContract(0), candidateContract);
-    assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy);
+    assert.equal(await qspb.getPoolCandidateContract(0), candidateContract.address);
+    assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy.address);
     assert.equal(await qspb.getPoolOwner(0), poolOwner);
     assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei);
     assert.equal(await qspb.getPoolMinStakeQspWei(0), minStakeQspWei);
@@ -153,8 +158,47 @@ contract('QuantstampStaking', function(accounts) {
       assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
     });
 
-  it("should stake funds and set pool to NotViolatedFunded", async function() {
-    await qspb.stakeFunds(0, Util.toQsp(80), {from: staker});
-    assert.equal(await qspb.getPoolState(0), PoolState.NotViolatedFunded);
+  // BEGIN Tests for stakeFunds
+  it("should stake funds and keep the pool in the Initialized state", async function() {
+    await qspb.stakeFunds(0, minStakeQspWei/2, {from: staker});
+    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
   });
+
+  it("should not allow funds to be staked because the timeout has occured", async function() {
+    Util.mineNBlocks(timeoutInBlocks);
+    await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
+    assert.equal(await qspb.getPoolState(0), PoolState.Cancelled);
+  });
+
+  it("should throw an error since stakes cannot be made in the Cancelled state", async function() {
+    Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
+  });
+  
+  it("should stake funds and set pool to NotViolatedUnderfunded", async function() {
+    // create pool
+    await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+      depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+    var currentPoolNumber = await qspb.getPoolsLength();
+    var currentPoolIndex = currentPoolNumber - 1;
+    // stake funds
+    await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+    assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+  });
+
+  it("should stake funds and set pool to NotViolatedFunded", async function() {
+    // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
+    var currentPoolNumber = await qspb.getPoolsLength();
+    var currentPoolIndex = currentPoolNumber - 1;
+    // make deposit such that the current pool is funded
+    // stake funds
+    //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+    //assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+  });
+
+  it("should not allow staking because the policy is violated", async function() {
+    await candidateContract.withdraw(await candidateContract.balance.call());
+    Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
+  });
+  // END Tests for stakeFunds
 });
