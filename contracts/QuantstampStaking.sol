@@ -273,6 +273,8 @@ contract QuantstampStaking is Ownable {
             stakes[poolIndex].push(stake);
             balanceQspWei.add(amountQspWei);
             
+            /* todo(mderka) Consider design the does not require iteration over stakes
+           created SP-45 */
             // Check if there are enough stakes in the pool
             uint total = 0;
             for (uint i = 0; i < stakes[poolIndex].length; i++) {
