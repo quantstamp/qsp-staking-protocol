@@ -19,5 +19,5 @@ async function assertTxFail (promise) {
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
-  assertTxFail,
+  assertTxFail : assertTxFail
 };
