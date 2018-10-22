@@ -426,8 +426,47 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(maxPayoutQspWei));
     });
 
-  it("should stake funds and set pool to NotViolatedFunded", async function() {
-    await qspb.stakeFunds(0, Util.toQsp(80), {from: staker});
-    assert.equal(await qspb.getPoolState(0), PoolState.NotViolatedFunded);
+  // BEGIN Tests for stakeFunds
+  it("should stake funds and keep the pool in the Initialized state", async function() {
+    await qspb.stakeFunds(0, minStakeQspWei/2, {from: staker});
+    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
   });
+
+  it("should not allow funds to be staked because the timeout has occured", async function() {
+    Util.mineNBlocks(timeoutInBlocks);
+    await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
+    assert.equal(await qspb.getPoolState(0), PoolState.Cancelled);
+  });
+
+  it("should throw an error since stakes cannot be made in the Cancelled state", async function() {
+    Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
+  });
+  
+  it("should stake funds and set pool to NotViolatedUnderfunded", async function() {
+    // create pool
+    await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+      depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+    var currentPoolNumber = await qspb.getPoolsLength();
+    var currentPoolIndex = currentPoolNumber - 1;
+    // stake funds
+    await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+    assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+  });
+
+  it("should stake funds and set pool to NotViolatedFunded", async function() {
+    // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
+    var currentPoolNumber = await qspb.getPoolsLength();
+    var currentPoolIndex = currentPoolNumber - 1;
+    // make deposit such that the current pool is funded
+    // stake funds
+    //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+    //assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+  });
+
+  it("should not allow staking because the policy is violated", async function() {
+    await candidateContract.withdraw(await candidateContract.balance.call());
+    Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
+  });
+  // END Tests for stakeFunds
 });
