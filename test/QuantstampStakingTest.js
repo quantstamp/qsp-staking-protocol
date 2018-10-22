@@ -1,11 +1,8 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
-<<<<<<< HEAD
 const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
-=======
->>>>>>> 2b06cc5... Added the rest of the implementable tests for stakeFunds + fixed a logical bug in stakeFunds
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const Web3 = require('web3');
