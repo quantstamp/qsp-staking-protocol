@@ -135,4 +135,26 @@ contract('QuantstampStaking', function(accounts) {
       assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
     });
   });
+
+  it("should not allow claim withdraw when pool is initialized", async function() {
+    // todo(mderka) implement when appropriate contract functions are added, SP-46
+  });
+
+  it("should not allow claim withdraw when pool is cancelled", async function() {
+    // todo(mderka) implement when appropriate contract functions are added, SP-46
+  });
+
+  it("should not allow claim withdraw when pool is not funded", async function() {
+    // todo(mderka) implement when appropriate contract functions are added, SP-46
+  });
+
+  it("should not allow claim withdraw when policy is not violated", async function() {
+    // todo(mderka) implement when appropriate contract functions are added, SP-46
+  });
+
+  it("pools allows claim withdraw when policy is violated and pool is funded ",
+    async function() {
+    // todo(mderka) implement when appropriate contract functions are added, SP-46
+    }
+  );
 });

@@ -8,6 +8,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+contract ContractPolicy {
+    function isViolated(address protectedContract) public view returns (bool);
+}
 
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
@@ -64,6 +67,8 @@ contract QuantstampStaking is Ownable {
     // TCR used to list expert stakers.
     Registry public stakingRegistry;
 
+    event ClaimWithdrawn(uint poolId, uint balanceQspWei);
+
     constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
@@ -71,6 +76,45 @@ contract QuantstampStaking is Ownable {
         token = StandardToken(tokenAddress);
         require(tcrAddress != address(0));
         stakingRegistry = Registry(tcrAddress);
+    }
+
+    /**
+    * Gives all the staked funds to the stakeholder provided that the policy was violated and the
+    * state of the contract allows.
+    */
+    function withdrawClaim(uint poolIndex) public {
+        address poolOwner = getPoolOwner(poolIndex);
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        PoolState currentState = getPoolState(poolIndex);
+        require(poolOwner == msg.sender);
+        require(ContractPolicy(poolPolicy).isViolated(candidateContract));
+        
+        /* The pool can be converted into Pool.ViolatedFunded funded state by calling
+           function withdraw interest, therefore we need to allow this state as well */
+        require(currentState == PoolState.NotViolatedFunded 
+                || currentState == PoolState.ViolatedFunded);
+        
+        /* todo(mderka) Consider design the does not require iteration over stakes
+           created SP-45 */ 
+        // return all stakes
+        bool result = false;
+        uint total = getPoolDepositQspWei(poolIndex);
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            Stake storage stake = stakes[poolIndex][i];
+            /* todo(mderka) Is this attribute necessary? It can be read using 
+               balanceOf in ERC20. Created SP-44. */
+            balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
+            total = total.add(stake.amountQspWei);
+            stake.amountQspWei = 0;
+        }
+        result = token.transfer(poolOwner, total);
+        require(result);
+        balanceQspWei = balanceQspWei.sub(total);
+        pools[i].depositQspWei = 0;
+        pools[i].state = PoolState.ViolatedFunded;
+
+        emit ClaimWithdrawn(poolIndex, total);
     }
 
     function getToken() public view returns (address) {
