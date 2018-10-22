@@ -22,12 +22,12 @@ async function mineOneBlock () {
     method: 'evm_mine',
     params: [],
     id: 0,
-  })
+  });
 }
 
 async function mineNBlocks (n) {
   for (let i = 0; i < n; i++) {
-    await mineOneBlock()
+    await mineOneBlock();
   }
 }
 

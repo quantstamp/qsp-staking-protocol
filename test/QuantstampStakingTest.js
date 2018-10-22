@@ -42,7 +42,7 @@ contract('QuantstampStaking', function(accounts) {
   let quantstampToken;
   let quantstampRegistry;
   let candidateContract;
-  let policy;
+  let contractPolicy;
 
   it("should add a pool", async function() {
     qspb = await QuantstampStaking.deployed();
@@ -188,8 +188,8 @@ contract('QuantstampStaking', function(accounts) {
 
   it("should stake funds and set pool to NotViolatedFunded", async function() {
     // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
-    var currentPoolNumber = await qspb.getPoolsLength();
-    var currentPoolIndex = currentPoolNumber - 1;
+    //var currentPoolNumber = await qspb.getPoolsLength();
+    //var currentPoolIndex = currentPoolNumber - 1;
     // make deposit such that the current pool is funded
     // stake funds
     //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
