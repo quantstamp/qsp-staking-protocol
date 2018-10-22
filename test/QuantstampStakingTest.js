@@ -14,7 +14,7 @@ contract('QuantstampStaking', function(accounts) {
   const candidateContract = accounts[1];
   const contractPolicy = accounts[2];
   const poolOwner = accounts[3];
-  const staker = accounts[4]
+  const staker = accounts[4];
   const poolOwnerBudget = Util.toQsp(100000);
   const stakerBudget = Util.toQsp(100000);
   const PoolState = Object.freeze({
