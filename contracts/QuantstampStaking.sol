@@ -9,10 +9,6 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./IPolicy.sol";
 
-contract ContractPolicy {
-    function isViolated(address protectedContract) public view returns (bool);
-}
-
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
 
@@ -77,6 +73,20 @@ contract QuantstampStaking is Ownable {
     // Event signaling that the state of the pool has changed
     event StateChanged(uint poolIndex, PoolState state);
 
+    modifier whenViolated(uint poolIndex) {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(IPolicy(poolPolicy).isViolated(candidateContract));
+        _;
+    }
+
+    modifier whenNotViolated(uint poolIndex) {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
+        _;
+    }
+
     constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
@@ -90,13 +100,10 @@ contract QuantstampStaking is Ownable {
     * Gives all the staked funds to the stakeholder provided that the policy was violated and the
     * state of the contract allows.
     */
-    function withdrawClaim(uint poolIndex) public {
+    function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
         require(poolOwner == msg.sender);
-        require(ContractPolicy(poolPolicy).isViolated(candidateContract));
         
         /* The pool can be converted into Pool.ViolatedFunded funded state by calling
            function withdraw interest, therefore we need to allow this state as well */
@@ -247,52 +254,47 @@ contract QuantstampStaking is Ownable {
         emit StateChanged(poolIndex, newState); // emit an event that the state has changed
     }
 
-    function stakeFunds(uint poolIndex, uint amountQspWei) public {
+    function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) || 
             (state == PoolState.NotViolatedUnderfunded) || 
             (state == PoolState.NotViolatedFunded));
-
-        // Check if the policy is violated. Staking is not allowed if this is the case.
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
-        require(!IPolicy(poolPolicy).isViolated(candidateContract));
 
         // Check if pool can be switched from the initialized state to another state
         if ((state == PoolState.Initialized) &&
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
                 // then timeout has occured and stakes are not allowed
                 setState(poolIndex, PoolState.Cancelled);
-        } else { // Timeout has not occured
-            // If policy is not violated then transfer the stake
-            bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
-            require(result);
-
-            // Create new Stake struct
-            Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
-            stakes[poolIndex].push(stake);
-            balanceQspWei.add(amountQspWei);
+                return;
+        }
             
-            /* todo(mderka) Consider design the does not require iteration over stakes
-           created SP-45 */
-            // Check if there are enough stakes in the pool
-            uint total = 0;
-            for (uint i = 0; i < stakes[poolIndex].length; i++) {
-                stake = stakes[poolIndex][i];
-                total = total.add(stake.amountQspWei);
-            }
+        // If policy is not violated then transfer the stake
+        require(token.transferFrom(msg.sender, address(this),  amountQspWei));
 
-            if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
-                if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
-                    // The pool is funded by enough to pay stakers
-                    setState(poolIndex, PoolState.NotViolatedFunded);
-                } else {
-                    // The pool is does not have enough funds to pay stakers
-                    setState(poolIndex, PoolState.NotViolatedUnderfunded);
-                }
+        // Create new Stake struct
+        Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
+        stakes[poolIndex].push(stake);
+        balanceQspWei.add(amountQspWei);
+        
+        /* todo(mderka) Consider design the does not require iteration over stakes
+       created SP-45 */
+        // Check if there are enough stakes in the pool
+        uint total = 0;
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            stake = stakes[poolIndex][i];
+            total = total.add(stake.amountQspWei);
+        }
+
+        if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+            if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
+                // The pool is funded by enough to pay stakers
+                setState(poolIndex, PoolState.NotViolatedFunded);
+            } else {
+                // The pool is does not have enough funds to pay stakers
+                setState(poolIndex, PoolState.NotViolatedUnderfunded);
             }
-            emit StakePlaced(poolIndex, msg.sender, amountQspWei);
-        }    
+        }
+        emit StakePlaced(poolIndex, msg.sender, amountQspWei);    
     }
 
     function setState(uint poolIndex, PoolState newState) internal {
