@@ -490,7 +490,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /*
-    * Allows stakeholders to make additional deposit to the contract
+    * Allows the stakeholder to make an additional deposit to the contract
     */
     function depositFunds(uint poolIndex, uint depositQspWei) {
       address poolOwner = getPoolOwner(poolIndex);
@@ -508,7 +508,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /*
-    * Allows stakeholders to withdraw their deposits from the contract
+    * Allows the stakeholder to withdraw their deposits from the contract
     * if the policy is not violated
     */
     function withdrawDeposit(uint poolIndex) {
