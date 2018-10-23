@@ -254,6 +254,20 @@ contract QuantstampStaking is Ownable {
         emit StateChanged(poolIndex, newState); // emit an event that the state has changed
     }
 
+    function getTotalFundsStaked(uint poolIndex) internal returns(uint) {
+        uint total = 0;
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            Stake stake = stakes[poolIndex][i];
+            total = total.add(stake.amountQspWei);
+        }
+        return total;
+    }
+
+    /**
+    * Transfers an amount of QSP from the staker to the pool
+    * @param poolIndex - the index of the pool where the funds are transferred to
+    * @param amountQspWei - the amount of QSP Wei that is transferred
+    */
     function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) || 
@@ -276,15 +290,8 @@ contract QuantstampStaking is Ownable {
         stakes[poolIndex].push(stake);
         balanceQspWei.add(amountQspWei);
         
-        /* todo(mderka) Consider design the does not require iteration over stakes
-       created SP-45 */
         // Check if there are enough stakes in the pool
-        uint total = 0;
-        for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            stake = stakes[poolIndex][i];
-            total = total.add(stake.amountQspWei);
-        }
-
+        uint total = getTotalFundsStaked(poolIndex);
         if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
             if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
