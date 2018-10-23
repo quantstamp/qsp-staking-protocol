@@ -180,7 +180,7 @@ contract QuantstampStaking is Ownable {
     function getStakingRegistry() public view returns (address) {
         return address(stakingRegistry);
     }
-    
+
     function getPoolState(uint index) public view returns(PoolState) {
        return pools[index].state;
     }
@@ -205,18 +205,18 @@ contract QuantstampStaking is Ownable {
         }
 
         Pool memory p = Pool(
-            candidateContract, 
-            contractPolicy, 
-            msg.sender, 
-            maxPayoutQspWei, 
-            minStakeQspWei, 
-            depositQspWei, 
-            bonusExpertFactor, 
-            bonusFirstExpertFactor, 
-            payPeriodInBlocks, 
-            minStakeTimeInBlocks, 
-            timeoutInBlocks, 
-            block.number, 
+            candidateContract,
+            contractPolicy,
+            msg.sender,
+            maxPayoutQspWei,
+            minStakeQspWei,
+            depositQspWei,
+            bonusExpertFactor,
+            bonusFirstExpertFactor,
+            payPeriodInBlocks,
+            minStakeTimeInBlocks,
+            timeoutInBlocks,
+            block.number,
             urlOfAuditReport,
             PoolState.Initialized);
         pools[currentPoolNumber] = p;
@@ -225,6 +225,11 @@ contract QuantstampStaking is Ownable {
     }
 
     function isExpert(address addr) public view returns(bool) {
-        return stakingRegistry.isWhitelisted(bytes32(addr));
+        /* addr is of type Address which is 20 Bytes, but
+           the TCR expects all entries to be of type Bytes32.
+           addr is first cast to Uint256 so that it becomes 32 bytes long,
+           addr is then shifted 12 bytes (96 bits) to the left so the 20
+           important bytes are in the correct spot. */
+        return stakingRegistry.isWhitelisted(bytes32(uint256(addr) << 96));
     }
 }

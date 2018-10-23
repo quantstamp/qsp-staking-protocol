@@ -21,4 +21,3 @@ module.exports = {
   toQsp : toEther,
   assertTxFail : assertTxFail
 };
-
