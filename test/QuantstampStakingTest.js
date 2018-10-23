@@ -157,6 +157,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should return false if the expert is not on the list", async function() {
       assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
     });
+  });
 
   // BEGIN Tests for stakeFunds
   it("should stake funds and keep the pool in the Initialized state", async function() {
