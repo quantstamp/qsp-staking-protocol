@@ -508,7 +508,7 @@ contract QuantstampStaking is Ownable {
                 || currentState == PoolState.NotViolatedUnderfunded
              );
 
-      require(token.transferFrom(poolOwner, this, depositQspWei));
+      require(token.transferFrom(poolOwner, address(this), depositQspWei));
       pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
       balanceQspWei = balanceQspWei.add(withdrawalAmountQspWei);
 
