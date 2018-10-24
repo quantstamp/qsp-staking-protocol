@@ -88,6 +88,12 @@ contract QuantstampStaking is Ownable {
         address staker,
         uint amountQspWei
     );
+    
+    event StakerRefundClaimed(
+      uint poolIndex,
+      address staker,
+      uint amountQspWei
+    );
 
     // Signals that a stakeholder has withdrawn a claim
     event ClaimWithdrawn(uint poolId, uint balanceQspWei);
@@ -515,10 +521,10 @@ contract QuantstampStaking is Ownable {
     }
 
     /*
-    * Allows the stakeholder to withdraw their deposits from the contract
+    * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) public {
+    function withdrawDeposit(uint poolIndex) public whenNotViolated(poolIndex) {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
