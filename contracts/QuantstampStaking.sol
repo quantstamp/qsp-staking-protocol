@@ -360,6 +360,7 @@ contract QuantstampStaking is Ownable {
       pools[poolIndex].depositQspWei = 0;
       balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
       require(token.transfer(poolOwner, withdrawalAmountQspWei));
+      setState(poolIndex, PoolState.Cancelled);
       emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 }
