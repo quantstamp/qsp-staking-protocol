@@ -7,10 +7,7 @@ import {Registry} from "./tcr/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
-contract ContractPolicy {
-    function isViolated(address protectedContract) public view returns (bool);
-}
+import "./IPolicy.sol";
 
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
@@ -18,6 +15,7 @@ contract QuantstampStaking is Ownable {
     struct Stake {
         address staker; // the address of the staker
         uint amountQspWei; // the amount staked by the staker
+        uint blockNumber; // the Block number when this stake was made
     }
 
     // state of the pool's lifecycle
@@ -43,7 +41,7 @@ contract QuantstampStaking is Ownable {
         uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
         uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
-        uint timeOfInitInBlocks; // the block number when the pool was initialized
+        uint timeOfStateInBlocks; // the block number when the pool was set in its current state
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
         PoolState state;
     }
@@ -81,6 +79,26 @@ contract QuantstampStaking is Ownable {
 
     event ClaimWithdrawn(uint poolId, uint balanceQspWei);
 
+    // Event signaling that staker has staked amountQspWei at poolIndex
+    event StakePlaced(uint poolIndex, address staker, uint amountQspWei);
+
+    // Event signaling that the state of the pool has changed
+    event StateChanged(uint poolIndex, PoolState state);
+
+    modifier whenViolated(uint poolIndex) {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(IPolicy(poolPolicy).isViolated(candidateContract));
+        _;
+    }
+
+    modifier whenNotViolated(uint poolIndex) {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
+        _;
+    }
+
     constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
@@ -94,13 +112,10 @@ contract QuantstampStaking is Ownable {
     * Gives all the staked funds to the stakeholder provided that the policy was violated and the
     * state of the contract allows.
     */
-    function withdrawClaim(uint poolIndex) public {
+    function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
         require(poolOwner == msg.sender);
-        require(ContractPolicy(poolPolicy).isViolated(candidateContract));
         
         /* The pool can be converted into Pool.ViolatedFunded funded state by calling
            function withdraw interest, therefore we need to allow this state as well */
@@ -181,8 +196,8 @@ contract QuantstampStaking is Ownable {
         return pools[index].timeoutInBlocks;
     }
 
-    function getPoolTimeOfInitInBlocks(uint index) public view returns(uint) {
-        return pools[index].timeOfInitInBlocks;
+    function getPoolTimeOfStateInBlocks(uint index) public view returns(uint) {
+        return pools[index].timeOfStateInBlocks;
     }
 
     function getPoolUrlOfAuditReport(uint index) public view returns(string) {
@@ -192,7 +207,7 @@ contract QuantstampStaking is Ownable {
     function getStakingRegistry() public view returns (address) {
         return address(stakingRegistry);
     }
-    
+
     function getPoolState(uint index) public view returns(PoolState) {
        return pools[index].state;
     }
@@ -217,18 +232,18 @@ contract QuantstampStaking is Ownable {
         }
 
         Pool memory p = Pool(
-            candidateContract, 
-            contractPolicy, 
-            msg.sender, 
-            maxPayoutQspWei, 
-            minStakeQspWei, 
-            depositQspWei, 
-            bonusExpertFactor, 
-            bonusFirstExpertFactor, 
-            payPeriodInBlocks, 
-            minStakeTimeInBlocks, 
-            timeoutInBlocks, 
-            block.number, 
+            candidateContract,
+            contractPolicy,
+            msg.sender,
+            maxPayoutQspWei,
+            minStakeQspWei,
+            depositQspWei,
+            bonusExpertFactor,
+            bonusFirstExpertFactor,
+            payPeriodInBlocks,
+            minStakeTimeInBlocks,
+            timeoutInBlocks,
+            block.number,
             urlOfAuditReport,
             PoolState.Initialized);
         pools[currentPoolNumber] = p;
@@ -237,7 +252,120 @@ contract QuantstampStaking is Ownable {
     }
 
     function isExpert(address addr) public view returns(bool) {
-        return stakingRegistry.isWhitelisted(bytes32(addr));
+        /* addr is of type Address which is 20 Bytes, but
+           the TCR expects all entries to be of type Bytes32.
+           addr is first cast to Uint256 so that it becomes 32 bytes long,
+           addr is then shifted 12 bytes (96 bits) to the left so the 20
+           important bytes are in the correct spot. */
+        return stakingRegistry.isWhitelisted(bytes32(uint256(addr) << 96));
+    }
+
+    function setState(uint poolIndex, PoolState newState) internal {
+        pools[poolIndex].state = newState; // set the state
+        pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+        emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+    }
+
+    function getTotalFundsStaked(uint poolIndex) internal returns(uint) {
+        uint total = 0;
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            Stake stake = stakes[poolIndex][i];
+            total = total.add(stake.amountQspWei);
+        }
+        return total;
+    }
+
+    /**
+    * Transfers an amount of QSP from the staker to the pool
+    * @param poolIndex - the index of the pool where the funds are transferred to
+    * @param amountQspWei - the amount of QSP Wei that is transferred
+    */
+    function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
+        PoolState state = getPoolState(poolIndex);
+        require((state == PoolState.Initialized) || 
+            (state == PoolState.NotViolatedUnderfunded) || 
+            (state == PoolState.NotViolatedFunded));
+
+        // Check if pool can be switched from the initialized state to another state
+        if ((state == PoolState.Initialized) &&
+            (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
+                // then timeout has occured and stakes are not allowed
+                setState(poolIndex, PoolState.Cancelled);
+                return;
+        }
+            
+        // If policy is not violated then transfer the stake
+        require(token.transferFrom(msg.sender, address(this),  amountQspWei));
+
+        // Create new Stake struct
+        Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
+        stakes[poolIndex].push(stake);
+        balanceQspWei.add(amountQspWei);
+        
+        // Check if there are enough stakes in the pool
+        uint total = getTotalFundsStaked(poolIndex);
+        if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+            if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
+                // The pool is funded by enough to pay stakers
+                setState(poolIndex, PoolState.NotViolatedFunded);
+            } else {
+                // The pool is does not have enough funds to pay stakers
+                setState(poolIndex, PoolState.NotViolatedUnderfunded);
+            }
+        }
+        emit StakePlaced(poolIndex, msg.sender, amountQspWei);    
+    }
+
+    function setState(uint poolIndex, PoolState newState) internal {
+        pools[poolIndex].state = newState; // set the state
+        pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+        emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+    }
+
+    function stakeFunds(uint poolIndex, uint amountQspWei) public {
+        PoolState state = getPoolState(poolIndex);
+        require((state == PoolState.Initialized) || 
+            (state == PoolState.NotViolatedUnderfunded) || 
+            (state == PoolState.NotViolatedFunded));
+
+        // Check if the policy is violated. Staking is not allowed if this is the case.
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
+
+        // Check if pool can be switched from the initialized state to another state
+        if ((state == PoolState.Initialized) &&
+            (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
+                // then timeout has occured and stakes are not allowed
+                setState(poolIndex, PoolState.Cancelled);
+        } else { // Timeout has not occured
+            // If policy is not violated then transfer the stake
+            bool result = token.transferFrom(msg.sender, address(this),  amountQspWei);
+            require(result);
+
+            // Create new Stake struct
+            Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
+            stakes[poolIndex].push(stake);
+            balanceQspWei.add(amountQspWei);
+            
+            // Check if there are enough stakes in the pool
+            uint total = 0;
+            for (uint i = 0; i < stakes[poolIndex].length; i++) {
+                stake = stakes[poolIndex][i];
+                total = total.add(stake.amountQspWei);
+            }
+
+            if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+                if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
+                    // The pool is funded by enough to pay stakers
+                    setState(poolIndex, PoolState.NotViolatedFunded);
+                } else {
+                    // The pool is does not have enough funds to pay stakers
+                    setState(poolIndex, PoolState.NotViolatedUnderfunded);
+                }
+            }
+            emit StakePlaced(poolIndex, msg.sender, amountQspWei);
+        }    
     }
 
     /*
