@@ -43,7 +43,7 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
         uint timeOfStateInBlocks; // the block number when the pool was set in its current state
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
-        PoolState state;
+        PoolState state; // the current state of the pool
     }
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
@@ -65,55 +65,82 @@ contract QuantstampStaking is Ownable {
     // TCR used to list expert stakers.
     Registry public stakingRegistry;
 
+    // Signals that a stakeholder has withdrawn a claim
     event ClaimWithdrawn(uint poolId, uint balanceQspWei);
 
-    // Event signaling that staker has staked amountQspWei at poolIndex
+    // Signals that staker has staked amountQspWei at poolIndex
     event StakePlaced(uint poolIndex, address staker, uint amountQspWei);
 
-    // Event signaling that the state of the pool has changed
+    // Signals that the state of the pool has changed
     event StateChanged(uint poolIndex, PoolState state);
 
+    /* Allwos execution only when the policy of the pool is violated.
+    * @param poolIndex - index of the pool where the policy is checked
+    */
     modifier whenViolated(uint poolIndex) {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
-        require(IPolicy(poolPolicy).isViolated(candidateContract));
+        require(IPolicy(poolPolicy).isViolated(candidateContract) || 
+            getPoolState(poolIndex) == PoolState.ViolatedFunded ||
+            getPoolState(poolIndex) == PoolState.ViolatedUnderfunded,
+            "Contract policy is not violated.");
         _;
     }
 
+    /* Allwos execution only when the policy of the pool is not violated.
+    * @param poolIndex - index of the pool where the policy is checked
+    */
     modifier whenNotViolated(uint poolIndex) {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
-        require(!IPolicy(poolPolicy).isViolated(candidateContract));
+        require(!IPolicy(poolPolicy).isViolated(candidateContract) &&
+            getPoolState(poolIndex) != PoolState.ViolatedFunded &&
+            getPoolState(poolIndex) != PoolState.ViolatedUnderfunded,
+            "Contract policy is violated.");
         _;
     }
 
+    /* Allwos execution only when the pool owner is the msg.sender.
+    * @param poolIndex - index of the pool
+    */
+    modifier onlyPoolOwner(uint poolIndex) {
+        address poolOwner = getPoolOwner(poolIndex);
+        require(poolOwner == msg.sender, "Msg.sender is not pool owner.");
+        _;
+    }
+
+    /**
+    * Initializes the Quality Assurance Protocol
+    * @param tokenAddress - the address of the QSP Token contract
+    * @param tcrAddress - the address of the security expert token curated registry
+    */
     constructor(address tokenAddress, address tcrAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
-        require(tokenAddress != address(0));
+        require(tokenAddress != address(0), "Token address is 0.");
         token = StandardToken(tokenAddress);
-        require(tcrAddress != address(0));
+        require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
     }
 
     /**
     * Gives all the staked funds to the stakeholder provided that the policy was violated and the
     * state of the contract allows.
+    * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
-    function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) {
+    function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) onlyPoolOwner(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-        require(poolOwner == msg.sender);
         
         /* The pool can be converted into Pool.ViolatedFunded funded state by calling
            function withdraw interest, therefore we need to allow this state as well */
         require(currentState == PoolState.NotViolatedFunded 
-                || currentState == PoolState.ViolatedFunded);
+                || currentState == PoolState.ViolatedFunded,
+                "Pool is not in a (Not)ViolatedFunded state");
         
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
         // return all stakes
-        bool result = false;
         uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
@@ -123,8 +150,8 @@ contract QuantstampStaking is Ownable {
             total = total.add(stake.amountQspWei);
             stake.amountQspWei = 0;
         }
-        result = token.transfer(poolOwner, total);
-        require(result);
+        require(token.transfer(poolOwner, total),
+            "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
         pools[i].depositQspWei = 0;
         pools[i].state = PoolState.ViolatedFunded;
@@ -200,6 +227,20 @@ contract QuantstampStaking is Ownable {
        return pools[index].state;
     }
 
+    /**
+    * Creates a new staking pool.
+    * @param candidateContract - the contract that must be protected
+    * @param contractPolicy - the policy that must be respected by the candidate contract
+    * @param maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
+    * @param minStakeQspWei - the minimum value that needs to be raised from all stakers together
+    * @param depositQspWei - the current value deposited by the owner/stakeholder
+    * @param bonusExpertFactor - the factor by which the payout of an expert is multiplied
+    * @param bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
+    * @param payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
+    * @param minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
+    * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
+    * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
+    */
     function createPool(
         address candidateContract,
         address contractPolicy,
@@ -213,7 +254,7 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks,
         string urlOfAuditReport
     ) public {
-        require(depositQspWei > 0);
+        require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
         if (!token.transferFrom(msg.sender, address(this), depositQspWei)) {
             revert();
@@ -248,16 +289,26 @@ contract QuantstampStaking is Ownable {
         return stakingRegistry.isWhitelisted(bytes32(uint256(addr) << 96));
     }
 
+    /**
+    * Sets the state of the pool to a given state, while also marking the block at
+    * which this occured and emitting an event corresponding to the new state.
+    * @param poolIndex - the index of the pool for which the state is changed
+    * @param newState - the new state to which the pool will change
+    */
     function setState(uint poolIndex, PoolState newState) internal {
         pools[poolIndex].state = newState; // set the state
         pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
         emit StateChanged(poolIndex, newState); // emit an event that the state has changed
     }
 
-    function getTotalFundsStaked(uint poolIndex) internal returns(uint) {
+    /**
+    * Returns the total number of QSP Wei stakes in the pool.
+    * @param poolIndex - the index of the pool for which the total is computed
+    */
+    function getTotalFundsStaked(uint poolIndex) internal view returns(uint) {
         uint total = 0;
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake stake = stakes[poolIndex][i];
+            Stake memory stake = stakes[poolIndex][i];
             total = total.add(stake.amountQspWei);
         }
         return total;
@@ -272,7 +323,8 @@ contract QuantstampStaking is Ownable {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) || 
             (state == PoolState.NotViolatedUnderfunded) || 
-            (state == PoolState.NotViolatedFunded));
+            (state == PoolState.NotViolatedFunded),
+            "Pool is not in the right state when staking funds.");
 
         // Check if pool can be switched from the initialized state to another state
         if ((state == PoolState.Initialized) &&
@@ -283,7 +335,8 @@ contract QuantstampStaking is Ownable {
         }
             
         // If policy is not violated then transfer the stake
-        require(token.transferFrom(msg.sender, address(this),  amountQspWei));
+        require(token.transferFrom(msg.sender, address(this),  amountQspWei),
+            "Token transfer failed when staking funds.");
 
         // Create new Stake struct
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
