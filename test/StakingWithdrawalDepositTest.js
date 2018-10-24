@@ -5,7 +5,7 @@ const Util = require("./util.js");
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 
-contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
+contract.only('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
   const poolOwner = accounts[3];
   const adversary = accounts[4];
