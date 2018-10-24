@@ -3,7 +3,7 @@ const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
 const Util = require("./util.js");
 
-contract.only('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
+contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
   const candidateContract = accounts[1];
   const contractPolicy = accounts[2];
