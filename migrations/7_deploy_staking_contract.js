@@ -1,6 +1,6 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('test/QuantstampToken');
-const QuantstampStakingRegistry = artifacts.require('Registry');
+const QuantstampStakingRegistry = artifacts.require('test/Registry');
 const utils = require('./utils');
 
 module.exports = function(deployer, network) {

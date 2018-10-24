@@ -1,4 +1,4 @@
-const QuantstampParameterizer = artifacts.require('Parameterizer');
+const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 
 module.exports = function(deployer, network) {
 

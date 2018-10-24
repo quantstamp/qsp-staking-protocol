@@ -1,13 +1,12 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
-const QuantstampStakingRegistry = artifacts.require('Registry');
-const QuantstampParameterizer = artifacts.require('Parameterizer');
+const QuantstampStakingRegistry = artifacts.require('test/Registry');
+const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
-const { ZERO_ADDRESS } = require('./constants.js');
 const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
 
@@ -267,7 +266,7 @@ contract('QuantstampStaking', function(accounts) {
   });
 
   it("should fail if a TCR with address zero is passed into the constructor", async function () {
-    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
+    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS));
   });
 
   describe("isExpert", async function() {
@@ -300,7 +299,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should return false if the expert is not on the list", async function() {
-      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
+      assert.strictEqual(await qspb.isExpert(Util.ZERO_ADDRESS),false,'Zero address was apparently an expert');
     });
   });
 

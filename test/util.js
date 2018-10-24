@@ -46,5 +46,6 @@ module.exports = {
   mineOneBlock: mineOneBlock,
   mineNBlocks: mineNBlocks,
   balanceOf: balanceOf,
-  balanceOfRaw: balanceOfRaw
+  balanceOfRaw: balanceOfRaw,
+  ZERO_ADDRESS: '0x0000000000000000000000000000000000000000'
 };
