@@ -48,6 +48,7 @@ contract QuantstampStaking is Ownable {
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
     mapping (uint => Stake[]) public stakes;
+    mapping (uint => mapping(address => uint)) public totalStakes;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -74,6 +75,12 @@ contract QuantstampStaking is Ownable {
     event DepositWithdrawn(
       uint poolIndex,
       address actor,
+      uint amountQspWei
+    );
+    
+    event StakerRefundClaimed(
+      uint poolIndex,
+      address staker,
       uint amountQspWei
     );
 
@@ -300,7 +307,8 @@ contract QuantstampStaking is Ownable {
         // Create new Stake struct
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
         stakes[poolIndex].push(stake);
-        balanceQspWei.add(amountQspWei);
+        totalStakes[poolIndex][msg.sender] += amountQspWei;
+        balanceQspWei = balanceQspWei.add(amountQspWei);
         
         // Check if there are enough stakes in the pool
         uint total = getTotalFundsStaked(poolIndex);
@@ -342,10 +350,10 @@ contract QuantstampStaking is Ownable {
     }
 
     /*
-    * Allows the stakeholder to withdraw their deposits from the contract
+    * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) public {
+    function withdrawDeposit(uint poolIndex) public whenNotViolated(poolIndex) {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
@@ -362,5 +370,18 @@ contract QuantstampStaking is Ownable {
       require(token.transfer(poolOwner, withdrawalAmountQspWei));
       setState(poolIndex, PoolState.Cancelled);
       emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+    }
+
+    /**
+    * Gives all the staked funds back to the staker if the pool is cancelled.
+    */
+    function claimStakerRefund(uint poolIndex) {
+      require(getPoolState(poolIndex) == PoolState.Cancelled);             
+      uint amountQspWei = totalStakes[poolIndex][msg.sender];
+      require(amountQspWei > 0);
+      balanceQspWei = balanceQspWei.sub(amountQspWei);
+      totalStakes[poolIndex][msg.sender] = 0;
+      require(token.transfer(msg.sender, amountQspWei));      
+      emit StakerRefundClaimed(poolIndex, msg.sender, amountQspWei);
     }
 }
