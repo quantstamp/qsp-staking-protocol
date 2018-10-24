@@ -3,7 +3,7 @@ const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
 const Util = require("./util.js");
 
-contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
+contract.only('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
   const candidateContract = accounts[1];
   const contractPolicy = accounts[2];
@@ -48,10 +48,12 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
 
     it("should succeed for the owner", async function() {
       assert.equal(await quantstampToken.balanceOf(poolOwner), Util.toQsp(0));
+      assert.equal(await qspb.balanceQspWei(), initialDepositQspWei);
       assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
       await qspb.withdrawDeposit(0, {from: poolOwner});
       assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
       assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
+      assert.equal(await qspb.balanceQspWei(), Util.toQsp(0));
     });
     
     it("should fail if balance is already 0", async function() {
@@ -71,6 +73,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     it("should succeed for the owner", async function() {
       await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
+      assert.equal(await qspb.balanceQspWei(), initialDepositQspWei);
       assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
       await quantstampToken.increaseApproval(qspb.address, addedDepositAmount, {from : poolOwner});
       
@@ -78,6 +81,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
 
       assert.equal(await qspb.getPoolDepositQspWei(0), totalExpectedDepositAmount);
       assert.equal(await quantstampToken.balanceOf(poolOwner), Util.toQsp(0));
+      assert.equal(await qspb.balanceQspWei(), totalExpectedDepositAmount);
     });
     
     it("should fail if there is no token approval", async function() {
