@@ -498,7 +498,7 @@ contract QuantstampStaking is Ownable {
     /*
     * Allows the stakeholder to make an additional deposit to the contract
     */
-    function depositFunds(uint poolIndex, uint depositQspWei) public {
+    function depositFunds(uint poolIndex, uint depositQspWei) external {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
@@ -524,7 +524,7 @@ contract QuantstampStaking is Ownable {
     * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) public whenNotViolated(poolIndex) {
+    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
