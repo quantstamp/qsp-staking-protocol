@@ -327,7 +327,7 @@ contract QuantstampStaking is Ownable {
     /*
     * Allows the stakeholder to make an additional deposit to the contract
     */
-    function depositFunds(uint poolIndex, uint depositQspWei) public {
+    function depositFunds(uint poolIndex, uint depositQspWei) external {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
@@ -353,7 +353,7 @@ contract QuantstampStaking is Ownable {
     * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) public whenNotViolated(poolIndex) {
+    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) {
       address poolOwner = getPoolOwner(poolIndex);
       require(poolOwner == msg.sender);
       PoolState currentState = getPoolState(poolIndex);
@@ -375,7 +375,7 @@ contract QuantstampStaking is Ownable {
     /**
     * Gives all the staked funds back to the staker if the pool is cancelled.
     */
-    function claimStakerRefund(uint poolIndex) {
+    function claimStakerRefund(uint poolIndex) external {
       require(getPoolState(poolIndex) == PoolState.Cancelled);             
       uint amountQspWei = totalStakes[poolIndex][msg.sender];
       require(amountQspWei > 0);
