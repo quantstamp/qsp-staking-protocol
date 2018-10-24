@@ -99,27 +99,29 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
   });
 
-  it("should not allow claim withdraw when pool is initialized", async function() {
-    // todo(mderka) implement when appropriate contract functions are added, SP-46
-  });
+  describe("when withdrawing a claim", async function () {
+    it("should not allow claim withdraw when pool is initialized", async function() {
+      // todo(mderka) implement when appropriate contract functions are added, SP-46
+    });
 
-  it("should not allow claim withdraw when pool is cancelled", async function() {
-    // todo(mderka) implement when appropriate contract functions are added, SP-46
-  });
+    it("should not allow claim withdraw when pool is cancelled", async function() {
+      // todo(mderka) implement when appropriate contract functions are added, SP-46
+    });
 
-  it("should not allow claim withdraw when pool is not funded", async function() {
-    // todo(mderka) implement when appropriate contract functions are added, SP-46
-  });
+    it("should not allow claim withdraw when pool is not funded", async function() {
+      // todo(mderka) implement when appropriate contract functions are added, SP-46
+    });
 
-  it("should not allow claim withdraw when policy is not violated", async function() {
-    // todo(mderka) implement when appropriate contract functions are added, SP-46
-  });
+    it("should not allow claim withdraw when policy is not violated", async function() {
+      // todo(mderka) implement when appropriate contract functions are added, SP-46
+    });
 
-  it("pools allows claim withdraw when policy is violated and pool is funded ",
-    async function() {
-    // todo(mderka) implement when appropriate contract functions are added, SP-46
-    }
-  );
+    it("pools allows claim withdraw when policy is violated and pool is funded ",
+      async function() {
+      // todo(mderka) implement when appropriate contract functions are added, SP-46
+      }
+    );
+  });
 
   it("should fail if a TCR with address zero is passed into the constructor", async function () {
     Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
@@ -159,7 +161,7 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
-  // BEGIN Tests for stakeFunds
+  //describe("when staking funds", async function() {
   it("should stake funds and keep the pool in the Initialized state", async function() {
     await qspb.stakeFunds(0, minStakeQspWei/2, {from: staker});
     assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
@@ -201,5 +203,5 @@ contract('QuantstampStaking', function(accounts) {
     await candidateContract.withdraw(await candidateContract.balance.call());
     Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
   });
-  // END Tests for stakeFunds
+  //});
 });
