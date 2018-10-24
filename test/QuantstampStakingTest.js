@@ -428,7 +428,7 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
-  // BEGIN Tests for stakeFunds
+  //describe("when staking funds", async function() {
   it("should stake funds and keep the pool in the Initialized state", async function() {
     await qspb.stakeFunds(0, minStakeQspWei/2, {from: staker});
     assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
@@ -470,5 +470,5 @@ contract('QuantstampStaking', function(accounts) {
     await candidateContract.withdraw(await candidateContract.balance.call());
     Util.assertTxFail(qspb.stakeFunds(0, minStakeQspWei, {from: staker}));
   });
-  // END Tests for stakeFunds
+  //});
 });
