@@ -302,6 +302,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
+    * TODO (sebi): This function needs to be replaced by a better solution as part of SP-44
     * Returns the total number of QSP Wei stakes in the pool.
     * @param poolIndex - the index of the pool for which the total is computed
     */
@@ -341,7 +342,7 @@ contract QuantstampStaking is Ownable {
         // Create new Stake struct
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
         stakes[poolIndex].push(stake);
-        balanceQspWei.add(amountQspWei);
+        balanceQspWei = balanceQspWei.add(amountQspWei);
         
         // Check if there are enough stakes in the pool
         uint total = getTotalFundsStaked(poolIndex);
