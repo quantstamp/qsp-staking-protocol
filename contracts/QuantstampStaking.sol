@@ -131,7 +131,10 @@ contract QuantstampStaking is Ownable {
     function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) onlyPoolOwner(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-        
+        require(poolOwner == msg.sender);
+        require(ContractPolicy(poolPolicy).isViolated(candidateContract)
+                || currentState == PoolState.ViolatedFunded);
+
         /* The pool can be converted into Pool.ViolatedFunded funded state by calling
            function withdraw interest, therefore we need to allow this state as well */
         require(currentState == PoolState.NotViolatedFunded 
@@ -140,7 +143,7 @@ contract QuantstampStaking is Ownable {
         
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
-        // return all stakes
+        // claim all stakes
         uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
@@ -256,9 +259,7 @@ contract QuantstampStaking is Ownable {
     ) public {
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
-        if (!token.transferFrom(msg.sender, address(this), depositQspWei)) {
-            revert();
-        }
+        require(token.transferFrom(msg.sender, address(this), depositQspWei));
 
         Pool memory p = Pool(
             candidateContract,

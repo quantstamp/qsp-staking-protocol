@@ -31,10 +31,15 @@ async function mineNBlocks (n) {
   }
 }
 
+async function balanceOf (token, user) {
+  return (await token.balanceOf(user)).toNumber();
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
   assertTxFail : assertTxFail,
   mineOneBlock: mineOneBlock,
-  mineNBlocks: mineNBlocks
+  mineNBlocks: mineNBlock,
+  balanceOf: balanceOf
 };
