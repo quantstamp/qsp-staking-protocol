@@ -321,6 +321,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
+    * TODO (sebi): This function needs to be replaced by a better solution as part of SP-44
     * Returns the total number of QSP Wei stakes in the pool.
     * @param poolIndex - the index of the pool for which the total is computed
     */
