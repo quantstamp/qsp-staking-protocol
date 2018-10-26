@@ -377,6 +377,38 @@ contract QuantstampStaking is Ownable {
         emit StakePlaced(poolIndex, msg.sender, amountQspWei);    
     }
 
+    /**
+    * Allows the staker to withdraw all their stakes from the pool.
+    * @param poolIndex - the index of the pool from which the stake is withdrawn
+    */
+    function withdrawStake(uint poolIndex) external whenNotViolated(poolIndex) {
+        PoolState state = getPoolState(poolIndex);
+        require((state == PoolState.Initialized) || 
+            (state == PoolState.NotViolatedUnderfunded) || 
+            (state == PoolState.Cancelled) ||
+            (state == PoolState.NotViolatedFunded && 
+                getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex)),
+            "Pool is not in the right state when withdrawing stake.");
+
+        uint totalQspWeiTransfer = 0;
+        for (uint i = 0; i < stakes[poolIndex].length; i++) {
+            Stake memory stake = stakes[poolIndex][stakerIndex];
+            if (stake.staker == msg.sender) {
+                pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(stake.amountQspWei);
+                balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
+                totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].sub(stake.amountQspWei);
+            }
+        }
+
+        if (totalQspWeiTransfer > 0) {
+            require(token.transfer(msg.sender, totalQspWeiTransfer));
+            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
+            if (getPoolMinStakeQspWei(poolIndex) > getTotalFundsStaked(poolIndex)) {
+                setState(poolIndex, PoolState.Cancelled);
+            }
+        }
+    }
+
     /*
     * Allows the stakeholder to make an additional deposit to the contract
     */
