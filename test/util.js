@@ -16,8 +16,25 @@ async function assertTxFail (promise) {
   assert.isTrue(txFailed);
 }
 
+async function mineOneBlock () {
+  await web3.currentProvider.send({
+    jsonrpc: '2.0',
+    method: 'evm_mine',
+    params: [],
+    id: 0,
+  });
+}
+
+async function mineNBlocks (n) {
+  for (let i = 0; i < n; i++) {
+    await mineOneBlock();
+  }
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
-  assertTxFail : assertTxFail
+  assertTxFail : assertTxFail,
+  mineOneBlock: mineOneBlock,
+  mineNBlocks: mineNBlocks
 };
