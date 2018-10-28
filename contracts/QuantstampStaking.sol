@@ -413,19 +413,24 @@ contract QuantstampStaking is Ownable {
     /**
     * Allows the staker to withdraw all their stakes from the pool.
     * @param poolIndex - the index of the pool from which the stake is withdrawn
+    * @return amount in QSP Wei withdrawn by the staker
     */
-    function withdrawStake(uint poolIndex) external whenNotViolated(poolIndex) {
+    function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) || 
             (state == PoolState.NotViolatedUnderfunded) || 
             (state == PoolState.Cancelled) ||
-            (state == PoolState.NotViolatedFunded && 
-                getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex)),
+            ((state == PoolState.NotViolatedFunded) && 
+                (getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex))),
             "Pool is not in the right state when withdrawing stake.");
+
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
 
         uint totalQspWeiTransfer = 0;
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake memory stake = stakes[poolIndex][stakerIndex];
+            Stake memory stake = stakes[poolIndex][i];
             if (stake.staker == msg.sender) {
                 pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(stake.amountQspWei);
                 balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
