@@ -46,6 +46,8 @@ contract('QuantstampStaking', function(accounts) {
   let candidateContract;
   let contractPolicy;
   let poolState;
+  let currentPoolNumber;
+  let currentPoolIndex;
 
   it("should add a pool", async function() {
     qspb = await QuantstampStaking.deployed();
