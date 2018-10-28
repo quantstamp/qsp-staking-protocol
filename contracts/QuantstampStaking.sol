@@ -90,6 +90,9 @@ contract QuantstampStaking is Ownable {
     // Signals that staker has staked amountQspWei at poolIndex
     event StakePlaced(uint poolIndex, address staker, uint amountQspWei);
 
+    // Signals that a stake has been withdrawn
+    event StakeWithdrawn(uint poolIndex, address staker, uint amountWithdrawnQspWei);
+
     // Signals that the state of the pool has changed
     event StateChanged(uint poolIndex, PoolState state);
 
@@ -315,9 +318,12 @@ contract QuantstampStaking is Ownable {
     * @param newState - the new state to which the pool will change
     */
     function setState(uint poolIndex, PoolState newState) internal {
-        pools[poolIndex].state = newState; // set the state
-        pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
-        emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+        PoolState poolState = getPoolState(poolIndex);
+        if (poolState != newState) {
+            pools[poolIndex].state = newState; // set the state
+            pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+            emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+        }
     }
 
     /**
@@ -380,23 +386,30 @@ contract QuantstampStaking is Ownable {
     /**
     * Allows the staker to withdraw all their stakes from the pool.
     * @param poolIndex - the index of the pool from which the stake is withdrawn
+    * @return amount in QSP Wei withdrawn by the staker
     */
-    function withdrawStake(uint poolIndex) external whenNotViolated(poolIndex) {
+    function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) || 
             (state == PoolState.NotViolatedUnderfunded) || 
             (state == PoolState.Cancelled) ||
-            (state == PoolState.NotViolatedFunded && 
-                getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex)),
+            ((state == PoolState.NotViolatedFunded) && 
+                (getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex))),
             "Pool is not in the right state when withdrawing stake.");
+
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
 
         uint totalQspWeiTransfer = 0;
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake memory stake = stakes[poolIndex][stakerIndex];
+            Stake memory stake = stakes[poolIndex][i];
             if (stake.staker == msg.sender) {
                 pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(stake.amountQspWei);
                 balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
                 totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].sub(stake.amountQspWei);
+                totalQspWeiTransfer = totalQspWeiTransfer.add(stake.amountQspWei);
+                stakes[poolIndex][i].amountQspWei = 0;
             }
         }
 
