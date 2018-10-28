@@ -386,7 +386,6 @@ contract QuantstampStaking is Ownable {
     /**
     * Allows the staker to withdraw all their stakes from the pool.
     * @param poolIndex - the index of the pool from which the stake is withdrawn
-    * @return amount in QSP Wei withdrawn by the staker
     */
     function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
