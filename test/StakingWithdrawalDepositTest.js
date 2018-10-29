@@ -7,8 +7,6 @@ const CandidateContract = artifacts.require('CandidateContract');
 
 contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
-  const staker = accounts[1];
-  const nonStaker = accounts[2];
   const poolOwner = accounts[3];
   const adversary = accounts[4];
   const poolOwnerBudget = Util.toQsp(100);
