@@ -100,26 +100,4 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });
   });
-  
-  describe("claimStakerRefund()", async function() {
-    beforeEach("after the withdrawal", async function() {
-      await quantstampToken.transfer(staker, minStakeQspWei, {from : owner});
-      assert.equal(await quantstampToken.balanceOf(staker), minStakeQspWei);
-      await quantstampToken.increaseApproval(qspb.address, minStakeQspWei, {from : staker});
-      await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
-      await qspb.withdrawDeposit(0, {from: poolOwner});
-    });
-    
-    it("should fail for a non-staker", async function() {
-      Util.assertTxFail(qspb.claimStakerRefund(0, {from: nonStaker}));
-    });
-
-    it("should succeed for a staker, and only once", async function() {
-      assert.equal(await quantstampToken.balanceOf(staker), Util.toQsp(0));
-      await qspb.claimStakerRefund(0, {from : staker});
-      assert.equal(await quantstampToken.balanceOf(staker), minStakeQspWei);
-      assert.equal(await qspb.balanceQspWei(), Util.toQsp(0));
-      Util.assertTxFail(qspb.claimStakerRefund(0, {from: staker}));
-    });
-  });
 });

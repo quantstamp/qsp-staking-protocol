@@ -410,11 +410,11 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
-        require((state == PoolState.Initialized) || 
-            (state == PoolState.NotViolatedUnderfunded) || 
-            (state == PoolState.Cancelled) ||
-            ((state == PoolState.NotViolatedFunded) && 
-                (getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex))),
+        require(state == PoolState.Initialized || 
+            state == PoolState.NotViolatedUnderfunded || 
+            state == PoolState.Cancelled ||
+            (state == PoolState.NotViolatedFunded && 
+                getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex)),
             "Pool is not in the right state when withdrawing stake.");
 
         address poolPolicy = getPoolContractPolicy(poolIndex);
@@ -487,18 +487,5 @@ contract QuantstampStaking is Ownable {
         require(token.transfer(poolOwner, withdrawalAmountQspWei, 'Token withdrawal transfer did not succeed'));
         setState(poolIndex, PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
-    }
-
-    /**
-    * Gives all the staked funds back to the staker if the pool is cancelled.
-    */
-    function claimStakerRefund(uint poolIndex) external {
-        require(getPoolState(poolIndex) == PoolState.Cancelled, 'Pool is not in the Cancelled state');             
-        uint amountQspWei = totalStakes[poolIndex][msg.sender];
-        require(amountQspWei > 0, 'The staker has no balance to refund');
-        balanceQspWei = balanceQspWei.sub(amountQspWei);
-        totalStakes[poolIndex][msg.sender] = 0;
-        require(token.transfer(msg.sender, amountQspWei), 'Token refund transfer did not succeed');      
-        emit StakerRefundClaimed(poolIndex, msg.sender, amountQspWei);
     }
 }
