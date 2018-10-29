@@ -48,6 +48,8 @@ contract QuantstampStaking is Ownable {
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
     mapping (uint => Stake[]) public stakes;
+    
+    // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
 
     // The total balance of the contract including all stakes and deposits
@@ -66,22 +68,25 @@ contract QuantstampStaking is Ownable {
     // TCR used to list expert stakers.
     Registry public stakingRegistry;
 
+    // Signals that a stakeholder has made a deposit
     event DepositMade(
-      uint poolIndex,
-      address actor,
-      uint amountQspWei
+        uint poolIndex,
+        address actor,
+        uint amountQspWei
     );
 
+    // Signals that a stakeholder has withdrawn the deposit
     event DepositWithdrawn(
-      uint poolIndex,
-      address actor,
-      uint amountQspWei
+        uint poolIndex,
+        address actor,
+        uint amountQspWei
     );
     
+    // Signals that a staker has claimed a refund
     event StakerRefundClaimed(
-      uint poolIndex,
-      address staker,
-      uint amountQspWei
+        uint poolIndex,
+        address staker,
+        uint amountQspWei
     );
 
     // Signals that a stakeholder has withdrawn a claim
@@ -361,7 +366,7 @@ contract QuantstampStaking is Ownable {
         // Create new Stake struct
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
         stakes[poolIndex].push(stake);
-        totalStakes[poolIndex][msg.sender] += amountQspWei;
+        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         
         // Check if there are enough stakes in the pool
@@ -381,61 +386,60 @@ contract QuantstampStaking is Ownable {
     /*
     * Allows the stakeholder to make an additional deposit to the contract
     */
-    function depositFunds(uint poolIndex, uint depositQspWei) external {
-      address poolOwner = getPoolOwner(poolIndex);
-      require(poolOwner == msg.sender);
-      PoolState currentState = getPoolState(poolIndex);
+    function depositFunds(uint poolIndex, uint depositQspWei) external onlyPoolOwner(poolIndex) {
+        address poolOwner = getPoolOwner(poolIndex);
+        PoolState currentState = getPoolState(poolIndex);
 
-      require(currentState == PoolState.NotViolatedFunded
-                || currentState == PoolState.Initialized
-                || currentState == PoolState.NotViolatedUnderfunded
-             );
+        require(currentState == PoolState.NotViolatedFunded
+                  || currentState == PoolState.Initialized
+                  || currentState == PoolState.NotViolatedUnderfunded
+               );
 
-      require(token.transferFrom(poolOwner, address(this), depositQspWei));
-      pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
-      balanceQspWei = balanceQspWei.add(depositQspWei);
+        require(token.transferFrom(poolOwner, address(this), depositQspWei),
+            'Token deposit transfer did not succeed');
+        pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
+        balanceQspWei = balanceQspWei.add(depositQspWei);
 
-      if (currentState == PoolState.NotViolatedUnderfunded
-        && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
-          setState(poolIndex, PoolState.NotViolatedFunded);
-      }
+        if (currentState == PoolState.NotViolatedUnderfunded
+            && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
+                setState(poolIndex, PoolState.NotViolatedFunded);
+        }
 
-      emit DepositMade(poolIndex, poolOwner, depositQspWei);
+        emit DepositMade(poolIndex, poolOwner, depositQspWei);
     }
 
     /*
     * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) {
-      address poolOwner = getPoolOwner(poolIndex);
-      require(poolOwner == msg.sender);
-      PoolState currentState = getPoolState(poolIndex);
-      require(currentState == PoolState.NotViolatedFunded
-                || currentState == PoolState.Initialized
-                || currentState == PoolState.NotViolatedUnderfunded
-                || currentState == PoolState.Cancelled
-             );
+    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) onlyPoolOwner(poolIndex) {
+        address poolOwner = getPoolOwner(poolIndex);
+        PoolState currentState = getPoolState(poolIndex);
+        require(currentState == PoolState.NotViolatedFunded
+                  || currentState == PoolState.Initialized
+                  || currentState == PoolState.NotViolatedUnderfunded
+                  || currentState == PoolState.Cancelled
+               );
 
-      uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
-      require(withdrawalAmountQspWei > 0);
-      pools[poolIndex].depositQspWei = 0;
-      balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
-      require(token.transfer(poolOwner, withdrawalAmountQspWei));
-      setState(poolIndex, PoolState.Cancelled);
-      emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+        uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
+        require(withdrawalAmountQspWei > 0, 'The staker has no balance to withdraw');
+        pools[poolIndex].depositQspWei = 0;
+        balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
+        require(token.transfer(poolOwner, withdrawalAmountQspWei, 'Token withdrawal transfer did not succeed'));
+        setState(poolIndex, PoolState.Cancelled);
+        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 
     /**
     * Gives all the staked funds back to the staker if the pool is cancelled.
     */
     function claimStakerRefund(uint poolIndex) external {
-      require(getPoolState(poolIndex) == PoolState.Cancelled);             
-      uint amountQspWei = totalStakes[poolIndex][msg.sender];
-      require(amountQspWei > 0);
-      balanceQspWei = balanceQspWei.sub(amountQspWei);
-      totalStakes[poolIndex][msg.sender] = 0;
-      require(token.transfer(msg.sender, amountQspWei));      
-      emit StakerRefundClaimed(poolIndex, msg.sender, amountQspWei);
+        require(getPoolState(poolIndex) == PoolState.Cancelled, 'Pool is not in the Cancelled state');             
+        uint amountQspWei = totalStakes[poolIndex][msg.sender];
+        require(amountQspWei > 0, 'The staker has no balance to refund');
+        balanceQspWei = balanceQspWei.sub(amountQspWei);
+        totalStakes[poolIndex][msg.sender] = 0;
+        require(token.transfer(msg.sender, amountQspWei), 'Token refund transfer did not succeed');      
+        emit StakerRefundClaimed(poolIndex, msg.sender, amountQspWei);
     }
 }
