@@ -425,7 +425,7 @@ contract QuantstampStaking is Ownable {
         require(withdrawalAmountQspWei > 0, 'The staker has no balance to withdraw');
         pools[poolIndex].depositQspWei = 0;
         balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
-        require(token.transfer(poolOwner, withdrawalAmountQspWei, 'Token withdrawal transfer did not succeed'));
+        require(token.transfer(poolOwner, withdrawalAmountQspWei), 'Token withdrawal transfer did not succeed');
         setState(poolIndex, PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
