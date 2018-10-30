@@ -9,7 +9,7 @@ async function assertTxFail (promise) {
   let txFailed = false;
   try {
     const result = await promise;
-    txFailed = parseInt(result.receipt.status) === 0;
+    txFailed = int(parseInt(result.receipt.status)) === 0;
   } catch (err) {
     txFailed = (err.message.startsWith("VM Exception while processing transaction: revert"));
   }
@@ -35,11 +35,16 @@ async function balanceOf (token, user) {
   return (await token.balanceOf(user)).toNumber();
 }
 
+async function balanceOfRaw (token, user) {
+  return await token.balanceOf(user);
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
   assertTxFail : assertTxFail,
   mineOneBlock: mineOneBlock,
-  mineNBlocks: mineNBlock,
-  balanceOf: balanceOf
+  mineNBlocks: mineNBlocks,
+  balanceOf: balanceOf,
+  balanceOfRaw: balanceOfRaw
 };

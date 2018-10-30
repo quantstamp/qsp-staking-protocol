@@ -122,7 +122,7 @@ contract QuantstampStaking is Ownable {
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
     }
-
+event T(uint x);
     /**
     * Gives all the staked funds to the stakeholder provided that the policy was violated and the
     * state of the contract allows.
@@ -132,15 +132,9 @@ contract QuantstampStaking is Ownable {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
         require(poolOwner == msg.sender);
-        require(ContractPolicy(poolPolicy).isViolated(candidateContract)
-                || currentState == PoolState.ViolatedFunded);
+        require(currentState != PoolState.ViolatedUnderfunded);
+        require(currentState != PoolState.Cancelled);
 
-        /* The pool can be converted into Pool.ViolatedFunded funded state by calling
-           function withdraw interest, therefore we need to allow this state as well */
-        require(currentState == PoolState.NotViolatedFunded 
-                || currentState == PoolState.ViolatedFunded,
-                "Pool is not in a (Not)ViolatedFunded state");
-        
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
         // claim all stakes
@@ -149,15 +143,16 @@ contract QuantstampStaking is Ownable {
             Stake storage stake = stakes[poolIndex][i];
             /* todo(mderka) Is this attribute necessary? It can be read using 
                balanceOf in ERC20. Created SP-44. */
-            balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
             total = total.add(stake.amountQspWei);
             stake.amountQspWei = 0;
         }
+        emit T(balanceQspWei);
+        emit T(total);
         require(token.transfer(poolOwner, total),
             "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
-        pools[i].depositQspWei = 0;
-        pools[i].state = PoolState.ViolatedFunded;
+        pools[poolIndex].depositQspWei = 0;
+        setState(poolIndex, PoolState.ViolatedFunded);
 
         emit ClaimWithdrawn(poolIndex, total);
     }
@@ -300,6 +295,27 @@ contract QuantstampStaking is Ownable {
         pools[poolIndex].state = newState; // set the state
         pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
         emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+    }
+
+    /**
+    * Checks the policy of the pool. If it is violated, it updates the state accordingly.
+    * Fails the transaction otherwise.
+    * @param poolIndex - the index of the pool for which the state is changed
+    */
+    function checkPolicy(uint poolIndex) public {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        // fail loud if the policy is okay
+        require (IPolicy(poolPolicy).isViolated(candidateContract));
+
+        PoolState state = getPoolState(poolIndex);
+        if (state == PoolState.Initialized) {
+            setState(poolIndex, PoolState.Cancelled);
+        } else if (state == PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, PoolState.ViolatedUnderfunded);
+        } else if (state == PoolState.NotViolatedFunded) {
+            setState(poolIndex, PoolState.ViolatedFunded);
+        }
     }
 
     /**
