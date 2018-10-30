@@ -122,7 +122,7 @@ contract QuantstampStaking is Ownable {
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
     }
-event T(uint x);
+
     /**
     * Gives all the staked funds to the stakeholder provided that the policy was violated and the
     * state of the contract allows.
@@ -146,8 +146,6 @@ event T(uint x);
             total = total.add(stake.amountQspWei);
             stake.amountQspWei = 0;
         }
-        emit T(balanceQspWei);
-        emit T(total);
         require(token.transfer(poolOwner, total),
             "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
