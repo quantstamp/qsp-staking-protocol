@@ -8,11 +8,15 @@ import "../IPolicy.sol";
 
 contract ZeroBalancePolicy is IPolicy {
 
+    event Violated(bool value);
+
     function isViolated(address contractAddress) external view returns(bool) {
         CandidateContract candidateContract = CandidateContract(contractAddress);
         if (candidateContract.balance() == 0) {
+            emit Violated(true);
             return true;
         } else {
+            emit Violated(false);
             return false; 
         }
     }
