@@ -515,7 +515,7 @@ contract QuantstampStaking is Ownable {
                 uint stakeAmount = stake.amountQspWei;
                 // check if the staker is an expert
                 if (isExpert(stake.staker)) {
-                    stakeAmount = stakeAmount.mul(1 + bonusExpert.div(100)**index);
+                    stakeAmount = stakeAmount.mul((bonusExpert.div(100)**index).add(1));
                     /* Check if it is the first expert
                     * Assumption: Non-experts can stake before experts, which means that
                     * the first element in the stakes array may be a non-expert.
