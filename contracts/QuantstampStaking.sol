@@ -44,6 +44,7 @@ contract QuantstampStaking is Ownable {
         uint timeOfStateInBlocks; // the block number when the pool was set in its current state
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
         PoolState state; // the current state of the pool
+        uint totalStakeQspWei; // total amount of stake contributed so far
     }
 
     // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
@@ -168,20 +169,13 @@ contract QuantstampStaking is Ownable {
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
         // return all stakes
-        uint total = getPoolDepositQspWei(poolIndex);
-        for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake storage stake = stakes[poolIndex][i];
-            /* todo(mderka) Is this attribute necessary? It can be read using 
-               balanceOf in ERC20. Created SP-44. */
-            balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
-            total = total.add(stake.amountQspWei);
-            stake.amountQspWei = 0;
-        }
+        uint total = getPoolDepositQspWei(poolIndex) + pools[poolIndex].totalStakeQspWei;
         require(token.transfer(poolOwner, total),
             "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
-        pools[i].depositQspWei = 0;
-        pools[i].state = PoolState.ViolatedFunded;
+        pools[poolIndex].depositQspWei = 0;
+        pools[poolIndex].totalStakeQspWei = 0;
+        pools[poolIndex].state = PoolState.ViolatedFunded;
 
         emit ClaimWithdrawn(poolIndex, total);
     }
@@ -301,7 +295,8 @@ contract QuantstampStaking is Ownable {
             timeoutInBlocks,
             block.number,
             urlOfAuditReport,
-            PoolState.Initialized);
+            PoolState.Initialized,
+            0);
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
@@ -329,20 +324,6 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
             emit StateChanged(poolIndex, newState); // emit an event that the state has changed
         }
-    }
-
-    /**
-    * TODO (sebi): This function needs to be replaced by a better solution as part of SP-44
-    * Returns the total number of QSP Wei stakes in the pool.
-    * @param poolIndex - the index of the pool for which the total is computed
-    */
-    function getTotalFundsStaked(uint poolIndex) internal view returns(uint) {
-        uint total = 0;
-        for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake memory stake = stakes[poolIndex][i];
-            total = total.add(stake.amountQspWei);
-        }
-        return total;
     }
 
     /**
@@ -374,10 +355,10 @@ contract QuantstampStaking is Ownable {
         stakes[poolIndex].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
-        
+        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
+
         // Check if there are enough stakes in the pool
-        uint total = getTotalFundsStaked(poolIndex);
-        if (total >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+        if (pools[poolIndex].totalStakeQspWei >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
             if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
                 setState(poolIndex, PoolState.NotViolatedFunded);
@@ -406,22 +387,16 @@ contract QuantstampStaking is Ownable {
         address candidateContract = getPoolCandidateContract(poolIndex);
         require(!IPolicy(poolPolicy).isViolated(candidateContract));
 
-        uint totalQspWeiTransfer = 0;
-        for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake memory stake = stakes[poolIndex][i];
-            if (stake.staker == msg.sender) {
-                pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(stake.amountQspWei);
-                balanceQspWei = balanceQspWei.sub(stake.amountQspWei);
-                totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].sub(stake.amountQspWei);
-                totalQspWeiTransfer = totalQspWeiTransfer.add(stake.amountQspWei);
-                stakes[poolIndex][i].amountQspWei = 0;
-            }
-        }
-
+        uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
         if (totalQspWeiTransfer > 0) {
             require(token.transfer(msg.sender, totalQspWeiTransfer));
+            pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
+            balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
+            totalStakes[poolIndex][msg.sender] = 0;
+            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+            
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
-            if (getPoolMinStakeQspWei(poolIndex) > getTotalFundsStaked(poolIndex)) {
+            if (getPoolMinStakeQspWei(poolIndex) > pools[poolIndex].totalStakeQspWei) {
                 setState(poolIndex, PoolState.Cancelled);
             }
         }
