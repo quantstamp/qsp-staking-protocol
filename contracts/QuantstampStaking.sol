@@ -47,9 +47,9 @@ contract QuantstampStaking is Ownable {
         uint totalStakeQspWei; // total amount of stake contributed so far
     }
 
-    // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
-    mapping (uint => Stake[]) public stakes;
-    
+    // Individual stake contributions by each staker address into the pool defined by a pool hash (the mapping's key)
+    mapping (uint => mapping(address => Stake[])) public stakes;
+
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
 
@@ -352,7 +352,7 @@ contract QuantstampStaking is Ownable {
 
         // Create new Stake struct
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number);
-        stakes[poolIndex].push(stake);
+        stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
@@ -464,18 +464,22 @@ contract QuantstampStaking is Ownable {
     function computePayout(uint poolIndex, address staker) internal whenNotViolated(poolIndex) returns(uint) {
         uint totalPayout = 0; // indicates the total payout for the staker
         uint poolSize = 0; // the total amount of QSP Wei staked in this pool
-        uint[] stakerIndex; // the indices in the stakes array where the staker is found
+        uint[] stakeIndex; // the indices in the stakes array containing the eligible for payout stakes
 
         // compute the total amount staked in the pool and 
         // gather the indices (order) where the staker has staked
-        for (uint i = 0; i < stakes[poolIndex].length; i++) {
-            Stake memory stake = stakes[poolIndex][i];
+
+        if (totalStakes[poolIndex][msg.sender] == 0) {
+          return 0; // no need to compute anything - these is no contribution, or it was already withdrawn
+        }
+
+        // TODO(amurashkin) make sure each user does not contribute too many times to cause the gas limit
+        for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+            Stake memory stake = stakes[poolIndex][msg.sender][i];
             // only consider stakes that were placed for a sufficient amount of time
             if (block.number.sub(stake.blockNumber) >= getPoolPayPeriodInBlocks(poolIndex)) {
                 poolSize = poolSize.add(stake.amountQspWei);
-                if (stake.staker == staker) {
-                    stakerIndex.push(i);
-                }
+                stakeIndex.push(i);
             }
         }
 
@@ -484,9 +488,9 @@ contract QuantstampStaking is Ownable {
         uint bonusFirstExp = getPoolBonusFirstExpertFactor(poolIndex);
                     
         // compute the payouts for each index and accumulate
-        for (i = 0; i < stakerIndex.length; i++) {
-            uint index = stakerIndex[i];
-            uint amountStaked = stakes[poolIndex][index].amountQspWei;
+        for (i = 0; i < stakeIndex.length; i++) {
+            uint index = stakeIndex[i];
+            uint amountStaked = stakes[poolIndex][msg.sender][index].amountQspWei;
             // compute the basic payout for non-experts
             uint payout = amountStaked.mul(maxPayout).div(poolSize);
         
