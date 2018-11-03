@@ -11,7 +11,7 @@ const { ZERO_ADDRESS } = require('./constants.js');
 const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
 
-contract.only('QuantstampStaking', function(accounts) {
+contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
   const poolOwner = accounts[3];
   const staker = accounts[4];
