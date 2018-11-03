@@ -480,16 +480,16 @@ contract QuantstampStaking is Ownable {
     * where [x (1+bonusExpert)^i] is applied if the staker is the ith expert to stake, 
     * and [x (1+bonusFirstExp)] applies additionally in the case of the first expert; 
     * maxPayout is specified by the stakeholder who created the pool; 
-    * poolSize is the size of all stakes in this pool; 
+    * poolSize is the size of all stakes in this pool together with the bonuses awarded for experts; 
     * amountStaked is the amount contributed by a staker.
     * @param poolIndex - the pool from which the payout is awarded
     * @param staker - the staker to which the payout should be awarded
     * @return - the amount of QSP Wei that should be awarded
     */
     function computePayout(uint poolIndex, address staker) internal whenNotViolated(poolIndex) returns(uint) {
-        uint totalPayout = 0; // indicates the total payout for the staker
         uint poolSize = 0; // the total amount of QSP Wei staked in this pool
         uint[] stakerIndex; // the indices in the stakes array where the staker is found
+        bool firstExpert = true; // this variable will be true until the first expert is encountered in the following loop
 
         // compute the total amount staked in the pool and 
         // gather the indices (order) where the staker has staked
@@ -497,13 +497,29 @@ contract QuantstampStaking is Ownable {
             Stake memory stake = stakes[poolIndex][i];
             // only consider stakes that were placed for a sufficient amount of time
             if (block.number.sub(stake.blockNumber) >= getPoolPayPeriodInBlocks(poolIndex)) {
-                poolSize = poolSize.add(stake.amountQspWei);
+                uint stakeAmount = stake.amountQspWei;
+                // check if the staker is an expert
+                if (isExpert(stake.staker)) {
+                    stakeAmount = stakeAmount.mul(1 + bonusExpert.div(100)**index);
+                    /* Check if it is the first expert
+                    * Assumption: Non-experts can stake before experts, which means that
+                    * the first element in the stakes array may be a non-expert.
+                    */
+                    if (firstExpert == true) {
+                        stakeAmount = stakeAmount.mul(bonusFirstExp.div(100).add(1));
+                        firstExpert = false;
+                    }
+                }
+
                 if (stake.staker == staker) {
                     stakerIndex.push(i);
                 }
+
+                poolSize = poolSize.add(stakeAmount);
             }
         }
 
+        uint totalPayout = 0; // indicates the total payout for the staker
         uint maxPayout = getPoolMaxPayoutQspWei(poolIndex);
         uint bonusExpert = getPoolBonusExpertFactor(poolIndex);
         uint bonusFirstExp = getPoolBonusFirstExpertFactor(poolIndex);
