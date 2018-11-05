@@ -103,23 +103,23 @@ contract('QuantstampStaking', function(accounts) {
     let quantstampToken;
     let qspb;
     let policy;
-    let staker = accounts[4];
-    let admin = "0x0";
-    let poolId = 0;
     let candidateContract;
-    let stakerBudget = Util.toQsp(1000);
+    const staker = accounts[4];
+    const admin = "0x0";
+    const poolId = 0;
+    const stakerBudget = Util.toQsp(1000);
 
     // vars needed for creating pool
-    let depositQspWei = Util.toQsp(100);
-    let maxPayableQspWei = 10;
-    let minStakeQspWei = 1;
-    let bonusExpertFactor = 3;
-    let bonusFirstExpertFactor = 5;
-    let payPeriodInBlocks = 15;
-    let minStakeTimeInBlocks = 10000;
-    let timeoutInBlocks = 100;
-    let urlOfAuditReport = "URL";
-    let policyBalance = 1;
+    const depositQspWei = Util.toQsp(100);
+    const maxPayableQspWei = 10;
+    const minStakeQspWei = 1;
+    const bonusExpertFactor = 3;
+    const bonusFirstExpertFactor = 5;
+    const payPeriodInBlocks = 15;
+    const minStakeTimeInBlocks = 10000;
+    const timeoutInBlocks = 100;
+    const urlOfAuditReport = "URL";
+    const policyBalance = 1;
 
     beforeEach("setup token and tcr", async function() {
       quantstampToken = await QuantstampToken.new(admin, {from : owner});
