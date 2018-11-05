@@ -131,7 +131,6 @@ contract QuantstampStaking is Ownable {
     function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) onlyPoolOwner(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-        require(poolOwner == msg.sender);
         require(currentState != PoolState.ViolatedUnderfunded);
         require(currentState != PoolState.Cancelled);
 
@@ -303,7 +302,7 @@ contract QuantstampStaking is Ownable {
     function checkPolicy(uint poolIndex) public {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
-        // fail loud if the policy is okay
+        // fail loud if the policy has not been violated
         require (IPolicy(poolPolicy).isViolated(candidateContract));
 
         PoolState state = getPoolState(poolIndex);

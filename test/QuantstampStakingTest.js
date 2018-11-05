@@ -119,10 +119,11 @@ contract('QuantstampStaking', function(accounts) {
     let minStakeTimeInBlocks = 10000;
     let timeoutInBlocks = 100;
     let urlOfAuditReport = "URL";
+    let policyBalance = 1;
 
     beforeEach("setup token and tcr", async function() {
       quantstampToken = await QuantstampToken.new(admin, {from : owner});
-      candidateContract = await CandidateContract.new(1);
+      candidateContract = await CandidateContract.new(policyBalance);
       quantstampRegistry = await QuantstampStakingRegistry.deployed();
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address);
       policy = await ZeroBalancePolicy.new();
@@ -149,7 +150,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not allow claim withdraw when pool is cancelled", async function() {
       assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
       // violate policy and cancel pool
-      await candidateContract.withdraw(1);
+      await candidateContract.withdraw(policyBalance);
       await qspb.checkPolicy(poolId);
       assert.equal(await qspb.getPoolState(poolId), PoolState.Cancelled);
       Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
@@ -160,7 +161,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
       // this violates the policy
-      await candidateContract.withdraw(1);
+      await candidateContract.withdraw(policyBalance);
       assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
       // switch into the violated stata
       await qspb.checkPolicy(poolId);
@@ -195,7 +196,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
       // violate policy
-      await candidateContract.withdraw(1);
+      await candidateContract.withdraw(policyBalance);
       assert.equal(await qspb.getPoolState(nextPool), PoolState.NotViolatedUnderfunded);
       // switch into the violated status
       await qspb.checkPolicy(nextPool);
@@ -218,7 +219,7 @@ contract('QuantstampStaking', function(accounts) {
         await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
         await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
         // this violates the policy
-        await candidateContract.withdraw(1);
+        await candidateContract.withdraw(policyBalance);
         assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
         // switch into the violated status
         await qspb.checkPolicy(poolId);
@@ -237,7 +238,7 @@ contract('QuantstampStaking', function(accounts) {
         await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
         await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
         // this violates the policy
-        await candidateContract.withdraw(1);
+        await candidateContract.withdraw(policyBalance);
         assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
         await qspb.withdrawClaim(poolId, {from: poolOwner});
         assert.equal(await qspb.getPoolState(poolId), PoolState.ViolatedFunded);
@@ -247,16 +248,8 @@ contract('QuantstampStaking', function(accounts) {
       }
     );
 
-    it("manipulates the right pool", async function() {
-      var maxPayableQspWei = 10;
-      var minStakeQspWei = 1;
+    it("should only withdraw funds from the right pool and no other pool", async function() {
       var anotherDepositQspWei = Util.toQsp(300);
-      var bonusExpertFactor = 3;
-      var bonusFirstExpertFactor = 5;
-      var payPeriodInBlocks = 15;
-      var minStakeTimeInBlocks = 10000;
-      var timeoutInBlocks = 100;
-      var urlOfAuditReport = "URL";
       var nextPool = poolId + 1;
       // create another pool
       await quantstampToken.approve(qspb.address, anotherDepositQspWei, {from : poolOwner});
@@ -264,7 +257,7 @@ contract('QuantstampStaking', function(accounts) {
         anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
 
-      await candidateContract.withdraw(1);
+      await candidateContract.withdraw(policyBalance);
       await qspb.withdrawClaim(nextPool, {from: poolOwner});
       assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedFunded);
       // there was one more pool created so we are subtracting one depositQspWei
