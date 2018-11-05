@@ -3,7 +3,7 @@ pragma solidity 0.4.24;
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author
 
-import {Registry} from "./tcr/Registry.sol";
+import {Registry} from "./test/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -140,7 +140,7 @@ contract QuantstampStaking is Ownable {
         uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
-            /* todo(mderka) Is this attribute necessary? It can be read using 
+            /* todo(mderka) Is this attribute necessary? It can be read using
                balanceOf in ERC20. Created SP-44. */
             total = total.add(stake.amountQspWei);
             stake.amountQspWei = 0;
@@ -273,12 +273,13 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = balanceQspWei.add(depositQspWei);
     }
 
+    /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
+    /// entries to be of type Bytes32. addr is first cast to Uint256 so that it
+    /// becomes 32 bytes long, addr is then shifted 12 bytes (96 bits) to the
+    /// left so the 20 important bytes are in the correct spot.
+    /// @param addr The address of the person who may be an expert.
+    /// @return true If addr is on the TCR (is an expert)
     function isExpert(address addr) public view returns(bool) {
-        /* addr is of type Address which is 20 Bytes, but
-           the TCR expects all entries to be of type Bytes32.
-           addr is first cast to Uint256 so that it becomes 32 bytes long,
-           addr is then shifted 12 bytes (96 bits) to the left so the 20
-           important bytes are in the correct spot. */
         return stakingRegistry.isWhitelisted(bytes32(uint256(addr) << 96));
     }
 

@@ -1,5 +1,5 @@
 module.exports = {
     port: 7545,
     copyPackages: ['openzeppelin-solidity'],
-    skipFiles: ['tcr/Registry.sol', 'tcr/Parameterizer.sol', 'test/QuantstampToken.sol']
+    skipFiles: ['test/Registry.sol', 'test/Parameterizer.sol', 'test/QuantstampToken.sol']
 };
