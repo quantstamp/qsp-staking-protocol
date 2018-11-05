@@ -101,7 +101,6 @@ contract('QuantstampStaking', function(accounts) {
   describe("withdrawClaim", async function() {
 
     let quantstampToken;
-    let quantstampReqistry;
     let qspb;
     let policy;
     let staker = accounts[4];
@@ -138,7 +137,6 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
-      var balance = await Util.balanceOf(quantstampToken, poolOwner);
       assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget - depositQspWei);
     });
 
@@ -250,29 +248,28 @@ contract('QuantstampStaking', function(accounts) {
     );
 
     it("manipulates the right pool", async function() {
-        // todo(mderka) implement when appropriate contract functions are added, SP-46
-        var maxPayableQspWei = 10;
-        var minStakeQspWei = 1;
-        var anotherDepositQspWei = Util.toQsp(300);
-        var bonusExpertFactor = 3;
-        var bonusFirstExpertFactor = 5;
-        var payPeriodInBlocks = 15;
-        var minStakeTimeInBlocks = 10000;
-        var timeoutInBlocks = 100;
-        var urlOfAuditReport = "URL";
-        var nextPool = poolId + 1;
-        // create another pool
-        await quantstampToken.approve(qspb.address, anotherDepositQspWei, {from : poolOwner});
-        await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
-          anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-          minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      var maxPayableQspWei = 10;
+      var minStakeQspWei = 1;
+      var anotherDepositQspWei = Util.toQsp(300);
+      var bonusExpertFactor = 3;
+      var bonusFirstExpertFactor = 5;
+      var payPeriodInBlocks = 15;
+      var minStakeTimeInBlocks = 10000;
+      var timeoutInBlocks = 100;
+      var urlOfAuditReport = "URL";
+      var nextPool = poolId + 1;
+      // create another pool
+      await quantstampToken.approve(qspb.address, anotherDepositQspWei, {from : poolOwner});
+      await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
+        anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
 
-        await candidateContract.withdraw(1);
-        await qspb.withdrawClaim(nextPool, {from: poolOwner});
-        assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedFunded);
-        // there was one more pool created so we are subtracting one depositQspWei
-        assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget - depositQspWei);
-        assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
+      await candidateContract.withdraw(1);
+      await qspb.withdrawClaim(nextPool, {from: poolOwner});
+      assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedFunded);
+      // there was one more pool created so we are subtracting one depositQspWei
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget - depositQspWei);
+      assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
     });
   });
 
