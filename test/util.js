@@ -9,7 +9,7 @@ async function assertTxFail (promise) {
   let txFailed = false;
   try {
     const result = await promise;
-    txFailed = int(parseInt(result.receipt.status)) === 0;
+    txFailed = parseInt(result.receipt.status) === 0;
   } catch (err) {
     txFailed = (err.message.startsWith("VM Exception while processing transaction: revert"));
   }
