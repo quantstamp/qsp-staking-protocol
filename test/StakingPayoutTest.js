@@ -6,7 +6,6 @@ const QuantstampStakingRegistry = artifacts.require('Registry');
 const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
-const { ZERO_ADDRESS } = require('./constants.js');
 const Util = require("./util.js");
 
 contract('QuantstampStaking: staker requests payout', function(accounts) {
