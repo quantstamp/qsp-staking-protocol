@@ -38,6 +38,7 @@ contract QuantstampStaking is Ownable {
         uint depositQspWei; // the current value deposited by the owner/stakeholder
         uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
         uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
+        address firstExpertStaker; // the address of the first expert to stake in this pool
         uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
         uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
@@ -221,6 +222,10 @@ contract QuantstampStaking is Ownable {
         return pools[index].bonusFirstExpertFactor;
     }
 
+    function getPoolFirstExpertStaker(uint index) public view returns(address) {
+        return pools[index].firstExpertStaker;
+    }
+
     function getPoolPayPeriodInBlocks(uint index) public view returns(uint) {
         return pools[index].payPeriodInBlocks;
     }
@@ -289,6 +294,7 @@ contract QuantstampStaking is Ownable {
             depositQspWei,
             bonusExpertFactor,
             bonusFirstExpertFactor,
+            0, // no expert staker
             payPeriodInBlocks,
             minStakeTimeInBlocks,
             timeoutInBlocks,
@@ -389,6 +395,10 @@ contract QuantstampStaking is Ownable {
         stakes[poolIndex].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
+        // Set first expert if it is not set and the staker is an expert on the TCR
+        if (getPoolFirstExpertStaker(poolIndex) == 0 && isExpert(msg.sender)) {
+            pools[poolIndex].firstExpertStaker = msg.sender;
+        }
         
         // Check if there are enough stakes in the pool
         uint total = getTotalFundsStaked(poolIndex);
@@ -503,9 +513,9 @@ contract QuantstampStaking is Ownable {
     */
     function computePayout(uint poolIndex, address staker) public view returns(uint) {
         uint poolSize = 0; // the total amount of QSP Wei staked in this pool
-        bool firstExpert = true; // this variable will be true until the first expert is encountered in the following loop
         uint bonusExpertAtPower = 1; // this holds bonusExpert raised to a power to avoid the ** operator
-        uint dividedBy = 1; // this holds the value by which the stakeAmount will be divided by
+        uint bonusExpertPlus100 = getPoolBonusExpertFactor(poolIndex).add(100);
+        uint powersOf100 = 1; // it holds the next power of 100 at every iteration of the loop
         uint numerator = 0; // indicates the total payout for the staker
         
         if (stakes[poolIndex].length <= 0) { // no stakes have been placed yet
@@ -522,14 +532,13 @@ contract QuantstampStaking is Ownable {
                 uint stakeAmount = stakes[poolIndex][i].amountQspWei;
                 // check if the staker is an expert
                 if (isExpert(stakes[poolIndex][i].staker)) {
-                    stakeAmount = stakeAmount.mul(bonusExpertAtPower).div(dividedBy);
+                    stakeAmount = stakeAmount.mul(bonusExpertAtPower).div(powersOf100);
                     /* Check if it is the first expert
                     * Assumption: Non-experts can stake before experts, which means that
                     * the first element in the stakes array may be a non-expert.
                     */
-                    if (firstExpert) {
+                    if (getPoolFirstExpertStaker(poolIndex) == staker) {
                         stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
-                        firstExpert = false;
                     }
                 }
 
@@ -539,8 +548,8 @@ contract QuantstampStaking is Ownable {
 
                 poolSize = poolSize.add(stakeAmount);
             }
-            bonusExpertAtPower = bonusExpertAtPower.mul(getPoolBonusExpertFactor(poolIndex).add(100));
-            dividedBy = dividedBy.mul(100);
+            bonusExpertAtPower = bonusExpertAtPower.mul(bonusExpertPlus100);
+            powersOf100 = powersOf100.mul(100);
         } while (i > 0);
         
         if (poolSize == 0) { // all stakes have been withdrawn

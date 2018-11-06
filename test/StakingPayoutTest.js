@@ -103,39 +103,55 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     it("should return 0 if there is no stake made by the staker in this pool", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
       assert.equal(await qspb.computePayout(currentPoolIndex, staker2), 0);     
     });
 
-    it("should return 0 if the minStakeTimeInBlocks has not passed yet", async function() {
+    it("should return 0 if the payPeriodInBlocks has not passed yet", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
       assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);     
     });
 
-    it("should return maxPayoutQspWei if the minStakeTimeInBlocks has passed and there is one staker", async function() {
+    it("should return maxPayoutQspWei if the payPeriodInBlocks has passed and there is one staker", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
-      Util.mineNBlocks(minStakeTimeInBlocks);
+      Util.mineNBlocks(payPeriodInBlocks);
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
       assert.equal(await qspb.computePayout(currentPoolIndex, staker1), maxPayoutQspWei);     
     });
 
-    it("should return maxPayoutQspWei/2 if there are two non-expert stakers", async function() {
+    it("should return maxPayoutQspWei/2 if there are two non-expert stakers with the same amount at stake", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
-      Util.mineNBlocks(minStakeTimeInBlocks);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), maxPayoutQspWei/2);     
+      Util.mineNBlocks(payPeriodInBlocks);
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker3), maxPayoutQspWei/2);     
     });    
 
-    it("should fail if the policy is not violated either according to state or policy", async function() {
+    it("should give a higher payout to the security expert than to a non-expert and even more to the first expert", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
-    });
-
-    
-    it("should return false if the expert is not on the list", async function() {
-      assert.strictEqual(await qspb.isExpert(staker1),true,'Applicant was not set as expert');
-      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
-    });
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
+      Util.mineNBlocks(payPeriodInBlocks);
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      var payout1 = await qspb.computePayout(currentPoolIndex, staker1);
+      var payout2 = await qspb.computePayout(currentPoolIndex, staker2);
+      var payout3 = await qspb.computePayout(currentPoolIndex, staker3);
+      var payout4 = await qspb.computePayout(currentPoolIndex, staker4);
+      // first expert should have a higher payout than the 2nd expert
+      assert(payout1 > payout2, "The payout of the first expert is not higher than the 2nd expert,");
+      // 2nd expert should have a higher payout than non-experts
+      assert(payout2 > payout3, "The payout of the second expert is not higher than non-experts.");
+      // non-experts should have the same payout
+      assert.equal(parseInt(payout3), payout4, "The payout of non-experts is not equal.");
+      // the sum of all payouts should be equal to maxPayoutQspWei
+      assert.equal(parseInt(payout1) + parseInt(payout2) + parseInt(payout3) + parseInt(payout4), maxPayoutQspWei,
+        "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
+    }); 
   });
 });
