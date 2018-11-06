@@ -486,46 +486,53 @@ contract QuantstampStaking is Ownable {
     * @param staker - the staker to which the payout should be awarded
     * @return - the amount of QSP Wei that should be awarded
     */
-    function computePayout(uint poolIndex, address staker) internal whenNotViolated(poolIndex) returns(uint) {
+    function computePayout(uint poolIndex, address staker) public view returns(uint) {
         uint poolSize = 0; // the total amount of QSP Wei staked in this pool
         bool firstExpert = true; // this variable will be true until the first expert is encountered in the following loop
-        uint bonusExpertPlus100 = getPoolBonusExpertFactor(poolIndex).add(100);
         uint bonusExpertAtPower = 1; // this holds bonusExpert raised to a power to avoid the ** operator
-        uint bonusFirstExp = getPoolBonusFirstExpertFactor(poolIndex);
         uint dividedBy = 1; // this holds the value by which the stakeAmount will be divided by
         uint numerator = 0; // indicates the total payout for the staker
-        uint maxPayout = getPoolMaxPayoutQspWei(poolIndex);
         
+        if (stakes[poolIndex].length <= 0) { // no stakes have been placed yet
+            return 0;
+        }
+
         // compute the total amount (with expert bonuses) staked in the pool and 
         // gather the indices (order) where the staker has staked
-        for (uint i = stakes[poolIndex].length - 1; i >= 0 ; i--) {
-            Stake memory stake = stakes[poolIndex][i];
+        uint i = stakes[poolIndex].length;
+        do {
+            i = i - 1;
             // only consider stakes that were placed for a sufficient amount of time
-            if (block.number.sub(stake.blockNumber) >= getPoolPayPeriodInBlocks(poolIndex)) {
-                uint stakeAmount = stake.amountQspWei;
+            if (block.number.sub(stakes[poolIndex][i].blockNumber) >= getPoolPayPeriodInBlocks(poolIndex)) {
+                uint stakeAmount = stakes[poolIndex][i].amountQspWei;
                 // check if the staker is an expert
-                if (isExpert(stake.staker)) {
+                if (isExpert(stakes[poolIndex][i].staker)) {
                     stakeAmount = stakeAmount.mul(bonusExpertAtPower).div(dividedBy);
                     /* Check if it is the first expert
                     * Assumption: Non-experts can stake before experts, which means that
                     * the first element in the stakes array may be a non-expert.
                     */
                     if (firstExpert) {
-                        stakeAmount = stakeAmount.mul(bonusFirstExp.add(100)).div(100);
+                        stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
                         firstExpert = false;
                     }
                 }
 
-                if (stake.staker == staker) {
+                if (stakes[poolIndex][i].staker == staker) {
                     numerator = numerator.add(stakeAmount);
                 }
 
                 poolSize = poolSize.add(stakeAmount);
             }
-            bonusExpertAtPower = bonusExpertAtPower.mul(bonusExpertPlus100);
+            bonusExpertAtPower = bonusExpertAtPower.mul(getPoolBonusExpertFactor(poolIndex).add(100));
             dividedBy = dividedBy.mul(100);
-        }
+        } while (i > 0);
         
-        return numerator.mul(maxPayout).div(poolSize);
+        if (poolSize == 0) { // all stakes have been withdrawn
+            return 0;
+        }
+
+        numerator = numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(poolSize);
+        return numerator;
     }
 }
