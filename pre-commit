@@ -19,7 +19,7 @@ def system(*args, **kwargs):
 
 def main():
     try:
-        files = ["QSPb.sol"]
+        files = ["QuantstampStaking.sol"]
         versions = []
         for f in files:
             result = system("git", "grep", "pragma", "contracts/" + f).decode("utf-8").split()[-1].strip(";")
