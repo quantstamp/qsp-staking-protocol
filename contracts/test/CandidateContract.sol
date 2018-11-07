@@ -11,11 +11,14 @@ contract CandidateContract {
 
     uint public balance;
 
+    event Withdraw(uint amount);
+
     constructor(uint _balance) public {
         balance = _balance;
     }
 
     function withdraw(uint amount) public {
         balance = balance.sub(amount);
+        emit Withdraw(amount);
     }
 }
