@@ -1,4 +1,4 @@
-const QuantstampStakingRegistry = artifacts.require('Registry');
+const QuantstampStakingRegistry = artifacts.require('test/Registry');
 
 module.exports = function(deployer, network) {
 

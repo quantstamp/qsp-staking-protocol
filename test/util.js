@@ -31,10 +31,21 @@ async function mineNBlocks (n) {
   }
 }
 
+async function balanceOf (token, user) {
+  return (await token.balanceOf(user)).toNumber();
+}
+
+async function balanceOfRaw (token, user) {
+  return await token.balanceOf(user);
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
   assertTxFail : assertTxFail,
   mineOneBlock: mineOneBlock,
-  mineNBlocks: mineNBlocks
+  mineNBlocks: mineNBlocks,
+  balanceOf: balanceOf,
+  balanceOfRaw: balanceOfRaw,
+  ZERO_ADDRESS: '0x0000000000000000000000000000000000000000'
 };

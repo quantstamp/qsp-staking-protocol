@@ -1,13 +1,12 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
-const QuantstampStakingRegistry = artifacts.require('Registry');
-const QuantstampParameterizer = artifacts.require('Parameterizer');
+const QuantstampStakingRegistry = artifacts.require('test/Registry');
+const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
-const { ZERO_ADDRESS } = require('./constants.js');
 const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
 
@@ -100,32 +99,176 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
   });
 
-  describe("when withdrawing a claim", async function () {
-    it("should not allow claim withdraw when pool is initialized", async function() {
-      // todo(mderka) implement when appropriate contract functions are added, SP-46
+  describe("withdrawClaim", async function() {
+
+    let quantstampToken;
+    let qspb;
+    let policy;
+    let candidateContract;
+    const staker = accounts[4];
+    const admin = "0x0";
+    const poolId = 0;
+    const stakerBudget = Util.toQsp(1000);
+
+    // vars needed for creating pool
+    const depositQspWei = Util.toQsp(100);
+    const maxPayableQspWei = 10;
+    const minStakeQspWei = 1;
+    const bonusExpertFactor = 3;
+    const bonusFirstExpertFactor = 5;
+    const payPeriodInBlocks = 15;
+    const minStakeTimeInBlocks = 10000;
+    const timeoutInBlocks = 100;
+    const urlOfAuditReport = "URL";
+    const policyBalance = 1;
+
+    beforeEach("setup token and tcr", async function() {
+      quantstampToken = await QuantstampToken.new(admin, {from : owner});
+      candidateContract = await CandidateContract.new(policyBalance);
+      quantstampRegistry = await QuantstampStakingRegistry.deployed();
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address);
+      policy = await ZeroBalancePolicy.new();
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer 100,000 QSP tokens to the pool owner
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      // allow the audit contract use tokens
+      await quantstampToken.approve(qspb.address, depositQspWei, {from : poolOwner});
+      // create pool
+      await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget - depositQspWei);
     });
 
+    it("should not allow claim withdraw when pool is initialized", async function() {
+      // the pool state is already intialized
+      assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
+    });
+    
     it("should not allow claim withdraw when pool is cancelled", async function() {
-      // todo(mderka) implement when appropriate contract functions are added, SP-46
+      assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
+      // violate policy and cancel pool
+      await candidateContract.withdraw(policyBalance);
+      await qspb.checkPolicy(poolId);
+      assert.equal(await qspb.getPoolState(poolId), PoolState.Cancelled);
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
+    });
+
+    it("should not allow claim withdraw by anyone other than the pool owner", async function() {
+      // approve and stake funds
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
+      // this violates the policy
+      await candidateContract.withdraw(policyBalance);
+      assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
+      // switch into the violated stata
+      await qspb.checkPolicy(poolId);
+      assert.equal(await qspb.getPoolState(poolId), PoolState.ViolatedFunded);
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: staker}));
     });
 
     it("should not allow claim withdraw when pool is not funded", async function() {
-      // todo(mderka) implement when appropriate contract functions are added, SP-46
+      var nextPool = poolId + 1;
+      var maxPayout = depositQspWei + 10;
+      // create another pool with deposit smaller than the payout
+      await quantstampToken.approve(qspb.address, depositQspWei, {from : poolOwner});
+      await qspb.createPool(candidateContract.address, policy.address, maxPayout, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      // approve and stake funds
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(nextPool), PoolState.NotViolatedUnderfunded);
+      Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
+    });
+
+    it("should not allow claim withdraw when pool is not funded when violated", async function() {
+      var nextPool = poolId + 1;
+      var maxPayout = depositQspWei + 10;
+      // create another pool with deposit smaller than the payout
+      await quantstampToken.approve(qspb.address, depositQspWei, {from : poolOwner});
+      await qspb.createPool(candidateContract.address, policy.address, maxPayout, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      // approve and stake funds
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
+      // violate policy
+      await candidateContract.withdraw(policyBalance);
+      assert.equal(await qspb.getPoolState(nextPool), PoolState.NotViolatedUnderfunded);
+      // switch into the violated status
+      await qspb.checkPolicy(nextPool);
+      assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedUnderfunded);
+      Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
     });
 
     it("should not allow claim withdraw when policy is not violated", async function() {
-      // todo(mderka) implement when appropriate contract functions are added, SP-46
+      // approve and stake funds
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
     });
 
-    it("pools allows claim withdraw when policy is violated and pool is funded ",
+    it("pools allows claim withdraw when policy is violated via status and pool is funded",
       async function() {
-      // todo(mderka) implement when appropriate contract functions are added, SP-46
+        var originalBalance = (await Util.balanceOfRaw(quantstampToken, poolOwner)).plus(depositQspWei);
+        // approve and stake funds
+        await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
+        // this violates the policy
+        await candidateContract.withdraw(policyBalance);
+        assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
+        // switch into the violated status
+        await qspb.checkPolicy(poolId);
+        assert.equal(await qspb.getPoolState(poolId), PoolState.ViolatedFunded);
+        await qspb.withdrawClaim(poolId, {from: poolOwner});
+        assert.equal(await Util.balanceOf(quantstampToken, poolOwner), originalBalance.plus(minStakeQspWei));
+        assert.equal(await Util.balanceOf(quantstampToken, qspb.address), 0);
+        assert.equal(await qspb.balanceQspWei.call(), 0);
       }
     );
+
+    it("pools allows claim withdraw when policy is violated via policy and pool is funded",
+      async function() {
+        var originalBalance = (await Util.balanceOfRaw(quantstampToken, poolOwner)).plus(depositQspWei);
+        // approve and stake funds
+        await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
+        // this violates the policy
+        await candidateContract.withdraw(policyBalance);
+        assert.equal(await qspb.getPoolState(poolId), PoolState.NotViolatedFunded);
+        await qspb.withdrawClaim(poolId, {from: poolOwner});
+        assert.equal(await qspb.getPoolState(poolId), PoolState.ViolatedFunded);
+        assert.equal(await Util.balanceOf(quantstampToken, poolOwner), originalBalance.plus(minStakeQspWei));
+        assert.equal(await Util.balanceOf(quantstampToken, qspb.address), 0);
+        assert.equal(await qspb.balanceQspWei.call(), 0);
+      }
+    );
+
+    it("should only withdraw funds from the right pool and no other pool", async function() {
+      var anotherDepositQspWei = Util.toQsp(300);
+      var nextPool = poolId + 1;
+      // create another pool
+      await quantstampToken.approve(qspb.address, anotherDepositQspWei, {from : poolOwner});
+      await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
+        anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+
+      await candidateContract.withdraw(policyBalance);
+      await qspb.withdrawClaim(nextPool, {from: poolOwner});
+      assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedFunded);
+      // there was one more pool created so we are subtracting one depositQspWei
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget - depositQspWei);
+      assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
+    });
   });
 
   it("should fail if a TCR with address zero is passed into the constructor", async function () {
-    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, ZERO_ADDRESS));
+    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS));
   });
 
   describe("isExpert", async function() {
@@ -158,7 +301,63 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should return false if the expert is not on the list", async function() {
-      assert.strictEqual(await qspb.isExpert(ZERO_ADDRESS),false,'Zero address was apparently an expert');
+      assert.strictEqual(await qspb.isExpert(Util.ZERO_ADDRESS),false,'Zero address was apparently an expert');
+    });
+  });
+
+  describe("stakeFunds()", async function() {
+    beforeEach("when staking funds", async function() {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampRegistry = await QuantstampStakingRegistry.new();
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
+    
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      currentPoolNumber = await qspb.getPoolsLength();
+      currentPoolIndex = currentPoolNumber - 1;
+    });
+
+    it("should stake funds and keep the pool in the Initialized state", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + minStakeQspWei/2);
+    });
+
+    it("should not allow funds to be staked because the timeout has occured", async function() {
+      Util.mineNBlocks(timeoutInBlocks);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+      // should throw an error since stakes cannot be made in the Cancelled state
+      Util.assertTxFail(qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker}));
+      assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+    });
+
+    it("should stake funds and set pool to NotViolatedUnderfunded", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
+    });
+
+    it("should stake funds and set pool to NotViolatedFunded", async function() {
+      // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
+      // make deposit such that the current pool is funded
+      // stake funds
+      //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      //assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      //assert.equal(await qspb.balanceQspWei.call(), parseInt(minStakeQspWei) + depositedFunds);
+    });
+
+    it("should not allow staking because the policy is violated", async function() {
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      Util.assertTxFail(qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker}));
+      assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
     });
   });
 
