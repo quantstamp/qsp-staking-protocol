@@ -147,10 +147,11 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // 2nd expert should have a higher payout than non-experts
       assert(payout2 > payout3, "The payout of the second expert is not higher than non-experts.");
       // non-experts should have the same payout
-      assert.equal(parseInt(payout3), payout4, "The payout of non-experts is not equal.");
+      assert.equal(payout3.toNumber(), payout4, "The payout of non-experts is not equal.");
+      // all payouts must be positive
       assert(payout4 > 0, "All payouts must be positive values.");
       // the sum of all payouts should be equal to maxPayoutQspWei
-      assert.equal(parseInt(payout1) + parseInt(payout2) + parseInt(payout3) + parseInt(payout4), maxPayoutQspWei,
+      assert.equal(payout1.toNumber() + payout2.toNumber() + payout3.toNumber() + payout4.toNumber(), maxPayoutQspWei,
         "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
     }); 
   });
