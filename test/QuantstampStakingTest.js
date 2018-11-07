@@ -548,4 +548,126 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(maxPayoutQspWei));
     });
   });
+
+  describe("stakeFunds()", async function() {
+    beforeEach("when staking funds", async function() {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampRegistry = await QuantstampStakingRegistry.new();
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
+    
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      currentPoolNumber = await qspb.getPoolsLength();
+      currentPoolIndex = currentPoolNumber - 1;
+    });
+
+    it("should stake funds and keep the pool in the Initialized state", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + minStakeQspWei/2);
+    });
+
+    it("should not allow funds to be staked because the timeout has occured", async function() {
+      Util.mineNBlocks(timeoutInBlocks);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+      // should throw an error since stakes cannot be made in the Cancelled state
+      Util.assertTxFail(qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker}));
+      assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+    });
+
+    it("should stake funds and set pool to NotViolatedUnderfunded", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
+    });
+
+    it("should stake funds and set pool to NotViolatedFunded", async function() {
+      // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
+      // make deposit such that the current pool is funded
+      // stake funds
+      //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      //assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      //assert.equal(await qspb.balanceQspWei.call(), parseInt(minStakeQspWei) + depositedFunds);
+    });
+
+    it("should not allow staking because the policy is violated", async function() {
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      Util.assertTxFail(qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker}));
+      assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+    });
+  });
+  //});
+
+  describe("withdrawStake()", async function() {
+    beforeEach("when withdrawing stakes", async function() {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampRegistry = await QuantstampStakingRegistry.new();
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      candidateContract = await CandidateContract.new(candidateContractBalance);
+      contractPolicy = await ZeroBalancePolicy.new();
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
+      await quantstampToken.transfer(staker2, stakerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker2});
+      
+      // create pool and stake funds
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      currentPoolNumber = await qspb.getPoolsLength();
+      currentPoolIndex = currentPoolNumber - 1;
+    });
+
+    it("should not withdraw stake, since calling staker did not place any stake", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
+      poolState = await qspb.getPoolState(currentPoolIndex);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker2});
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
+      assert.equal(await qspb.getPoolState(currentPoolIndex), parseInt(poolState));
+    });
+
+    it("should withdraw stake and pool should switch to Cancelled state", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+    });
+
+    it("should withdraw stake and pool should remain in same state", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      poolState = await qspb.getPoolState(currentPoolIndex);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), parseInt(poolState));
+    });
+
+    it("should not withdraw stake because policy is violated", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      Util.assertTxFail(qspb.withdrawStake(currentPoolIndex, {from: staker}));
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
+    });
+
+    it("should withdraw stake after the policy period", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(maxPayoutQspWei));
+    });
+  });
 });
