@@ -512,11 +512,11 @@ contract QuantstampStaking is Ownable {
     * @return - the amount of QSP Wei that should be awarded
     */
     function computePayout(uint poolIndex, address staker) public view returns(uint) {
-        uint poolSize = 0; // the total amount of QSP Wei staked in this pool
+        uint poolSize = 0; // the total amount of QSP Wei staked in this pool (denominator of the return fraction)
         uint bonusExpertAtPower = 1; // this holds bonusExpert raised to a power to avoid the ** operator
         uint bonusExpertPlus100 = getPoolBonusExpertFactor(poolIndex).add(100);
         uint powersOf100 = 1; // it holds the next power of 100 at every iteration of the loop
-        uint numerator = 0; // indicates the total payout for the staker
+        uint numerator = 0; // indicates the unnormalized total payout for the staker
         
         if (stakes[poolIndex].length <= 0) { // no stakes have been placed yet
             return 0;
@@ -537,7 +537,7 @@ contract QuantstampStaking is Ownable {
                     * Assumption: Non-experts can stake before experts, which means that
                     * the first element in the stakes array may be a non-expert.
                     */
-                    if (getPoolFirstExpertStaker(poolIndex) == staker) {
+                    if (getPoolFirstExpertStaker(poolIndex) == stakes[poolIndex][i].staker) {
                         stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
                     }
                 }
