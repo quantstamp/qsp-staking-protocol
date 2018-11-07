@@ -2,7 +2,6 @@ const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('test/Registry');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
-const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
