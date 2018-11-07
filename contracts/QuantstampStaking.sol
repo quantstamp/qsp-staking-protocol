@@ -159,25 +159,12 @@ contract QuantstampStaking is Ownable {
     function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) onlyPoolOwner(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-<<<<<<< HEAD
         require(currentState != PoolState.ViolatedUnderfunded);
         require(currentState != PoolState.Cancelled);
 
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
         // claim all stakes
-=======
-        
-        /* The pool can be converted into Pool.ViolatedFunded funded state by calling
-           function withdraw interest, therefore we need to allow this state as well */
-        require(currentState == PoolState.NotViolatedFunded 
-                || currentState == PoolState.ViolatedFunded,
-                "Pool is not in a (Not)ViolatedFunded state");
-        
-        /* todo(mderka) Consider design the does not require iteration over stakes
-           created SP-45 */ 
-        // return all stakes
->>>>>>> 7fefcd2eb69d618a6d2720d6246f76953135886e
         uint total = getPoolDepositQspWei(poolIndex);
         for (uint i = 0; i < stakes[poolIndex].length; i++) {
             Stake storage stake = stakes[poolIndex][i];
@@ -345,7 +332,6 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
-<<<<<<< HEAD
     * Checks the policy of the pool. If it is violated, it updates the state accordingly.
     * Fails the transaction otherwise.
     * @param poolIndex - the index of the pool for which the state is changed
@@ -367,8 +353,6 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
-=======
->>>>>>> 7fefcd2eb69d618a6d2720d6246f76953135886e
     * TODO (sebi): This function needs to be replaced by a better solution as part of SP-44
     * Returns the total number of QSP Wei stakes in the pool.
     * @param poolIndex - the index of the pool for which the total is computed
