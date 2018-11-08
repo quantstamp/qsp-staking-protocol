@@ -166,7 +166,7 @@ contract QuantstampStaking is Ownable {
         /* todo(mderka) Consider design the does not require iteration over stakes
            created SP-45 */ 
         // claim all stakes
-        uint total = getPoolDepositQspWei(poolIndex) + pools[poolIndex].totalStakeQspWei;
+        uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
         require(token.transfer(poolOwner, total),
             "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
@@ -299,7 +299,8 @@ contract QuantstampStaking is Ownable {
             block.number,
             urlOfAuditReport,
             PoolState.Initialized,
-            0);
+            0 // the initial total stake is 0
+        );
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
