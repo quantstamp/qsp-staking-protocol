@@ -294,7 +294,7 @@ contract QuantstampStaking is Ownable {
             depositQspWei,
             bonusExpertFactor,
             bonusFirstExpertFactor,
-            0, // no expert staker
+            address(0), // no expert staker
             payPeriodInBlocks,
             minStakeTimeInBlocks,
             timeoutInBlocks,
@@ -396,7 +396,7 @@ contract QuantstampStaking is Ownable {
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         // Set first expert if it is not set and the staker is an expert on the TCR
-        if (getPoolFirstExpertStaker(poolIndex) == 0 && isExpert(msg.sender)) {
+        if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
         }
         
@@ -521,7 +521,7 @@ contract QuantstampStaking is Ownable {
         if (stakes[poolIndex].length <= 0) { // no stakes have been placed yet
             return 0;
         }
-         // compute the total amount (with expert bonuses) staked in the pool and 
+        // compute the total amount (with expert bonuses) staked in the pool and 
         // gather the indices (order) where the staker has staked
         uint i = stakes[poolIndex].length;
         do {
@@ -552,7 +552,6 @@ contract QuantstampStaking is Ownable {
         if (poolSize == 0) { // all stakes have been withdrawn
             return 0;
         }
-         numerator = numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(poolSize);
-        return numerator;
+        return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(poolSize);
     }
 }
