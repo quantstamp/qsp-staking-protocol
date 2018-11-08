@@ -102,7 +102,7 @@ contract QuantstampStaking is Ownable {
     // Signals that the state of the pool has changed
     event StateChanged(uint poolIndex, PoolState state);
 
-    /* Allwos execution only when the policy of the pool is violated.
+    /* Allows execution only when the policy of the pool is violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
     modifier whenViolated(uint poolIndex) {
@@ -115,7 +115,7 @@ contract QuantstampStaking is Ownable {
         _;
     }
 
-    /* Allwos execution only when the policy of the pool is not violated.
+    /* Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
     modifier whenNotViolated(uint poolIndex) {
@@ -128,7 +128,7 @@ contract QuantstampStaking is Ownable {
         _;
     }
 
-    /* Allwos execution only when the pool owner is the msg.sender.
+    /* Allows execution only when the pool owner is the msg.sender.
     * @param poolIndex - index of the pool
     */
     modifier onlyPoolOwner(uint poolIndex) {
