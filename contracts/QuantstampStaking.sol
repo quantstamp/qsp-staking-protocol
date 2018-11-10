@@ -7,12 +7,12 @@ import {Registry} from "./test/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-//import "openzeppelin-solidity/contracts/math/Math.sol";
+import "openzeppelin-solidity/contracts/math/Math.sol";
 import "./IPolicy.sol";
 
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
-    //using Math for uint256;
+    using Math for uint256;
 
     struct Stake {
         address staker; // the address of the staker
@@ -532,7 +532,7 @@ contract QuantstampStaking is Ownable {
             if (stakes[poolIndex][i].staker == staker) {
                 // the state does not need to be changed at this point. It is not problem if it changes.
                 // the reason for this assignment is that no more local variables can be declared in this function.
-                stakes[poolIndex][i].blockNumber = max(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+                stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
                 // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
                 stakeAmount = stakeAmount.mul((block.number - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)-
                     (stakes[poolIndex][i].lastPayoutBlock - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex));
@@ -571,7 +571,7 @@ contract QuantstampStaking is Ownable {
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex].length; i++) {
                 if (stakes[poolIndex][i].staker == staker) {
-                    stakes[poolIndex][i].blockNumber = max(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+                    stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
                     if ((block.number - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
                         (stakes[poolIndex][i].lastPayoutBlock - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
                         stakes[poolIndex][i].lastPayoutBlock = block.number;
@@ -587,12 +587,5 @@ contract QuantstampStaking is Ownable {
         } else { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }
-    }
-    
-    /**
-    * Computes the maximum between the 2 integer arguments
-    */
-    function max(uint a, uint b) private pure returns (uint) {
-        return a > b ? a : b;
     }
 }
