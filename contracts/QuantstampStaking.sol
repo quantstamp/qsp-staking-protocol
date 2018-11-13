@@ -41,7 +41,7 @@ contract QuantstampStaking is Ownable {
         uint depositQspWei; // the current value deposited by the owner/stakeholder
         uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
         uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
-        address firstExpertStaker; // the address of the first expert to stake in this pool
+        uint firstExpertStake; // the index in the stakes array of the first expert stake in this pool
         uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
         uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
@@ -225,8 +225,17 @@ contract QuantstampStaking is Ownable {
         return pools[index].bonusFirstExpertFactor;
     }
 
+    function getPoolFirstExpertStake(uint index) public view returns(uint) {
+        return pools[index].firstExpertStake;
+    }
+
     function getPoolFirstExpertStaker(uint index) public view returns(address) {
-        return pools[index].firstExpertStaker;
+        if (pools[index].firstExpertStake == 0 && 
+            !isExpert(stakes[index][pools[index].firstExpertStake].staker)) {
+            return address(0);
+        } else {
+            return stakes[index][pools[index].firstExpertStake].staker;
+        }
     }
 
     function getPoolPayPeriodInBlocks(uint index) public view returns(uint) {
@@ -291,7 +300,12 @@ contract QuantstampStaking is Ownable {
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
         require(token.transferFrom(msg.sender, address(this), depositQspWei));
-
+        require(maxPayoutQspWei > 0, "Maximum payout cannot be zero.");
+        require(minStakeQspWei > 0, "Minimum stake cannot be zero.");
+        require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
+        require(minStakeTimeInBlocks > 0, "Minimum staking period cannot be zero.");
+        require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
+        
         Pool memory p = Pool(
             candidateContract,
             contractPolicy,
@@ -301,7 +315,7 @@ contract QuantstampStaking is Ownable {
             depositQspWei,
             bonusExpertFactor,
             bonusFirstExpertFactor,
-            address(0), // no expert staker
+            0, // no expert staker
             payPeriodInBlocks,
             minStakeTimeInBlocks,
             timeoutInBlocks,
@@ -313,6 +327,7 @@ contract QuantstampStaking is Ownable {
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
+        StateChanged(currentPoolNumber, PoolState.Initialized, block.number);
     }
 
     /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
@@ -384,7 +399,6 @@ contract QuantstampStaking is Ownable {
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), amountQspWei),
             "Token transfer failed when staking funds.");
-
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
         Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number);
         stakes[poolIndex].push(stake);
@@ -393,7 +407,7 @@ contract QuantstampStaking is Ownable {
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
         // Set first expert if it is not set and the staker is an expert on the TCR
         if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
-            pools[poolIndex].firstExpertStaker = msg.sender;
+            pools[poolIndex].firstExpertStake = stakes[poolIndex].length - 1;
         }
 
         // Check if there are enough stakes in the pool
@@ -419,7 +433,7 @@ contract QuantstampStaking is Ownable {
             state == PoolState.NotViolatedUnderfunded ||
             state == PoolState.Cancelled ||
             (state == PoolState.NotViolatedFunded &&
-                getPoolTimeOfStateInBlocks(poolIndex) >= getPoolMinStakeTimeInBlocks(poolIndex)),
+                block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)) >= getPoolMinStakeTimeInBlocks(poolIndex)),
             "Pool is not in the right state when withdrawing stake.");
 
         address poolPolicy = getPoolContractPolicy(poolIndex);
@@ -524,7 +538,7 @@ contract QuantstampStaking is Ownable {
                 * Assumption: Non-experts can stake before experts, which means that
                 * the first element in the stakes array may be a non-expert.
                 */
-                if (getPoolFirstExpertStaker(poolIndex) == stakes[poolIndex][i].staker) {
+                if (getPoolFirstExpertStake(poolIndex) == i) {
                     stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
                 }
             }
@@ -534,8 +548,9 @@ contract QuantstampStaking is Ownable {
                 // the reason for this assignment is that no more local variables can be declared in this function.
                 stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
                 // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
-                stakeAmount = stakeAmount.mul((block.number - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)-
-                    (stakes[poolIndex][i].lastPayoutBlock - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex));
+                stakeAmount = stakeAmount.mul(((block.number.sub(stakes[poolIndex][i].blockNumber))/getPoolPayPeriodInBlocks(poolIndex))-
+                    (stakes[poolIndex][i].lastPayoutBlock.sub(stakes[poolIndex][i].blockNumber))/getPoolPayPeriodInBlocks(poolIndex));
+                require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
                 numerator = numerator.add(stakeAmount);
             }
             bonusExpertAtPower = bonusExpertAtPower.mul(bonusExpertPlus100);
@@ -555,13 +570,15 @@ contract QuantstampStaking is Ownable {
     * @param staker - the address of the staker who wants to receive the payout
     */
     function withdrawInterest(uint poolIndex, address staker) external whenNotViolated(poolIndex) {
+        emit ClaimWithdrawn(0, 1);
+        
         // check that the state of the pool is NotViolatedFunded
         require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
             "The state of the pool is not NotViolatedFunded, as expected.");
+        
         // check that enough time (blocks) has passed since the pool has collected stakes totaling at least minStakeQspWei
         require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
             "Not enough time has passed since the pool is active or the stake was placed.");
-        
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, staker);
         require(payout > 0, "Cannot withdraw non-positive payout");
@@ -572,8 +589,8 @@ contract QuantstampStaking is Ownable {
             for (uint i = 0; i < stakes[poolIndex].length; i++) {
                 if (stakes[poolIndex][i].staker == staker) {
                     stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                    if ((block.number - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
-                        (stakes[poolIndex][i].lastPayoutBlock - stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
+                    if (block.number.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
+                        stakes[poolIndex][i].lastPayoutBlock.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
                         stakes[poolIndex][i].lastPayoutBlock = block.number;
                         LastPayoutBlockUpdate(poolIndex, staker, stakes[poolIndex][i].lastPayoutBlock);
                     }

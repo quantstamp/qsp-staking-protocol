@@ -93,7 +93,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     currentPoolNumber = await qspb.getPoolsLength();
     currentPoolIndex = currentPoolNumber - 1;
   });
-
+/*
   describe("computePayout", async function() {
 
     it("should return 0 if there is no stake in this pool", async function() {
@@ -157,7 +157,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
         "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
     }); 
   });
-
+*/
   describe("withdrawInterest", async function() {
     it("should reject requests made before the pool has switched into the NotViolatedFunded state", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
@@ -176,29 +176,19 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       Util.assertTxFail(qspb.withdrawInterest(currentPoolIndex, staker1));
     });
 
-    it("should reject requests for stakers that have not placed their stake for the required amount of time", async function() {
-      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
+    it("should reject requests only for stakers that have not placed their stake for the required amount of time", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
-      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);      
       Util.mineOneBlock();
       Util.mineOneBlock();
       Util.mineOneBlock();
       // staker4 places the stake after the pool transitions to the NotViolatedFunded state
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       Util.mineNBlocks(payPeriodInBlocks-3);
-      var timeOfStateInBlocks = await qspb.getPoolTimeOfStateInBlocks(currentPoolIndex);
-      var timePassedSinceTransitionInBlocks = web3.eth.getBlock("latest").number - timeOfStateInBlocks; 
-      assert(timePassedSinceTransitionInBlocks > payPeriodInBlocks);
       // at this point staker3 can get a payout, but staker4 cannot
-      var balanceOfStaker3 = await Util.balanceOf(quantstampToken, staker3);
       var balanceOfStaker4 = await Util.balanceOf(quantstampToken, staker4);
-      var balanceOfQspb = await Util.balanceOf(quantstampToken, qspb.address);
       var payoutStaker = await qspb.computePayout(currentPoolIndex, staker3);
-      assert.equal(parseInt(payoutStaker), maxPayoutQspWei/2, "The payout of staker3 must be maxPayoutQspWei/2");
-      assert(balanceOfQspb > payoutStaker, "There are not enough funds to payout staker3.");
       // the request of staker3 must succeed
       await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
-      assert.equal(await Util.balanceOf(quantstampToken, staker3), parseInt(balanceOfStaker3) + parseInt(payoutStaker));
       // the request of staker4 must fail
       Util.assertTxFail(qspb.withdrawInterest(currentPoolIndex, staker4, {from: staker4}));
       assert.equal(await Util.balanceOf(quantstampToken, staker4), balanceOfStaker4);
@@ -208,16 +198,40 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       Util.mineOneBlock();
       await qspb.withdrawInterest(currentPoolIndex, staker4, {from: staker4});
       assert.equal(await Util.balanceOf(quantstampToken, staker4), parseInt(balanceOfStaker4) + parseInt(payoutStaker));
-      // there are no more funds in the pool so if a staker tries to withdraw Interest again the pool should be canceled
-      assert(await qspb.getPoolDepositQspWei(currentPoolIndex) < payoutStaker, "There are enough funds in the pool");
+    });
+
+    it("should move the pool in a cancelled state if a staker canot be payed out", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
       Util.mineNBlocks(payPeriodInBlocks);
-      // staker3 is now entitled to 2*payout
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker3), 2*payoutStaker);
       await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
-      // the balance of staker3 must be the same as before the call to withdrawInterest
-      assert.equal(await Util.balanceOf(quantstampToken, staker3), parseInt(balanceOfStaker3) + parseInt(payoutStaker));
+      var balanceOfStaker3 = await Util.balanceOf(quantstampToken, staker3);
+      Util.mineNBlocks(payPeriodInBlocks);
+      await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
+      // the balance of staker3 must be the same as before the 2nd call to withdrawInterest
+      assert.equal(await Util.balanceOf(quantstampToken, staker3), balanceOfStaker3);
       // the pool must be now moved into the Cancelled state
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+    });
+
+    it("should only payout those stakes of the same staker which have been placed for a sufficient amount of time", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      Util.mineOneBlock();
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
+      Util.mineOneBlock();
+      // the 2nd stake made by staker3
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
+      Util.mineOneBlock();
+      Util.mineOneBlock();
+      // at this point staker3 can get a payout only for his first stake
+      var balanceOfStaker3 = await Util.balanceOf(quantstampToken, staker3); 
+      var payoutStakerOneStake = await qspb.computePayout(currentPoolIndex, staker3);
+      await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
+      // after waiting a full payPeriod, staker3 must receive a higher payout for both stakes 
+      Util.mineNBlocks(payPeriodInBlocks);
+      var payoutStakerTwoStakes = await qspb.computePayout(currentPoolIndex, staker3);
+      assert(payoutStakerTwoStakes > payoutStakerOneStake, "Payout is not higher for 2 stakes than 1");
+      await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
+      assert.equal(await Util.balanceOf(quantstampToken, staker3), parseInt(balanceOfStaker3) + parseInt(payoutStakerOneStake) + parseInt(payoutStakerTwoStakes));
     });
   });
 });
