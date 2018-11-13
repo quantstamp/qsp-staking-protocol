@@ -98,7 +98,7 @@ contract QuantstampStaking is Ownable {
     event ClaimWithdrawn(uint poolId, uint balanceQspWei);
 
     // Signals that staker has staked amountQspWei at poolIndex
-    event StakePlaced(uint poolIndex, address staker, uint amountQspWei, uint block);
+    event StakePlaced(uint poolIndex, address staker, uint amountQspWei);
 
     // Signals that a stake has been withdrawn
     event StakeWithdrawn(uint poolIndex, address staker, uint amountWithdrawnQspWei);
@@ -107,10 +107,10 @@ contract QuantstampStaking is Ownable {
     event StakerReceivedPayout(uint poolIndex, address staker, uint amount);
 
     // Signals that the state of the pool has changed
-    event StateChanged(uint poolIndex, PoolState state, uint block);
+    event StateChanged(uint poolIndex, PoolState state);
 
     // Signals that the payout block was updated
-    event LastPayoutBlockUpdate(uint poolIndex, address staker, uint block);
+    event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
     /* Allows execution only when the policy of the pool is violated.
     * @param poolIndex - index of the pool where the policy is checked
@@ -327,7 +327,7 @@ contract QuantstampStaking is Ownable {
         pools[currentPoolNumber] = p;
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
-        StateChanged(currentPoolNumber, PoolState.Initialized, block.number);
+        StateChanged(currentPoolNumber, PoolState.Initialized);
     }
 
     /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
@@ -351,7 +351,7 @@ contract QuantstampStaking is Ownable {
         if (poolState != newState) {
             pools[poolIndex].state = newState; // set the state
             pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
-            emit StateChanged(poolIndex, newState, pools[poolIndex].timeOfStateInBlocks); // emit an event that the state has changed
+            emit StateChanged(poolIndex, newState); // emit an event that the state has changed
         }
     }
 
@@ -420,7 +420,7 @@ contract QuantstampStaking is Ownable {
                 setState(poolIndex, PoolState.NotViolatedUnderfunded);
             }
         }
-        emit StakePlaced(poolIndex, msg.sender, amountQspWei, stake.blockNumber);
+        emit StakePlaced(poolIndex, msg.sender, amountQspWei);
     }
 
     /**
@@ -573,7 +573,6 @@ contract QuantstampStaking is Ownable {
         // check that the state of the pool is NotViolatedFunded
         require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
             "The state of the pool is not NotViolatedFunded, as expected.");
-        
         // check that enough time (blocks) has passed since the pool has collected stakes totaling at least minStakeQspWei
         require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
             "Not enough time has passed since the pool is active or the stake was placed.");
@@ -590,14 +589,13 @@ contract QuantstampStaking is Ownable {
                     if (block.number.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
                         stakes[poolIndex][i].lastPayoutBlock.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
                         stakes[poolIndex][i].lastPayoutBlock = block.number;
-                        LastPayoutBlockUpdate(poolIndex, staker, stakes[poolIndex][i].lastPayoutBlock);
+                        LastPayoutBlockUpdate(poolIndex, staker);
                     }
                 }
             }
             
             require(token.transfer(staker, payout),
                 "Could not transfer the payout to the staker.");
-            
             emit StakerReceivedPayout(poolIndex, staker, payout);
         } else { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
