@@ -374,10 +374,10 @@ contract('QuantstampStaking', function(accounts) {
     beforeEach("when staking funds", async function() {
       const minDeposit = TCRUtil.minDep;
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
-      voting = await Voting.new(quantstampToken.address);
-      quantstampParameterizer = await QuantstampParameterizer.new();
+      var voting = await Voting.new(quantstampToken.address);
+      var quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
-      quantstampRegistry = await QuantstampStakingRegistry.new();
+      var quantstampRegistry = await QuantstampStakingRegistry.new();
       await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       // enable transfers before any payments are allowed
