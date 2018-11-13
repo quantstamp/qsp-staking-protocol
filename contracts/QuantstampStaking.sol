@@ -570,8 +570,6 @@ contract QuantstampStaking is Ownable {
     * @param staker - the address of the staker who wants to receive the payout
     */
     function withdrawInterest(uint poolIndex, address staker) external whenNotViolated(poolIndex) {
-        emit ClaimWithdrawn(0, 1);
-        
         // check that the state of the pool is NotViolatedFunded
         require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
             "The state of the pool is not NotViolatedFunded, as expected.");

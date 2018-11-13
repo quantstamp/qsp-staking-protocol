@@ -170,7 +170,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);      
       Util.mineNBlocks(payPeriodInBlocks-1);
-      // even thought pool is in the correct state NotViolatedFunded, it should still reject the request
+      // even though pool is in the correct state NotViolatedFunded, it should still reject the request
       Util.assertTxFail(qspb.withdrawInterest(currentPoolIndex, staker1));
     });
 
@@ -198,7 +198,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       assert.equal(await Util.balanceOf(quantstampToken, staker4), parseInt(balanceOfStaker4) + parseInt(payoutStaker));
     });
 
-    it("should move the pool in a cancelled state if a staker canot be payed out", async function() {
+    it("should move the pool in a cancelled state if a staker cannot be payed out", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
       Util.mineNBlocks(payPeriodInBlocks);
       await qspb.withdrawInterest(currentPoolIndex, staker3, {from: staker3});
