@@ -15,6 +15,7 @@ contract('QuantstampStaking', function(accounts) {
   const poolOwner = accounts[3];
   const staker = accounts[4];
   const staker2 = accounts[5];
+  const staker3 = accounts[6];
   const poolOwnerBudget = Util.toQsp(100000);
   const stakerBudget = Util.toQsp(100000);
   const candidateContractBalance = Util.toEther(100);
@@ -351,8 +352,13 @@ contract('QuantstampStaking', function(accounts) {
 
   describe("stakeFunds()", async function() {
     beforeEach("when staking funds", async function() {
+      const minDeposit = TCRUtil.minDep;
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      voting = await Voting.new(quantstampToken.address);
+      quantstampParameterizer = await QuantstampParameterizer.new();
+      await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       quantstampRegistry = await QuantstampStakingRegistry.new();
+      await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
@@ -360,7 +366,16 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
       await quantstampToken.transfer(staker, stakerBudget, {from : owner});
       await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
-    
+      await quantstampToken.transfer(staker2, parseInt(stakerBudget) + 2 * Util.toQsp(minDeposit), {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker2});
+      await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : staker2});
+      await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : staker2});
+      await TCRUtil.addToWhitelist(staker2, minDeposit, staker2, quantstampRegistry);
+      await quantstampToken.transfer(staker3, parseInt(stakerBudget) + 2 * Util.toQsp(minDeposit), {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker3});
+      await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : staker3});
+      await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : staker3});
+      await TCRUtil.addToWhitelist(staker3, minDeposit, staker3, quantstampRegistry);
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
@@ -395,12 +410,27 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should stake funds and set pool to NotViolatedFunded", async function() {
-      // TODO (sebi): Implement after UC-4 (depositFunds) is implemented
       // make deposit such that the current pool is funded
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
       // stake funds
-      //await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
-      //assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      //assert.equal(await qspb.balanceQspWei.call(), parseInt(minStakeQspWei) + depositedFunds);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei) + parseInt(maxPayoutQspWei));
+      assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), minStakeQspWei);
+    });
+
+    it("should set the first expert staker of the pool correctly", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.isExpert(staker), false);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      assert.equal(await qspb.isExpert(staker2), true);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      assert.equal(await qspb.isExpert(staker3), true);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      // the first expert staker is staker2
+      assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
+      // the index of the stake of the first expert is 1 in the stake array
+      assert.equal(await qspb.getPoolFirstExpertStake(currentPoolIndex), 1);
     });
 
     it("should not allow staking because the policy is violated", async function() {
@@ -410,7 +440,6 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), 0);
     });
   });
-  //});
 
   describe("withdrawStake()", async function() {
     beforeEach("when withdrawing stakes", async function() {
