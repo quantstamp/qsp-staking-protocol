@@ -216,8 +216,6 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       Util.mineOneBlock();
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       Util.mineOneBlock();
-      //await qspb.withdrawStake(currentPoolIndex, {from: staker4});
-      
       // the 2nd stake made by staker3
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
       Util.mineOneBlock();
