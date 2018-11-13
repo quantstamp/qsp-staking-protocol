@@ -7,8 +7,6 @@ const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
 const Util = require("./util.js");
-const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
 contract('QuantstampStaking: staker requests payout', function(accounts) {
   const owner = accounts[0];
@@ -93,7 +91,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     currentPoolNumber = await qspb.getPoolsLength();
     currentPoolIndex = currentPoolNumber - 1;
   });
-/*
+
   describe("computePayout", async function() {
 
     it("should return 0 if there is no stake in this pool", async function() {
@@ -157,7 +155,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
         "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
     }); 
   });
-*/
+
   describe("withdrawInterest", async function() {
     it("should reject requests made before the pool has switched into the NotViolatedFunded state", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
