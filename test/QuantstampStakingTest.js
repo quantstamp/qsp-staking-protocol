@@ -99,6 +99,50 @@ contract('QuantstampStaking', function(accounts) {
     assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
   });
 
+  it("should not create a pool if the initial deposit is zero", async function() {
+    // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake 
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+      minStakeQspWei, 0, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+  });
+
+  it("should not create a pool if the maximum payout per period is zero", async function() {
+    // This would mean that the stakeholder would not pay any stakers, which would lead to no stakes
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, 0,
+      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+  });
+
+  it("should not create a pool if the minimum stake that needs to be collected is zero", async function() {
+    // This would mean that a pool is active without any funds staked, which would not be in the interest of a stakeholder
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+      0, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+  });
+
+  it("should not create a pool if the pay period is zero", async function() {
+    // This would lead to a division by zero in the payout computation function and it would mean that
+    // payouts are awarded all the time, which could quickly deplate all the deposited funds of the stakeholder
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, 0,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+  });
+
+  it("should not create a pool if the minimum staking time is zero", async function() {
+    // This would mean that a staker could withdraw their stake at any time from the pool, which would leave the
+    // stakeholder unprotected in case an attack is discovered
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      0, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+  });
+
+  it("should not create a pool if the timeout period is zero", async function() {
+    // This would place the pool in the cancelled state immediately even if the first interaction is placing a stake
+    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, 0, urlOfAuditReport, {from: poolOwner}));
+  });
+
   describe("withdrawClaim", async function() {
 
     let quantstampToken;
