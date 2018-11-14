@@ -19,6 +19,7 @@ contract QuantstampStaking is Ownable {
         uint amountQspWei; // the amount staked by the staker
         uint blockNumber; // the Block number when this stake was made
         uint lastPayoutBlock; // the Block number where the last payout was made to this staker
+        uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
     }
 
     // state of the pool's lifecycle
@@ -41,7 +42,7 @@ contract QuantstampStaking is Ownable {
         uint depositQspWei; // the current value deposited by the owner/stakeholder
         uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
         uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
-        uint firstExpertStake; // the index in the stakes array of the first expert stake in this pool
+        address firstExpertStaker; // the address of the first expert in the pool
         uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
         uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
@@ -49,13 +50,18 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
         PoolState state; // the current state of the pool
         uint totalStakeQspWei; // total amount of stake contributed so far
+        uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
+        uint stakeCount; // the total number of stakes in the pool 
     }
 
-    // Stores the hash of the pool  as the key of the mapping and a list of stakes as the value.
-    mapping (uint => Stake[]) public stakes;
+    // Individual stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
+    mapping (uint => mapping(address => Stake[])) public stakes;
 
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
+    
+    mapping (uint => uint[]) bonusExpertAtPower;
+    mapping (uint => uint[]) powersOf100;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -225,17 +231,8 @@ contract QuantstampStaking is Ownable {
         return pools[index].bonusFirstExpertFactor;
     }
 
-    function getPoolFirstExpertStake(uint index) public view returns(uint) {
-        return pools[index].firstExpertStake;
-    }
-
     function getPoolFirstExpertStaker(uint index) public view returns(address) {
-        if (pools[index].firstExpertStake == 0 && 
-            !isExpert(stakes[index][pools[index].firstExpertStake].staker)) {
-            return address(0);
-        } else {
-            return stakes[index][pools[index].firstExpertStake].staker;
-        }
+        return pools[index].firstExpertStaker;
     }
 
     function getPoolPayPeriodInBlocks(uint index) public view returns(uint) {
@@ -252,6 +249,10 @@ contract QuantstampStaking is Ownable {
 
     function getPoolTimeOfStateInBlocks(uint index) public view returns(uint) {
         return pools[index].timeOfStateInBlocks;
+    }
+
+    function getPoolSizeQspWei(uint index) public view returns(uint) {
+      return pools[index].poolSizeQspWei;
     }
 
     function getPoolUrlOfAuditReport(uint index) public view returns(string) {
@@ -315,16 +316,20 @@ contract QuantstampStaking is Ownable {
             depositQspWei,
             bonusExpertFactor,
             bonusFirstExpertFactor,
-            0, // no expert staker
+            address(0), // no expert staker
             payPeriodInBlocks,
             minStakeTimeInBlocks,
             timeoutInBlocks,
             block.number,
             urlOfAuditReport,
             PoolState.Initialized,
-            0 // the initial total stake is 0
+            0, // the initial total stake is 0,
+            0, // the pool size is initially 0
+            0 // total stakes in this pool
         );
         pools[currentPoolNumber] = p;
+        bonusExpertAtPower[currentPoolNumber].push(1);
+        powersOf100[currentPoolNumber].push(1);
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
         StateChanged(currentPoolNumber, PoolState.Initialized);
@@ -376,6 +381,23 @@ contract QuantstampStaking is Ownable {
         }
     }
 
+    function calculateStakeAmountWithBonuses(uint poolIndex, address staker, uint stakeIndex) public view returns(uint) {
+        Stake memory stake = stakes[poolIndex][staker][stakeIndex];
+        if (stake.amountQspWei == 0) {
+            return 0;
+        }
+        uint stakeAmount = stake.amountQspWei;
+        // check if the staker is an expert
+        if (isExpert(stake.staker)) {
+            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex]).div(powersOf100[poolIndex][stake.contributionIndex]);
+            /* Check if it is the first stake of the first expert */
+            if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
+                stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
+            }
+        }
+        return stakeAmount;
+    }
+
     /**
     * Transfers an amount of QSP from the staker to the pool
     * @param poolIndex - the index of the pool where the funds are transferred to
@@ -399,16 +421,24 @@ contract QuantstampStaking is Ownable {
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), amountQspWei),
             "Token transfer failed when staking funds.");
+        pools[poolIndex].stakeCount += 1;
+        uint currentStakeIndex = pools[poolIndex].stakeCount;
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number);
-        stakes[poolIndex].push(stake);
+        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex);
+        stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
         // Set first expert if it is not set and the staker is an expert on the TCR
         if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
-            pools[poolIndex].firstExpertStake = stakes[poolIndex].length - 1;
+            pools[poolIndex].firstExpertStaker = msg.sender;
         }
+
+        bonusExpertAtPower[poolIndex].push(
+          bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul((getPoolBonusExpertFactor(poolIndex).add(100))));
+        powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
+        pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.add(
+          calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
 
         // Check if there are enough stakes in the pool
         if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
@@ -447,6 +477,13 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
+            
+            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+                pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
+                  calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
+                stakes[poolIndex][msg.sender][i].amountQspWei = 0;
+            }
+            
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
 
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
@@ -509,58 +546,36 @@ contract QuantstampStaking is Ownable {
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
-    * poolSize is the size of all stakes in this pool together with the bonuses awarded for experts;
-    * amountStaked is the amount contributed by a staker.
+    * stakeAmount is the amount contributed by a staker.
     * @param poolIndex - the pool from which the payout is awarded
     * @param staker - the staker to which the payout should be awarded
     * @return - the amount of QSP Wei that should be awarded
     */
     function computePayout(uint poolIndex, address staker) public view returns(uint) {
-        uint poolSize = 0; // the total amount of QSP Wei staked in this pool (denominator of the return fraction)
-        uint bonusExpertAtPower = 1; // this holds bonusExpert raised to a power to avoid the ** operator
-        uint bonusExpertPlus100 = getPoolBonusExpertFactor(poolIndex).add(100);
-        uint powersOf100 = 1; // it holds the next power of 100 at every iteration of the loop
         uint numerator = 0; // indicates the unnormalized total payout for the staker
 
-        if (stakes[poolIndex].length <= 0) { // no stakes have been placed yet
+        if (totalStakes[poolIndex][staker] == 0) { // no stakes have been placed by this staker yet
             return 0;
         }
-        // compute the total amount (with expert bonuses) staked in the pool and
-        // gather the indices (order) where the staker has staked
-        uint i = stakes[poolIndex].length;
-        do {
-            i = i - 1;
-            uint stakeAmount = stakes[poolIndex][i].amountQspWei;
-            // check if the staker is an expert
-            if (isExpert(stakes[poolIndex][i].staker)) {
-                stakeAmount = stakeAmount.mul(bonusExpertAtPower).div(powersOf100);
-                /* Check if it is the first expert
-                * Assumption: Non-experts can stake before experts, which means that
-                * the first element in the stakes array may be a non-expert.
-                */
-                if (getPoolFirstExpertStake(poolIndex) == i) {
-                    stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
-                }
-            }
-            poolSize = poolSize.add(stakeAmount);
-            if (stakes[poolIndex][i].staker == staker) {
-                // the state does not need to be changed at this point. It is not problem if it changes.
-                // the reason for this assignment is that no more local variables can be declared in this function.
-                stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
-                stakeAmount = stakeAmount.mul(((block.number.sub(stakes[poolIndex][i].blockNumber))/getPoolPayPeriodInBlocks(poolIndex))-
-                    (stakes[poolIndex][i].lastPayoutBlock.sub(stakes[poolIndex][i].blockNumber))/getPoolPayPeriodInBlocks(poolIndex));
-                require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
-                numerator = numerator.add(stakeAmount);
-            }
-            bonusExpertAtPower = bonusExpertAtPower.mul(bonusExpertPlus100);
-            powersOf100 = powersOf100.mul(100);
-        } while (i > 0);
 
-        if (poolSize == 0) { // all stakes have been withdrawn
-            return 0;
+        if (getPoolSizeQspWei(poolIndex) == 0) { // all stakes have been withdrawn
+          return 0;
         }
-        return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(poolSize);
+
+        // compute the numerator by adding the staker's stakes together
+        for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
+            uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
+            // the state does not need to be changed at this point. It is not problem if it changes.
+            // the reason for this assignment is that no more local variables can be declared in this function.
+            uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+            // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
+            stakeAmount = stakeAmount.mul(((block.number.sub(maxBlockNumber))/getPoolPayPeriodInBlocks(poolIndex))-
+                (stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber))/getPoolPayPeriodInBlocks(poolIndex));
+            require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
+            numerator = numerator.add(stakeAmount);
+        }
+
+        return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(getPoolSizeQspWei(poolIndex));
     }
     
     /**
@@ -583,14 +598,12 @@ contract QuantstampStaking is Ownable {
         if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
-            for (uint i = 0; i < stakes[poolIndex].length; i++) {
-                if (stakes[poolIndex][i].staker == staker) {
-                    stakes[poolIndex][i].blockNumber = Math.max256(stakes[poolIndex][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                    if (block.number.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
-                        stakes[poolIndex][i].lastPayoutBlock.sub(stakes[poolIndex][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
-                        stakes[poolIndex][i].lastPayoutBlock = block.number;
-                        LastPayoutBlockUpdate(poolIndex, staker);
-                    }
+            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+                stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
+                    stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
+                    stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
+                    LastPayoutBlockUpdate(poolIndex, staker);
                 }
             }
             
