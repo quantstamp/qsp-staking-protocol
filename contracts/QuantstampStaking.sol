@@ -483,6 +483,13 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
+            
+            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+                pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
+                  calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
+                stakes[poolIndex][msg.sender][i].amountQspWei = 0;
+            }
+            
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
             // this loop is needed, because the computePayout function uses the stakes array
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
@@ -539,8 +546,7 @@ contract QuantstampStaking is Ownable {
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
-    * poolSize is the size of all stakes in this pool together with the bonuses awarded for experts;
-    * amountStaked is the amount contributed by a staker.
+    * stakeAmount is the amount contributed by a staker.
     * @param poolIndex - the pool from which the payout is awarded
     * @param staker - the staker to which the payout should be awarded
     * @return - the amount of QSP Wei that should be awarded
