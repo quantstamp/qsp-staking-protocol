@@ -17,7 +17,7 @@ contract('QuantstampStaking', function(accounts) {
   const staker2 = accounts[5];
   const staker3 = accounts[6];
   const poolOwnerBudget = Util.toQsp(100000);
-  const stakerBudget = Util.toQsp(100000);
+  const stakerBudget = Util.toQsp("100000");
   const candidateContractBalance = Util.toEther(100);
   const PoolState = Object.freeze({
     None : 0,
@@ -173,7 +173,7 @@ contract('QuantstampStaking', function(accounts) {
     const staker = accounts[4];
     const admin = "0x0";
     const poolId = 0;
-    const stakerBudget = Util.toQsp(1000);
+    const stakerBudget = Util.toQsp("1000");
 
     // vars needed for creating pool
     const depositQspWei = Util.toQsp(100);
@@ -374,10 +374,10 @@ contract('QuantstampStaking', function(accounts) {
     beforeEach("when staking funds", async function() {
       const minDeposit = TCRUtil.minDep;
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
-      var voting = await Voting.new(quantstampToken.address);
-      var quantstampParameterizer = await QuantstampParameterizer.new();
+      const voting = await Voting.new(quantstampToken.address);
+      const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
-      var quantstampRegistry = await QuantstampStakingRegistry.new();
+      const quantstampRegistry = await QuantstampStakingRegistry.new();
       await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       // enable transfers before any payments are allowed
@@ -476,7 +476,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
       await quantstampToken.transfer(staker2, stakerBudget, {from : owner});
       await quantstampToken.approve(qspb.address, stakerBudget, {from : staker2});
-      
+
       // create pool and stake funds
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
