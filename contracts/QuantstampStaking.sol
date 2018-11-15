@@ -566,7 +566,7 @@ contract QuantstampStaking is Ownable {
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
             uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
             uint lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-            stakeAmount = stakeAmount.mul(currentPayPeriods - lastPayPeriods);
+            stakeAmount = stakeAmount.mul(currentPayPeriods.sub(lastPayPeriods));
             require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
             numerator = numerator.add(stakeAmount);
         }
