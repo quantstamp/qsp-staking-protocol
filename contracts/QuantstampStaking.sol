@@ -443,12 +443,18 @@ contract QuantstampStaking is Ownable {
         uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
 
         if (totalQspWeiTransfer > 0) {
-            require(token.transfer(msg.sender, totalQspWeiTransfer));
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
-
+            // this loop is needed, because the computePayout function uses the stakes array
+            for (uint i = 0; i < stakes[poolIndex].length; i++) {
+                Stake memory stake = stakes[poolIndex][i];
+                if (stake.staker == msg.sender) {
+                    stakes[poolIndex][i].amountQspWei = 0;
+                }
+            }
+            require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
                 setState(poolIndex, PoolState.Cancelled);
@@ -459,15 +465,10 @@ contract QuantstampStaking is Ownable {
     /*
     * Allows the stakeholder to make an additional deposit to the contract
     */
-    function depositFunds(uint poolIndex, uint depositQspWei) external onlyPoolOwner(poolIndex) {
+    function depositFunds(uint poolIndex, uint depositQspWei) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-
-        require(currentState == PoolState.NotViolatedFunded
-                  || currentState == PoolState.Initialized
-                  || currentState == PoolState.NotViolatedUnderfunded
-               );
-
+        require(currentState != PoolState.Cancelled);
         require(token.transferFrom(poolOwner, address(this), depositQspWei),
             'Token deposit transfer did not succeed');
         pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
@@ -487,13 +488,6 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) onlyPoolOwner(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
-        PoolState currentState = getPoolState(poolIndex);
-        require(currentState == PoolState.NotViolatedFunded
-                  || currentState == PoolState.Initialized
-                  || currentState == PoolState.NotViolatedUnderfunded
-                  || currentState == PoolState.Cancelled
-               );
-
         uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
         require(withdrawalAmountQspWei > 0, 'The staker has no balance to withdraw');
         pools[poolIndex].depositQspWei = 0;

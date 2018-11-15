@@ -47,7 +47,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
   });
   
-  describe("withdrawDeposit()", async function() {
+  describe("withdrawDeposit", async function() {
     it("should fail for non-owner", async function() {
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: adversary}));
     });
@@ -66,9 +66,14 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       await qspb.withdrawDeposit(0, {from: poolOwner});
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
     });
+
+    it("should fail if the pool is in a Violated state", async function() {
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
+    });
   });
   
-  describe("depositFunds()", async function() {
+  describe("depositFunds", async function() {
     const addedDepositAmount = Util.toQsp(200);
     const totalExpectedDepositAmount = Util.toQsp(300);
     it("should fail for non-owner", async function() {
@@ -95,6 +100,20 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
       assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
       
+      Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
+    });
+
+    it("should fail if the pool is in a Violated state", async function() {
+      await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
+    });
+
+    it("should fail if the pool is in the Cancelled state", async function() {
+      await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
+      await quantstampToken.increaseApproval(qspb.address, addedDepositAmount, {from : poolOwner});
+      await qspb.depositFunds(0, addedDepositAmount, {from: poolOwner});
+      await qspb.withdrawDeposit(0, {from: poolOwner});
       Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });
   });
