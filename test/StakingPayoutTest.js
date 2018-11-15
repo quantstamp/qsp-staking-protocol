@@ -212,7 +212,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     });
 
     it("should only payout those stakes of the same staker which have been placed for a sufficient amount of time", async function() {
-      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
       Util.mineOneBlock();
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       Util.mineOneBlock();
