@@ -54,14 +54,16 @@ contract QuantstampStaking is Ownable {
         uint stakeCount; // the total number of stakes in the pool 
     }
 
-    // Individual stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
+    // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker address
+    // (the inner mapping's key) into the pool
     mapping (uint => mapping(address => Stake[])) public stakes;
 
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
     
-    mapping (uint => uint[]) bonusExpertAtPower;
-    mapping (uint => uint[]) powersOf100;
+    mapping (uint => uint[]) bonusExpertAtPower; // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
+    mapping (uint => uint[]) powersOf100; // Holds the powers of 100 corresponding to the i-th staker of 
+    // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -546,7 +548,8 @@ contract QuantstampStaking is Ownable {
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
-    * stakeAmount is the amount contributed by a staker.
+    * poolSize is the size of all stakes in this pool together with the bonuses awarded for experts;
+    * amountStaked is the amount contributed by a staker.
     * @param poolIndex - the pool from which the payout is awarded
     * @param staker - the staker to which the payout should be awarded
     * @return - the amount of QSP Wei that should be awarded
@@ -565,12 +568,11 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            // the state does not need to be changed at this point. It is not problem if it changes.
-            // the reason for this assignment is that no more local variables can be declared in this function.
-            uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+            uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
-            stakeAmount = stakeAmount.mul(((block.number.sub(maxBlockNumber))/getPoolPayPeriodInBlocks(poolIndex))-
-                (stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber))/getPoolPayPeriodInBlocks(poolIndex));
+            uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            uint lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            stakeAmount = stakeAmount.mul(currentPayPeriods - lastPayPeriods);
             require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
             numerator = numerator.add(stakeAmount);
         }
@@ -600,8 +602,8 @@ contract QuantstampStaking is Ownable {
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex) >
-                    stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber)/getPoolPayPeriodInBlocks(poolIndex)) {
+                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex)) >
+                    stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex))) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     LastPayoutBlockUpdate(poolIndex, staker);
                 }
