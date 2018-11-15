@@ -9,9 +9,9 @@
   "dependencies": {
     "coveralls": "3.0.0",
     "eslint": "5.6.1",
-    "ethereumjs-abi": "^0.6.5",
-    "ethjs-provider-http": "^0.1.6",
-    "ethjs-rpc": "^0.2.0",
+    "ethereumjs-abi": "0.6.5",
+    "ethjs-provider-http": "0.1.6",
+    "ethjs-rpc": "0.2.0",
     "ganache-cli": "6.1.8",
     "openzeppelin-solidity": "1.10.0",
     "sol-tcr": "0.0.2",
