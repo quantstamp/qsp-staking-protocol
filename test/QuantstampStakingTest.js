@@ -449,8 +449,6 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
       // the first expert staker is staker2
       assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
-      // the index of the stake of the first expert is 1 in the stake array
-      assert.equal(await qspb.getPoolFirstExpertStake(currentPoolIndex), 1);
     });
 
     it("should not allow staking because the policy is violated", async function() {
