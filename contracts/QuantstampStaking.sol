@@ -61,18 +61,12 @@ contract QuantstampStaking is Ownable {
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
     
-<<<<<<< ae76f331b8e8ade056e6c747f54a14aed7b4d1ed
     // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
     mapping (uint => uint[]) bonusExpertAtPower;
 
     // Holds the powers of 100 corresponding to the i-th staker of
     // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
     mapping (uint => uint[]) powersOf100;
-=======
-    mapping (uint => uint[]) bonusExpertAtPower; // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
-    mapping (uint => uint[]) powersOf100; // Holds the powers of 100 corresponding to the i-th staker of 
-    // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
->>>>>>> Review comments addressed
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -576,11 +570,7 @@ contract QuantstampStaking is Ownable {
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
             uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
             uint lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-<<<<<<< ae76f331b8e8ade056e6c747f54a14aed7b4d1ed
             stakeAmount = stakeAmount.mul(currentPayPeriods.sub(lastPayPeriods));
-=======
-            stakeAmount = stakeAmount.mul(currentPayPeriods - lastPayPeriods);
->>>>>>> Review comments addressed
             require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
             numerator = numerator.add(stakeAmount);
         }
