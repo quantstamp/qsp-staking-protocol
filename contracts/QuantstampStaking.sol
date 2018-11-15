@@ -483,7 +483,8 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
-            
+            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+            // this loop is needed, because the computePayout function uses the stakes array
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
                   calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
