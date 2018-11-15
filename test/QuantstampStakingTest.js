@@ -76,9 +76,9 @@ contract('QuantstampStaking', function(accounts) {
     it("should add a pool", async function() {
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
-      // transfer 100,000 QSP tokens to the poolOwner
+      // transfer poolOwnerBudget QSP tokens to the poolOwner
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
-      // allow the audit contract use up to 65QSP for audits
+      // allow the qspb contract use up to 1000QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
       
       // balance should be 0 in the beginning
