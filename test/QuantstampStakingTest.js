@@ -48,99 +48,119 @@ contract('QuantstampStaking', function(accounts) {
   let currentPoolNumber;
   let currentPoolIndex;
 
-  it("should add a pool", async function() {
-    qspb = await QuantstampStaking.deployed();
-    quantstampToken = await QuantstampToken.deployed();
-    quantstampRegistry = await QuantstampStakingRegistry.deployed();
-    candidateContract = await CandidateContract.deployed();
-    contractPolicy = await ZeroBalancePolicy.deployed();
-    // enable transfers before any payments are allowed
-    await quantstampToken.enableTransfer({from : owner});
-    // transfer 100,000 QSP tokens to the poolOwner
-    await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
-    // allow the audit contract use up to 65QSP for audits
-    await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
-    
-    // balance should be 0 in the beginning
-    assert.equal(await qspb.balanceQspWei.call(), 0);
-    // create pool
-    await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
-      depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
-    // check all pool properties
-    assert.equal(await qspb.getPoolsLength.call(), 1);
-    assert.equal(await qspb.getPoolCandidateContract(0), candidateContract.address);
-    assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy.address);
-    assert.equal(await qspb.getPoolOwner(0), poolOwner);
-    assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei);
-    assert.equal(await qspb.getPoolMinStakeQspWei(0), minStakeQspWei);
-    assert.equal(await qspb.getPoolDepositQspWei(0), depositQspWei);
-    assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor);
-    assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor);
-    assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
-    assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
-    assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
-    assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), web3.eth.getBlock("latest").number);
-    assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
-    assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
-    // balance should be increased
-    assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+  describe("constructor", async function() {
+    it("should not be able to construct the QuantstampAssurnce contract if the token address is 0", async function() {
+      quantstampRegistry = await QuantstampStakingRegistry.new();
+      Util.assertTxFail(QuantstampStaking.new(Util.ZERO_ADDRESS, quantstampRegistry.address, {from: owner}));
+    });
+
+    it("should fail if a TCR with address zero is passed into the constructor", async function () {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS));
+    });
   });
 
-  it("should have an owner", async function() {
-    assert.equal(await qspb.owner(), owner);
-  });
+  describe("createPool", async function() {
+    it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
+      qspb = await QuantstampStaking.deployed();
+      quantstampToken = await QuantstampToken.deployed();
+      quantstampRegistry = await QuantstampStakingRegistry.deployed();
+      candidateContract = await CandidateContract.deployed();
+      contractPolicy = await ZeroBalancePolicy.deployed();
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
 
-  it("should have the right token address", async function() {
-    assert.equal(await qspb.getToken(), quantstampToken.address);
-  });
+    it("should add a pool", async function() {
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer 100,000 QSP tokens to the poolOwner
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      // allow the audit contract use up to 65QSP for audits
+      await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+      
+      // balance should be 0 in the beginning
+      assert.equal(await qspb.balanceQspWei.call(), 0);
+      // create pool
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      // check all pool properties
+      assert.equal(await qspb.getPoolsLength.call(), 1);
+      assert.equal(await qspb.getPoolCandidateContract(0), candidateContract.address);
+      assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy.address);
+      assert.equal(await qspb.getPoolOwner(0), poolOwner);
+      assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei);
+      assert.equal(await qspb.getPoolMinStakeQspWei(0), minStakeQspWei);
+      assert.equal(await qspb.getPoolDepositQspWei(0), depositQspWei);
+      assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor);
+      assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor);
+      assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
+      assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
+      assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
+      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), web3.eth.getBlock("latest").number);
+      assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
+      assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
+      // balance should be increased
+      assert.equal(await qspb.balanceQspWei.call(), depositQspWei);
+    });
 
-  it("should have the right registry address", async function() {
-    assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
-  });
+    it("should have an owner", async function() {
+      assert.equal(await qspb.owner(), owner);
+    });
 
-  it("should not create a pool if the initial deposit is zero", async function() {
-    // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake 
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
-      minStakeQspWei, 0, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
-  });
+    it("should have the right token address", async function() {
+      assert.equal(await qspb.getToken(), quantstampToken.address);
+    });
 
-  it("should not create a pool if the maximum payout per period is zero", async function() {
-    // This would mean that the stakeholder would not pay any stakers, which would lead to no stakes
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, 0,
-      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
-  });
+    it("should have the right registry address", async function() {
+      assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
+    });
 
-  it("should not create a pool if the minimum stake that needs to be collected is zero", async function() {
-    // This would mean that a pool is active without any funds staked, which would not be in the interest of a stakeholder
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
-      0, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
-  });
+    it("should not create a pool if the initial deposit is zero", async function() {
+      // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake 
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+        minStakeQspWei, 0, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
 
-  it("should not create a pool if the pay period is zero", async function() {
-    // This would lead to a division by zero in the payout computation function and it would mean that
-    // payouts are awarded all the time, which could quickly deplate all the deposited funds of the stakeholder
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
-      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, 0,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
-  });
+    it("should not create a pool if the maximum payout per period is zero", async function() {
+      // This would mean that the stakeholder would not pay any stakers, which would lead to no stakes
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, 0,
+        minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
 
-  it("should not create a pool if the minimum staking time is zero", async function() {
-    // This would mean that a staker could withdraw their stake at any time from the pool, which would leave the
-    // stakeholder unprotected in case an attack is discovered
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
-      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      0, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
-  });
+    it("should not create a pool if the minimum stake that needs to be collected is zero", async function() {
+      // This would mean that a pool is active without any funds staked, which would not be in the interest of a stakeholder
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+        0, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
 
-  it("should not create a pool if the timeout period is zero", async function() {
-    // This would place the pool in the cancelled state immediately even if the first interaction is placing a stake
-    Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
-      minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, 0, urlOfAuditReport, {from: poolOwner}));
+    it("should not create a pool if the pay period is zero", async function() {
+      // This would lead to a division by zero in the payout computation function and it would mean that
+      // payouts are awarded all the time, which could quickly deplate all the deposited funds of the stakeholder
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+        minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, 0,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
+
+    it("should not create a pool if the minimum staking time is zero", async function() {
+      // This would mean that a staker could withdraw their stake at any time from the pool, which would leave the
+      // stakeholder unprotected in case an attack is discovered
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+        minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        0, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
+    });
+
+    it("should not create a pool if the timeout period is zero", async function() {
+      // This would place the pool in the cancelled state immediately even if the first interaction is placing a stake
+      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
+        minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, 0, urlOfAuditReport, {from: poolOwner}));
+    });
   });
 
   describe("withdrawClaim", async function() {
@@ -190,6 +210,10 @@ contract('QuantstampStaking', function(accounts) {
       // the pool state is already intialized
       assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
       Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
+    });
+
+    it("should fail if policy is not violated", async function() {
+      Util.assertTxFail(qspb.checkPolicy(poolId));
     });
     
     it("should not allow claim withdraw when pool is cancelled", async function() {
@@ -311,10 +335,6 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
-  it("should fail if a TCR with address zero is passed into the constructor", async function () {
-    Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS));
-  });
-
   describe("isExpert", async function() {
 
     it("should return true if the expert is on the list", async function() {
@@ -349,7 +369,7 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
-  describe("stakeFunds()", async function() {
+  describe("stakeFunds", async function() {
     beforeEach("when staking funds", async function() {
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
@@ -412,7 +432,7 @@ contract('QuantstampStaking', function(accounts) {
   });
   //});
 
-  describe("withdrawStake()", async function() {
+  describe("withdrawStake", async function() {
     beforeEach("when withdrawing stakes", async function() {
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
@@ -468,6 +488,13 @@ contract('QuantstampStaking', function(accounts) {
       Util.assertTxFail(qspb.withdrawStake(currentPoolIndex, {from: staker}));
       assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
       assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), minStakeQspWei);
+    });
+
+    it("should not withdraw stake before the policy period", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      Util.assertTxFail(qspb.withdrawStake(currentPoolIndex, {from: staker}));
     });
 
     it("should withdraw stake after the policy period", async function() {
