@@ -61,9 +61,12 @@ contract QuantstampStaking is Ownable {
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
     
-    mapping (uint => uint[]) bonusExpertAtPower; // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
-    mapping (uint => uint[]) powersOf100; // Holds the powers of 100 corresponding to the i-th staker of 
+    // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
+    mapping (uint => uint[]) bonusExpertAtPower;
+
+    // Holds the powers of 100 corresponding to the i-th staker of
     // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
+    mapping (uint => uint[]) powersOf100;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -180,8 +183,6 @@ contract QuantstampStaking is Ownable {
         require(currentState != PoolState.ViolatedUnderfunded);
         require(currentState != PoolState.Cancelled);
 
-        /* todo(mderka) Consider design the does not require iteration over stakes
-           created SP-45 */
         // claim all stakes
         uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
         require(token.transfer(poolOwner, total),
@@ -254,7 +255,7 @@ contract QuantstampStaking is Ownable {
     }
 
     function getPoolSizeQspWei(uint index) public view returns(uint) {
-      return pools[index].poolSizeQspWei;
+        return pools[index].poolSizeQspWei;
     }
 
     function getPoolUrlOfAuditReport(uint index) public view returns(string) {
@@ -271,6 +272,10 @@ contract QuantstampStaking is Ownable {
 
     function getPoolTotalStakeQspWei(uint index) public view returns(uint) {
         return pools[index].totalStakeQspWei;
+    }
+
+    function getPoolStakeCount(uint index) public view returns(uint) {
+        return pools[index].stakeCount;
     }
 
     /**
@@ -437,10 +442,10 @@ contract QuantstampStaking is Ownable {
         }
 
         bonusExpertAtPower[poolIndex].push(
-          bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul((getPoolBonusExpertFactor(poolIndex).add(100))));
+            bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul((getPoolBonusExpertFactor(poolIndex).add(100))));
         powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
         pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.add(
-          calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
+            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
 
         // Check if there are enough stakes in the pool
         if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
@@ -482,7 +487,7 @@ contract QuantstampStaking is Ownable {
             // this loop is needed, because the computePayout function uses the stakes array
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
-                  calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
+                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
             require(token.transfer(msg.sender, totalQspWeiTransfer));
@@ -548,7 +553,7 @@ contract QuantstampStaking is Ownable {
         }
 
         if (getPoolSizeQspWei(poolIndex) == 0) { // all stakes have been withdrawn
-          return 0;
+            return 0;
         }
 
         // compute the numerator by adding the staker's stakes together
