@@ -560,11 +560,9 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
+            uint startBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
-            uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-            uint lastPayPeriods = getNumberOfPayoutsForStaker(poolIndex, i, staker, maxBlockNumber);
-            stakeAmount = stakeAmount.mul(currentPayPeriods.sub(lastPayPeriods));
+            stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
 
@@ -595,7 +593,7 @@ contract QuantstampStaking is Ownable {
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
-                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex)) > numberOfPayouts) {
+                if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     LastPayoutBlockUpdate(poolIndex, staker);
                 }
@@ -613,14 +611,17 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the stake was placed
     * @param i - the index of the stake in the stakes array
     * @param staker - the address of the staker which has placed the stake
-    * @param maxBlockNumber - the value that is to be compared with the lastPayoutBlock of the staker
+    * @param startBlockNumber - the block number where the stake begins to be active (waiting for payouts)
     * @return - the number of payout periods that the staker needs to receive payouts for
     */
-    function getNumberOfPayoutsForStaker(uint poolIndex, uint i, address staker, uint maxBlockNumber) internal view returns(uint) {
-        if (maxBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { // then avoid integer underflow
-            return 0;
+    function getNumberOfPayoutsForStaker(uint poolIndex, uint i, address staker, uint startBlockNumber) internal view returns(uint) {
+        uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+        uint lastPayPeriods;
+        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { // then avoid integer underflow
+            lastPayPeriods = 0;
         } else {
-            return stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
         }
+        return currentPayPeriods.sub(lastPayPeriods);
     }
 }
