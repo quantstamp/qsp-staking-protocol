@@ -480,7 +480,6 @@ contract QuantstampStaking is Ownable {
         uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
 
         if (totalQspWeiTransfer > 0) {
-            pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(totalQspWeiTransfer);
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
