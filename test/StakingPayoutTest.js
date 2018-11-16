@@ -188,12 +188,12 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // the request of staker4 must return 0
       await qspb.withdrawInterest(currentPoolIndex, staker4, {from: staker4});
       assert.equal(await Util.balanceOf(quantstampToken, staker4), balanceOfStaker4,
-      "The balance of staker 4 has changed.");
+        "The balance of staker 4 has changed.");
       // after waiting for an entire payPeriod the request of staker 4 must succeed
       Util.mineNBlocks(payPeriodInBlocks/2);
       await qspb.withdrawInterest(currentPoolIndex, staker4, {from: staker4});
       assert.equal(await Util.balanceOf(quantstampToken, staker4), parseInt(balanceOfStaker4) + parseInt(payoutStaker),
-      "The balance of staker 4 does not include the payout");
+        "The balance of staker 4 does not include the payout");
     });
 
     it("should move the pool in a cancelled state if a staker cannot be payed out", async function() {
