@@ -562,9 +562,13 @@ contract QuantstampStaking is Ownable {
             uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
             uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-            uint lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            uint lastPayPeriods;
+            if (maxBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) {
+                lastPayPeriods = 0;
+            } else {
+                lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            }
             stakeAmount = stakeAmount.mul(currentPayPeriods.sub(lastPayPeriods));
-            require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
             numerator = numerator.add(stakeAmount);
         }
 
@@ -586,15 +590,22 @@ contract QuantstampStaking is Ownable {
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, staker);
-        require(payout > 0, "Cannot withdraw non-positive payout");
+        if (payout == 0) // no need to transfer anything
+            return;
         // check if the are enough funds in the pool deposit
         if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex)) >
-                    stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex))) {
+                uint lastPayPeriod;
+                if (stakes[poolIndex][msg.sender][i].lastPayoutBlock < stakes[poolIndex][msg.sender][i].blockNumber) {
+                    lastPayPeriod = 0;
+                } else {
+                    lastPayPeriod = stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+                }
+
+                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex)) > lastPayPeriod) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     LastPayoutBlockUpdate(poolIndex, staker);
                 }
