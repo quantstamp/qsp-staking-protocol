@@ -490,6 +490,7 @@ contract QuantstampStaking is Ownable {
                     calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
+
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
@@ -559,12 +560,9 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint maxBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
+            uint startBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
-            uint currentPayPeriods = block.number.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-            uint lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(maxBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
-            stakeAmount = stakeAmount.mul(currentPayPeriods.sub(lastPayPeriods));
-            require(stakeAmount >= 0, "Cannot have a negative stakeAmount");
+            stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
 
@@ -586,15 +584,16 @@ contract QuantstampStaking is Ownable {
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, staker);
-        require(payout > 0, "Cannot withdraw non-positive payout");
+        if (payout == 0) // no need to transfer anything
+            return;
         // check if the are enough funds in the pool deposit
         if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                if (block.number.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex)) >
-                    stakes[poolIndex][msg.sender][i].lastPayoutBlock.sub(stakes[poolIndex][msg.sender][i].blockNumber).div(getPoolPayPeriodInBlocks(poolIndex))) {
+                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
+                if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     LastPayoutBlockUpdate(poolIndex, staker);
                 }
@@ -606,5 +605,23 @@ contract QuantstampStaking is Ownable {
         } else { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }
+    }
+
+    /** This function returns the number of payouts that a staker must receive for his/her stake in a pool.
+    * @param poolIndex - the index of the pool where the stake was placed
+    * @param i - the index of the stake in the stakes array
+    * @param staker - the address of the staker which has placed the stake
+    * @param startBlockNumber - the block number where the stake begins to be active (waiting for payouts)
+    * @return - the number of payout periods that the staker needs to receive payouts for
+    */
+    function getNumberOfPayoutsForStaker(uint poolIndex, uint i, address staker, uint startBlockNumber) internal view returns(uint) {
+        uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+        uint lastPayPeriods;
+        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { // then avoid integer underflow
+            lastPayPeriods = 0;
+        } else {
+            lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+        }
+        return currentPayPeriods.sub(lastPayPeriods);
     }
 }
