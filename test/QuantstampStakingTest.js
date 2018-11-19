@@ -9,6 +9,7 @@ const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
+const BigNumber = require('bignumber.js');
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
@@ -458,7 +459,15 @@ contract('QuantstampStaking', function(accounts) {
       // the first expert staker is staker2
       assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
       assert.equal(await qspb.getPoolStakeCount(currentPoolIndex), 4);
-      // assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), 43321808100000000000); // TODO(amurashkin) uncomment when the computation bug is resolved
+      // compute whta the pool size should be according to the bonuses and stakes in the pool
+      const bonusExpert = new BigNumber(bonusExpertFactor);
+      const bonusFirstExpert = new BigNumber(bonusFirstExpertFactor);
+      var poolSize = new BigNumber(minStakeQspWei);
+      poolSize = poolSize.
+        plus(poolSize.times(bonusExpert.plus(100)).times(bonusFirstExpert.plus(100)).dividedBy(new BigNumber(100).pow(2))).
+        plus(poolSize.times(bonusExpert.pow(2).plus(new BigNumber(100).pow(2))).dividedBy(new BigNumber(100).pow(2))).
+        plus(poolSize.times(bonusExpert.pow(3).plus(new BigNumber(100).pow(3))).dividedBy(new BigNumber(100).pow(3)));
+      assert.equal(parseInt(await qspb.getPoolSizeQspWei(currentPoolIndex)), poolSize.toString());
     });
 
     it("should not allow staking because the policy is violated", async function() {

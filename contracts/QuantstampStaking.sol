@@ -396,7 +396,8 @@ contract QuantstampStaking is Ownable {
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
         if (isExpert(stake.staker)) {
-            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex]).div(powersOf100[poolIndex][stake.contributionIndex]);
+            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex-1].
+                add(powersOf100[poolIndex][stake.contributionIndex-1])).div(powersOf100[poolIndex][stake.contributionIndex-1]);
             /* Check if it is the first stake of the first expert */
             if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
@@ -442,7 +443,7 @@ contract QuantstampStaking is Ownable {
         }
 
         bonusExpertAtPower[poolIndex].push(
-            bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul((getPoolBonusExpertFactor(poolIndex).add(100))));
+            bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
         powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
         pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.add(
             calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
@@ -536,7 +537,7 @@ contract QuantstampStaking is Ownable {
 
     /**
     * Computes the total amount due to for the staker payout when the contract is not violated.
-    * maxPayout * (amountStaked [* (1+bonusExpert)^i][* (1+bonusFirstExp)] )/poolSize
+    * maxPayout * (amountStaked [* (1+bonusExpert^i)][* (1+bonusFirstExp)] )/poolSize
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
