@@ -163,7 +163,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.withdrawStake(currentPoolIndex, {from: staker1});
       await qspb.withdrawStake(currentPoolIndex, {from: staker2});
       await qspb.withdrawStake(currentPoolIndex, {from: staker3});
-      assert.equal(parseInt(await qspb.computePayout(currentPoolIndex, staker1)), 0);
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
     });
   });
 
