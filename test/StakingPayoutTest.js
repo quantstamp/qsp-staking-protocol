@@ -153,7 +153,18 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // the sum of all payouts should be equal to maxPayoutQspWei
       assert.equal(payout1.toNumber() + payout2.toNumber() + payout3.toNumber() + payout4.toNumber(), maxPayoutQspWei,
         "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
-    }); 
+    });
+
+    it("should return 0 if all the stakes have been withdawn", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker1});
+      await qspb.withdrawStake(currentPoolIndex, {from: staker2});
+      await qspb.withdrawStake(currentPoolIndex, {from: staker3});
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
+    });
   });
 
   describe("withdrawInterest", async function() {
