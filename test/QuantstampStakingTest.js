@@ -552,4 +552,47 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), 0);
     });
   });
+
+  describe("isStaker", async function() {
+    beforeEach("when the GUI needs to check if the current user is a staker in a pool", async function() {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampRegistry = await QuantstampStakingRegistry.new();
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      candidateContract = await CandidateContract.new(candidateContractBalance);
+      contractPolicy = await ZeroBalancePolicy.new();
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
+      
+      // create pool and stake funds
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      currentPoolNumber = await qspb.getPoolsLength();
+      currentPoolIndex = currentPoolNumber - 1;
+    });
+
+    it("should return false for a pool that does not exist", async function() {
+      assert.equal(await qspb.isStaker(currentPoolIndex + 10, staker), false);
+    });
+
+    it("should return false if the pool does not have any stakes yet", async function() {
+      assert.equal(await qspb.isStaker(currentPoolIndex, staker), false);
+    });
+
+    it("should return true if the staker has a stake in the pool", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await qspb.isStaker(currentPoolIndex, staker), true);
+    });
+
+    it("should return false if the staker has withdrawn his stake from the pool", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      Util.mineNBlocks(minStakeTimeInBlocks/2);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal(await qspb.isStaker(currentPoolIndex, staker), false);
+    });
+  });
 });
