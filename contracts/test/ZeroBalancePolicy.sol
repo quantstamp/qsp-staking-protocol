@@ -13,10 +13,8 @@ contract ZeroBalancePolicy is IPolicy {
     function isViolated(address contractAddress) external view returns(bool) {
         CandidateContract candidateContract = CandidateContract(contractAddress);
         if (candidateContract.balance() == 0) {
-            emit Violated(true);
             return true;
         } else {
-            emit Violated(false);
             return false; 
         }
     }

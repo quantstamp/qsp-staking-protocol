@@ -339,7 +339,7 @@ contract QuantstampStaking is Ownable {
         powersOf100[currentPoolNumber].push(1);
         currentPoolNumber = currentPoolNumber.add(1);
         balanceQspWei = balanceQspWei.add(depositQspWei);
-        StateChanged(currentPoolNumber, PoolState.Initialized);
+        emit StateChanged(currentPoolNumber, PoolState.Initialized);
     }
 
     /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
@@ -595,7 +595,7 @@ contract QuantstampStaking is Ownable {
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
                 if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
-                    LastPayoutBlockUpdate(poolIndex, staker);
+                    emit LastPayoutBlockUpdate(poolIndex, staker);
                 }
             }
             
