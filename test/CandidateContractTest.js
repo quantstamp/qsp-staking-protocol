@@ -6,6 +6,8 @@ const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const TrivialBackdoorPolicy = artifacts.require('TrivialBackdoorPolicy');
 const TCRContainsEntryPolicy = artifacts.require('TCRContainsEntryPolicy');
+const DemocraticViolationPolicy = artifacts.require('DemocraticViolationPolicy');
+const TrustedOpinionPolicy = artifacts.require('TrustedOpinionPolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -20,6 +22,8 @@ contract('CandidateContract', function(accounts) {
   let trivialBackdoorPolicy;
   let tcr;
   let tcrContainsEntryPolicy;
+  let democraticPolicy;
+  let trustedOpinionPolicy;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
@@ -28,6 +32,8 @@ contract('CandidateContract', function(accounts) {
     trivialBackdoorPolicy = await TrivialBackdoorPolicy.deployed();
     tcr = await Registry.deployed();
     tcrContainsEntryPolicy = await TCRContainsEntryPolicy.deployed();
+    democraticPolicy = await DemocraticViolationPolicy.deployed();
+    trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
   });
 
   it("should not initially violate the zero-balance policy", async function() {
@@ -83,5 +89,32 @@ contract('CandidateContract', function(accounts) {
     await tcrContainsEntryPolicy.specifyEntry(listing);
     assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), true);
   });
-  
+
+  it("should not initially violate the democratic policy", async function() {
+    assert.equal(await democraticPolicy.isViolated(candidateContract.address), false);
+  });
+
+  it("should not have its status voted on by the same address more than once", async function() {
+    await democraticPolicy.vote(1, {from: accounts[1]});
+    Util.assertTxFail(democraticPolicy.vote(1, {from: accounts[1]}));
+  });
+
+  it("should violate the democratic policy after some people vote for violation", async function() {
+    await democraticPolicy.vote(1, {from: accounts[2]});
+    await democraticPolicy.vote(1, {from: accounts[3]});
+    assert.equal(await democraticPolicy.isViolated(candidateContract.address), true);
+  });
+
+  it("should not initially violate the trusted opinion policy", async function() {
+    assert.equal(await trustedOpinionPolicy.isViolated(candidateContract.address), false);
+  });
+
+  it("should violate the trusted policy after some trusted people vote for violation", async function() {
+    await trustedOpinionPolicy.giveRightToVote(accounts[2], {from: accounts[0]});
+    await trustedOpinionPolicy.giveRightToVote(accounts[3], {from: accounts[0]});
+    await trustedOpinionPolicy.vote(1, {from: accounts[2]});
+    await trustedOpinionPolicy.vote(1, {from: accounts[3]});
+    assert.equal(await trustedOpinionPolicy.isViolated(candidateContract.address), true);
+  });
+
 });
