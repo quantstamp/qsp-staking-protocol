@@ -90,7 +90,6 @@ contract('CandidateContract', function(accounts) {
 
     await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
 
-    //await tcrContainsEntryPolicy.specifyEntry(listing);
     assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), true);
   });
 
