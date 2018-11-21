@@ -9,7 +9,7 @@ import "../IPolicy.sol";
 /// @title DemocraticViolationPolicy
 /// @author Jan Gorzny
 
-// A policy that returns true if and only if a number of people have submitted 
+// A policy that returns true if and only if a number of accounts have submitted
 // votes indicating an attack has occurred prior to isViolated being called.
 // Note that the sample is not a safe policy to stake on: at any point, someone
 // could create several accounts and submit a vote indicating a hack;
