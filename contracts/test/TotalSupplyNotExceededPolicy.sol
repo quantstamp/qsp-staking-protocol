@@ -9,8 +9,6 @@ import "./CandidateToken.sol";
 
 contract TotalSupplyNotExceededPolicy is IPolicy {
 
-    event Violated(bool value);
-
     uint256 public maximumSupply;
 
     constructor(
@@ -22,10 +20,8 @@ contract TotalSupplyNotExceededPolicy is IPolicy {
     function isViolated(address contractAddress) external view returns(bool) {
       CandidateToken candidateToken = CandidateToken(contractAddress);
       if (candidateToken.totalSupply() > maximumSupply) {
-          emit Violated(true);
           return true;
       } else {
-          emit Violated(false);
           return false;
       }
     }

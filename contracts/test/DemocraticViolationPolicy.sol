@@ -2,11 +2,21 @@ pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
 
-// Adapted from https://solidity.readthedocs.io/en/develop/solidity-by-example.html (19 November 2018)
+// Source adapted from
+// https://solidity.readthedocs.io/en/develop/solidity-by-example.html
+// (19 November 2018)
+
+/// @title DemocraticViolationPolicy
+/// @author Jan Gorzny
+
+// A policy that returns true if and only if a number of people have submitted 
+// votes indicating an attack has occurred prior to isViolated being called.
+// Note that the sample is not a safe policy to stake on: at any point, someone
+// could create several accounts and submit a vote indicating a hack;
+// sufficiently many votes would therefore cause the policy to indicate that it
+// has been violated.
 
 contract DemocraticViolationPolicy is IPolicy {
-
-    event Violated(bool value);
 
     // This declares a new complex type which will
     // be used for variables later.
@@ -43,10 +53,8 @@ contract DemocraticViolationPolicy is IPolicy {
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == candidateContract);
         if (numOfVotesReceived >= minimumNumberOfVotesForViolation) {
-            emit Violated(true);
             return true;
         } else {
-            emit Violated(false);
             return false;
         }
     }

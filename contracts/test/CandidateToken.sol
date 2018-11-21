@@ -1,4 +1,4 @@
-pragma solidity ^0.4.16;
+pragma solidity 0.4.24;
 
 // Taken from https://www.ethereum.org/token#central-mint (19 Nov 2018)
 

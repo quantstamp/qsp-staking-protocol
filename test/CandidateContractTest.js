@@ -16,6 +16,7 @@ contract('CandidateContract', function(accounts) {
   //Necessary for TCR policy test
   const owner = accounts[0];
   let quantstampToken;
+  const listing = accounts[9];
 
   let candidateContract;
   let zeroBalancePolicy;
@@ -31,7 +32,7 @@ contract('CandidateContract', function(accounts) {
     zeroBalancePolicy = await ZeroBalancePolicy.deployed();
     trivialBackdoorPolicy = await TrivialBackdoorPolicy.deployed();
     tcr = await Registry.deployed();
-    tcrContainsEntryPolicy = await TCRContainsEntryPolicy.deployed();
+    tcrContainsEntryPolicy = await TCRContainsEntryPolicy.new(listing);
     democraticPolicy = await DemocraticViolationPolicy.deployed();
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
   });
@@ -58,6 +59,10 @@ contract('CandidateContract', function(accounts) {
     assert.equal(await trivialBackdoorPolicy.isViolated(candidateContract.address), true);
   });
 
+  it("should not matter when the TCR entry policy is checked with a non-TCR address", async function() {
+    Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
+  });
+
   it("should initially violate the TCR entry policy", async function() {
     assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), false);
   });
@@ -70,8 +75,7 @@ contract('CandidateContract', function(accounts) {
     await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
     await tcr.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
 
-    const applicant = accounts[9];
-    const listing = applicant;
+    const applicant = listing;
     const minDeposit = TCRUtil.minDep;
 
     await quantstampToken.enableTransfer({from : owner});
@@ -86,8 +90,12 @@ contract('CandidateContract', function(accounts) {
 
     await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
 
-    await tcrContainsEntryPolicy.specifyEntry(listing);
+    //await tcrContainsEntryPolicy.specifyEntry(listing);
     assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), true);
+  });
+
+  it("should not matter when the democratic opinion policy is checked with the wrong address", async function() {
+    Util.assertTxFail(democraticPolicy.isViolated(Util.ZERO_ADDRESS));
   });
 
   it("should not initially violate the democratic policy", async function() {
@@ -103,6 +111,10 @@ contract('CandidateContract', function(accounts) {
     await democraticPolicy.vote(1, {from: accounts[2]});
     await democraticPolicy.vote(1, {from: accounts[3]});
     assert.equal(await democraticPolicy.isViolated(candidateContract.address), true);
+  });
+
+  it("should not matter when the trusted opinion policy is checked with the wrong address", async function() {
+    Util.assertTxFail(trustedOpinionPolicy.isViolated(Util.ZERO_ADDRESS));
   });
 
   it("should not initially violate the trusted opinion policy", async function() {
