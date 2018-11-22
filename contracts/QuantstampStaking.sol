@@ -342,6 +342,16 @@ contract QuantstampStaking is Ownable {
         emit StateChanged(currentPoolNumber, PoolState.Initialized);
     }
 
+    /**
+    * Checks if the given address is a staker of the given pool index
+    * @param poolIndex - the index of the pool where to check for stakers
+    * @param staker - the address of the staker to check for
+    * @return - true if the staker has a stake in the pool, false otherwise
+    */
+    function isStaker(uint poolIndex, address staker) external view returns(bool) {
+        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
+    }
+
     /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
     /// entries to be of type Bytes32. addr is first cast to Uint256 so that it
     /// becomes 32 bytes long, addr is then shifted 12 bytes (96 bits) to the
