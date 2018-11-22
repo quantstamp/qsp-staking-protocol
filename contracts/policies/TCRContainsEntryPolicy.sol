@@ -18,9 +18,9 @@ contract TCRContainsEntryPolicy is IPolicy {
     function isViolated(address contractAddress) external view returns(bool) {
       Registry candidateContract = Registry(contractAddress);
       if (candidateContract.isWhitelisted(interestingEntry)) {
-          return true;
-      } else {
           return false;
+      } else {
+          return true;
       }
     }
 }

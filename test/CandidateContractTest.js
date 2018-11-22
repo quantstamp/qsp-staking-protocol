@@ -63,11 +63,11 @@ contract('CandidateContract', function(accounts) {
     Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
   });
 
-  it("should initially violate the TCR entry policy", async function() {
-    assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), false);
+  it("should initially violate the TCR entry policy (entry missing)", async function() {
+    assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), true);
   });
 
-  it("should no longer violate the TCR entry policy once the TCR is updated", async function() {
+  it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
     const voting = await Voting.deployed();
     await voting.init(QuantstampToken.address);
 
@@ -90,7 +90,7 @@ contract('CandidateContract', function(accounts) {
 
     await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
 
-    assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), true);
+    assert.equal(await tcrContainsEntryPolicy.isViolated(tcr.address), false);
   });
 
   it("should not matter when the democratic opinion policy is checked with the wrong address", async function() {
