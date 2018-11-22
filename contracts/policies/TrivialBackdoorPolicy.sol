@@ -7,8 +7,6 @@ import "../IPolicy.sol";
 
 contract TrivialBackdoorPolicy is IPolicy {
 
-    event Violated(bool value);
-
     // Whether or not the policy was violated
     bool public contractViolated;
 
@@ -17,7 +15,6 @@ contract TrivialBackdoorPolicy is IPolicy {
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
-      emit Violated(contractViolated);
       return contractViolated;
     }
 }

@@ -2,12 +2,13 @@ pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
 
-// Adapted from https://solidity.readthedocs.io/en/develop/solidity-by-example.html (19 November 2018)
+// Adapted from
+// https://solidity.readthedocs.io/en/develop/solidity-by-example.html
+// (19 November 2018)
 
-/// @title Voting
+/// @title TrustedOpinionPolicy
+/// @author Jan Gorzny
 contract TrustedOpinionPolicy is IPolicy {
-
-    event Violated(bool value);
 
     // This declares a new complex type which will
     // be used for variables later.
@@ -58,10 +59,8 @@ contract TrustedOpinionPolicy is IPolicy {
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == candidateContract);
         if (numOfVotesReceived >= minimumNumberOfVotesForViolation) {
-            emit Violated(true);
             return true;
         } else {
-            emit Violated(false);
             return false;
         }
     }

@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
-import "./CandidateToken.sol";
+import "../test/CandidateToken.sol";
 
 
 /// @title OwnerNotChangedPolicy - the policy is violated if the owner has changed
