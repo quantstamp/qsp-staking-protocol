@@ -17,12 +17,12 @@ contract('CandidateToken', function(accounts) {
     Util.assertTxFail(totalSupplyPolicy.isViolated(owner));
   });
 
-  it("should not initially violate the at most 2*10**18 minted tokens policy", async function() {
+  it("should not initially violate minted tokens policy (no tokens minted yet)", async function() {
     assert.equal(await totalSupplyPolicy.isViolated(candidateToken.address), false);
   });
 
-  it("should violate the at most 2*10**18 minted tokens policy when too many (1) additional tokens are minted", async function() {
-    await candidateToken.mintToken(owner, 1);
+  it("should violate the minted tokens policy when too many (1) additional tokens are minted", async function() {
+    await candidateToken.mint(owner, 1);
 
     assert.equal(await totalSupplyPolicy.isViolated(candidateToken.address), true);
   });

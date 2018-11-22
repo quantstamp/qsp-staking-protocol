@@ -12,6 +12,6 @@ module.exports = function(deployer) {
     .then(() => deployer.deploy(ZeroBalancePolicy))
     .then(() => deployer.deploy(DemocraticViolationPolicy, 2, CandidateContract.address));
   deployer.deploy(TrivialBackdoorPolicy);
-  deployer.deploy(CandidateToken, 2, "CandidateToken", "CAN");
-  deployer.deploy(TotalSupplyNotExceededPolicy, 2);
+  deployer.deploy(CandidateToken);
+  deployer.deploy(TotalSupplyNotExceededPolicy, 0);
 };

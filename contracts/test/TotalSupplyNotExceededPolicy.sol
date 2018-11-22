@@ -14,7 +14,7 @@ contract TotalSupplyNotExceededPolicy is IPolicy {
     constructor(
       uint256 max
     ) public {
-      maximumSupply =  max * 10 ** uint256(18);
+      maximumSupply =  max;
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
