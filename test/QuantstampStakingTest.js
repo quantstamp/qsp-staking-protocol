@@ -488,9 +488,9 @@ contract('QuantstampStaking', function(accounts) {
       const bonusFirstExpert = new BigNumber(bonusFirstExpertFactor);
       var poolSize = new BigNumber(minStakeQspWei);
       poolSize = poolSize.
-        plus(poolSize.times(bonusExpert.plus(100)).times(bonusFirstExpert.plus(100)).dividedBy(new BigNumber(100).pow(2))).
-        plus(poolSize.times(bonusExpert.pow(2).plus(new BigNumber(100).pow(2))).dividedBy(new BigNumber(100).pow(2))).
-        plus(poolSize.times(bonusExpert.pow(3).plus(new BigNumber(100).pow(3))).dividedBy(new BigNumber(100).pow(3)));
+        plus(poolSize.times(bonusExpert.pow(2).plus(new BigNumber(100).pow(2))).times(bonusFirstExpert.plus(100)).dividedBy(new BigNumber(100).pow(3))).
+        plus(poolSize.times(bonusExpert.pow(3).plus(new BigNumber(100).pow(3))).dividedBy(new BigNumber(100).pow(3))).
+        plus(poolSize.times(bonusExpert.pow(4).plus(new BigNumber(100).pow(4))).dividedBy(new BigNumber(100).pow(4)));
       assert.equal(parseInt(await qspb.getPoolSizeQspWei(currentPoolIndex)), poolSize.toString());
     });
 
