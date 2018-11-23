@@ -13,10 +13,13 @@
     "openzeppelin-solidity": "1.10.0",
     "sol-tcr": "0.0.2",
     "solidity-coverage": "0.5.4",
-    "truffle": "4.1.11"
+    "truffle": "4.1.11",
+    "truffle-hdwallet-provider": "0.0.3"
   },
   "devDependencies": {
-    "solhint": "1.2.1"
+    "solhint": "1.2.1",
+    "aws-sdk": "2.194.0",
+    "web3": "1.0.0-beta.34"
   },
   "scripts": {
     "test": "./node_modules/.bin/truffle test",
