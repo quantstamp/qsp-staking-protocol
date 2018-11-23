@@ -533,9 +533,8 @@ contract QuantstampStaking is Ownable {
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
         if (isExpert(stake.staker)) {
-            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex-1]
-                    .add(powersOf100[poolIndex][stake.contributionIndex-1]))
-                    .div(powersOf100[poolIndex][stake.contributionIndex-1]);
+            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
+                add(powersOf100[poolIndex][stake.contributionIndex])).div(powersOf100[poolIndex][stake.contributionIndex]);
             /* Check if it is the first stake of the first expert */
             if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
