@@ -581,11 +581,11 @@ contract QuantstampStaking is Ownable {
     
     /**
     * In case the pool is not violated and the payPeriod duration has passed, it computes the payout of the staker
+    * (defined by msg.sender),
     * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
     * @param poolIndex - the index of the pool from which the staker wants to receive a payout
-    * @param staker - the address of the staker who wants to receive the payout
     */
-    function withdrawInterest(uint poolIndex, address staker) external whenNotViolated(poolIndex) {
+    function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
         // check that the state of the pool is NotViolatedFunded
         require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
             "The state of the pool is not NotViolatedFunded, as expected.");
@@ -593,7 +593,7 @@ contract QuantstampStaking is Ownable {
         require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
-        uint payout = computePayout(poolIndex, staker);
+        uint payout = computePayout(poolIndex, msg.sender);
         if (payout == 0) // no need to transfer anything
             return;
         // check if the are enough funds in the pool deposit
@@ -605,13 +605,13 @@ contract QuantstampStaking is Ownable {
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
                 if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
-                    emit LastPayoutBlockUpdate(poolIndex, staker);
+                    emit LastPayoutBlockUpdate(poolIndex, msg.sender);
                 }
             }
             
-            require(token.transfer(staker, payout),
+            require(token.transfer(msg.sender, payout),
                 "Could not transfer the payout to the staker.");
-            emit StakerReceivedPayout(poolIndex, staker, payout);
+            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         } else { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }
