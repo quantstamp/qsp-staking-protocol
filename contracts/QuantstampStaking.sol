@@ -522,8 +522,8 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = balanceQspWei.add(depositQspWei);
 
         if (currentState == PoolState.NotViolatedUnderfunded
-            && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
-                setState(poolIndex, PoolState.NotViolatedFunded);
+            && pools[poolIndex].depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
+            setState(poolIndex, PoolState.NotViolatedFunded);
         }
 
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
