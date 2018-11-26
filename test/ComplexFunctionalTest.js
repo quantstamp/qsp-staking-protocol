@@ -12,7 +12,7 @@ const Util = require("./util.js");
 const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
 
-contract('QuantstampStaking: staker requests payout', function(accounts) {
+contract('QuantstampStaking: complex functional test', function(accounts) {
   const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
   const PoolState = Object.freeze({
     None : 0,
@@ -537,11 +537,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   it("should award 2 payouts to staker5 who has already staked for 2 pay periods and not requested a payout yet", async function() {
     // check that the 2nd pay period has not passed for staker5
     const currentBlock = new BigNumber(web3.eth.getBlock("latest").number);
-    if (staker5StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)) > currentBlock) {
-      // fast-forward to block where the second pay period ends
-      const blocksUntilSecondPayout = staker5StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
-      Util.mineNBlocks(blocksUntilSecondPayout);
-    }
+    // fast-forward to block where the second pay period ends
+    const blocksUntilSecondPayout = staker5StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
+    Util.mineNBlocks(blocksUntilSecondPayout);
     // compute payout for staker5
     const payoutStaker5 = staker5PayoutOrangePool.times(2).times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     assert.equal(payoutStaker5.toString(), await qspb.computePayout(orangePoolParams.index, staker5), payoutStaker5 + " != " + await qspb.computePayout(orangePoolParams.index, staker5));
@@ -558,11 +556,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
 
   it("should not be able to payout staker4 from the orange pool due to inssuficient funds, orange pool should then be cancelled", async function() {
     const currentBlock = new BigNumber(web3.eth.getBlock("latest").number);
-    if (staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)) > currentBlock) {
-      // fast-forward to block where the second pay period for staker4 starts
-      const blocksUntilSecondPayout = staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
-      Util.mineNBlocks(blocksUntilSecondPayout);
-    }
+    // fast-forward to block where the second pay period for staker4 starts
+    const blocksUntilSecondPayout = staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
+    Util.mineNBlocks(blocksUntilSecondPayout);
     // check that there is not enough deposit for paying out staker4
     const payoutStaker4 = staker4PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     assert.equal(payoutStaker4.toString(), (await qspb.computePayout(orangePoolParams.index, staker4)).toString());
@@ -604,11 +600,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   it("should award a payout to staker3 from the gray pool after the first pay period", async function() {
     // check if the first pay period of the gray pool has passed
     const currentBlock = new BigNumber(web3.eth.getBlock("latest").number);
-    if (grayPoolParams.timeOfStateInBlocks.plus(grayPoolParams.payPeriodInBlocks) > currentBlock) {
-      // fast-forward to block where the first pay period for the gray pool starts
-      const blocksUntilFirstPayout = grayPoolParams.timeOfStateInBlocks.plus(grayPoolParams.payPeriodInBlocks).minus(currentBlock);
-      Util.mineNBlocks(blocksUntilFirstPayout);
-    }
+    // fast-forward to block where the first pay period for the gray pool starts
+    const blocksUntilFirstPayout = grayPoolParams.timeOfStateInBlocks.plus(grayPoolParams.payPeriodInBlocks).minus(currentBlock);
+    Util.mineNBlocks(blocksUntilFirstPayout);
     const payoutStaker3 = staker3PayoutGrayPool.times(grayPoolParams.maxPayoutQspWei).dividedToIntegerBy(grayPoolParams.poolSizeQspWei);
     // check that the actual payout is equal to the expected payout
     assert.equal(payoutStaker3.toString(), await qspb.computePayout(grayPoolParams.index, staker3));
@@ -716,11 +710,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   it("should not allow staker5 to place a stake in the white pool after the timeout of the pool was reached", async function() {
     // check if the timeout of the white pool was reached
     const currentBlock = new BigNumber(web3.eth.getBlock("latest").number);
-    if (whitePoolParams.timeOfStateInBlocks.plus(whitePoolParams.timeoutInBlocks) > currentBlock) {
-      // fast-forward to block where the timeout occurs
-      const blocksUntilTimeout = whitePoolParams.timeOfStateInBlocks.plus(whitePoolParams.timeoutInBlocks).minus(currentBlock);
-      Util.mineNBlocks(blocksUntilTimeout);
-    }
+    // fast-forward to block where the timeout occurs
+    const blocksUntilTimeout = whitePoolParams.timeOfStateInBlocks.plus(whitePoolParams.timeoutInBlocks).minus(currentBlock);
+    Util.mineNBlocks(blocksUntilTimeout);
     // staker5 wants to place a stake in the White Pool but he cannot, because the pool has expired
     await qspb.stakeFunds(whitePoolParams.index, staker5StakeWhitePool, {from : staker5});
     // the balance should not have changed
@@ -776,11 +768,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     await qspb.withdrawInterest(grayPoolParams.index, staker5, {from : staker5});
     assert.isTrue(balanceOfQspb.eq(await qspb.balanceQspWei.call()));
     // check that the 1st pay period has not passed for staker5
-    if (staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks) > currentBlock) {
-      // fast-forward to block where the pay period ends
-      const blocksUntilPayout = staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks).minus(currentBlock);
-      Util.mineNBlocks(blocksUntilPayout);
-    }
+    // fast-forward to block where the pay period ends
+    const blocksUntilPayout = staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks).minus(currentBlock);
+    Util.mineNBlocks(blocksUntilPayout);
     // compute payout for staker5
     const payoutStaker5 = staker5PayoutGrayPool.times(grayPoolParams.maxPayoutQspWei).dividedToIntegerBy(grayPoolParams.poolSizeQspWei);
     assert.equal(payoutStaker5.toString(), await qspb.computePayout(grayPoolParams.index, staker5), payoutStaker5 + " != " + await qspb.computePayout(grayPoolParams.index, staker5));
