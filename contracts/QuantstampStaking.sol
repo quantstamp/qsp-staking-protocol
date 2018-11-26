@@ -329,6 +329,7 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = balanceQspWei.sub(total);
         pools[poolIndex].depositQspWei = 0;
         pools[poolIndex].totalStakeQspWei = 0;
+        pools[poolIndex].poolSizeQspWei = 0;
         setState(poolIndex, PoolState.ViolatedFunded);
         require(token.transfer(poolOwner, total),
             "Token transfer failed during withdrawClaim");
