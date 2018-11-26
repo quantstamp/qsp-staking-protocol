@@ -3,12 +3,10 @@ pragma solidity 0.4.24;
 import "../IPolicy.sol";
 import "../test/Registry.sol";
 
-/// @title TrustedOpinionPolicy
+/// @title TCROpinionPolicy
 /// @author Jan Gorzny
 contract TCROpinionPolicy is IPolicy {
 
-    // This declares a state variable that
-    // stores a `Voter` struct for each possible address.
     mapping(address => bool) public voted;
 
     uint256 minimumNumberOfVotesForViolation;
