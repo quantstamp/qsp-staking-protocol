@@ -2,15 +2,16 @@ const Util = require("./util.js");
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
-const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
-const CandidateContract = artifacts.require('CandidateContract');
-const TrivialBackdoorPolicy = artifacts.require('TrivialBackdoorPolicy');
-const TCRContainsEntryPolicy = artifacts.require('TCRContainsEntryPolicy');
-const DemocraticViolationPolicy = artifacts.require('DemocraticViolationPolicy');
-const TrustedOpinionPolicy = artifacts.require('TrustedOpinionPolicy');
-const CandidateToken = artifacts.require('CandidateToken');
-const TotalSupplyNotExceededPolicy = artifacts.require('TotalSupplyNotExceededPolicy');
-const OwnerNotChangedPolicy = artifacts.require('OwnerNotChangedPolicy');
+const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
+const CandidateContract = artifacts.require('test/CandidateContract');
+const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
+const TCRContainsEntryPolicy = artifacts.require('policies/TCRContainsEntryPolicy');
+const DemocraticViolationPolicy = artifacts.require('policies/DemocraticViolationPolicy');
+const TrustedOpinionPolicy = artifacts.require('policies/TrustedOpinionPolicy');
+const CandidateToken = artifacts.require('test/CandidateToken');
+const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotExceededPolicy');
+const OwnerNotChangedPolicy = artifacts.require('policies/OwnerNotChangedPolicy');
+const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -173,4 +174,67 @@ contract('CandidateToken', function(accounts) {
     candidateToken.transferOwnership(newOwner);
     assert.equal(await ownerNotChangedPolicy.isViolated(candidateToken.address), true);
   });
+
+  it("should not matter when the TCR policy is checked with a non-TCR address", async function() {
+    const expertTCR = await Registry.deployed();
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
+  });
+
+  it("should not be violted by the TCR policy before experts vote", async function() {
+    const expertTCR = await Registry.deployed();
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    assert.equal(await tcrOpinionPolicy.isViolated(candidateToken.address), false);
+  });
+
+  it("should be violted by the TCR policy after experts vote", async function() {
+    const voting = await Voting.deployed();
+    await voting.init(QuantstampToken.address);
+
+    const expertTCR = await Registry.deployed();
+
+    const quantstampToken = await QuantstampToken.deployed();
+    const quantstampParameterizer = await QuantstampParameterizer.deployed();
+    await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
+    await expertTCR.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+
+    const applicantA = accounts[9];
+    const listingA = applicantA;
+    const minDeposit = TCRUtil.minDep;
+
+    await quantstampToken.enableTransfer({from : owner});
+    // transfer the minimum number of tokens to the requestor
+    await quantstampToken.transfer(applicantA, minDeposit, {from : owner});
+
+    // allow the registry contract use up to minDeposit for audits
+    await quantstampToken.approve(expertTCR.address, Util.toQsp(minDeposit), {from : applicantA});
+
+    // allow the voting contract use up to minDeposit for audits
+    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicantA});
+
+    await TCRUtil.addToWhitelist(listingA, minDeposit, applicantA, expertTCR);
+
+    const applicantB = accounts[8];
+    const listingB = applicantB;
+
+    await quantstampToken.enableTransfer({from : owner});
+    // transfer the minimum number of tokens to the requestor
+    await quantstampToken.transfer(applicantB, minDeposit, {from : owner});
+
+    // allow the registry contract use up to minDeposit for audits
+    await quantstampToken.approve(expertTCR.address, Util.toQsp(minDeposit), {from : applicantB});
+
+    // allow the voting contract use up to minDeposit for audits
+    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicantB});
+
+    await TCRUtil.addToWhitelist(listingB, minDeposit, applicantB, expertTCR);
+
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+
+    await tcrOpinionPolicy.vote(1, {from: applicantA});
+    await tcrOpinionPolicy.vote(1, {from: applicantB});
+
+    assert.equal(await tcrOpinionPolicy.isViolated(candidateToken.address), true);
+  });
+
 });
