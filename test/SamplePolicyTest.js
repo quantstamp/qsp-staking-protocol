@@ -181,13 +181,13 @@ contract('CandidateToken', function(accounts) {
     Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
   });
 
-  it("should not be violted by the TCR policy before experts vote", async function() {
+  it("should not be violated by the TCR policy before experts vote", async function() {
     const expertTCR = await Registry.deployed();
     const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
     assert.equal(await tcrOpinionPolicy.isViolated(candidateToken.address), false);
   });
 
-  it("should be violted by the TCR policy after experts vote", async function() {
+  it("should be violated by the TCR policy after experts vote", async function() {
     const voting = await Voting.deployed();
     await voting.init(QuantstampToken.address);
 
