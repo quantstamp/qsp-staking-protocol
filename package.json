@@ -14,11 +14,11 @@
     "sol-tcr": "0.0.2",
     "solidity-coverage": "0.5.4",
     "truffle": "4.1.11",
-    "truffle-hdwallet-provider": "0.0.3"
+    "truffle-hdwallet-provider": "0.0.3",
+    "aws-sdk": "2.194.0"
   },
   "devDependencies": {
-    "solhint": "1.2.1",
-    "aws-sdk": "2.194.0"
+    "solhint": "1.2.1"
   },
   "scripts": {
     "test": "./node_modules/.bin/truffle test",
