@@ -12,6 +12,7 @@ const CandidateToken = artifacts.require('test/CandidateToken');
 const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotExceededPolicy');
 const OwnerNotChangedPolicy = artifacts.require('policies/OwnerNotChangedPolicy');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
+const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -29,6 +30,7 @@ contract('CandidateContract', function(accounts) {
   let tcrContainsEntryPolicy;
   let democraticPolicy;
   let trustedOpinionPolicy;
+  let stateNoteChangedPolicy;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
@@ -39,6 +41,7 @@ contract('CandidateContract', function(accounts) {
     tcrContainsEntryPolicy = await TCRContainsEntryPolicy.new(listing);
     democraticPolicy = await DemocraticViolationPolicy.deployed();
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
+    stateNoteChangedPolicy = await StateNotChangedPolicy.deployed();
   });
 
   describe('ZeroBalancePolicy', () => {
@@ -133,6 +136,19 @@ contract('CandidateContract', function(accounts) {
       await trustedOpinionPolicy.vote(1, {from: accounts[3]});
       assert.isTrue(await trustedOpinionPolicy.isViolated(candidateContract.address));
     });
+  });
+
+  it("should not matter when the State Not Changed Policy is checked with a non-CandidateContract address", async function() {
+    Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+  });
+
+  it("should not initially violate the State Not Changed Policy", async function() {
+    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), false);
+  });
+
+  it("should violate the State Not Changed Policy after the contract is locked", async function() {
+    await candidateContract.lockContract();
+    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), true);
   });
 
 });
