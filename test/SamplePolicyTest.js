@@ -79,7 +79,7 @@ contract('CandidateContract', function(accounts) {
 
     const quantstampParameterizer = await QuantstampParameterizer.deployed();
     await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-    await tcr.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+    await tcr.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
     const applicant = listing;
     const minDeposit = TCRUtil.minDep;

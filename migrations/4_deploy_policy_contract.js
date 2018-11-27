@@ -15,5 +15,5 @@ module.exports = function(deployer) {
   deployer.deploy(TrivialBackdoorPolicy);
   deployer.deploy(CandidateToken);
   deployer.deploy(TotalSupplyNotExceededPolicy, 0);
-  deployer.deploy(StateNotChangedPolicy,0);
+  deployer.deploy(StateNotChangedPolicy, 0);
 };
