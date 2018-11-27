@@ -173,7 +173,6 @@ contract('QuantstampStaking', function(accounts) {
     let policy;
     let candidateContract;
     const staker = accounts[4];
-    const admin = "0x0";
     const poolId = 0;
     const stakerBudget = Util.toQsp("1000");
 
