@@ -134,19 +134,20 @@ contract('CandidateContract', function(accounts) {
     assert.equal(await trustedOpinionPolicy.isViolated(candidateContract.address), true);
   });
 
-  it("should not matter when the State Not Changed Policy is checked with a non-CandidateContract address", async function() {
-    Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
-  });
+  describe('StateNotChangedPolicy', () => {
+    it("should not matter when the State Not Changed Policy is checked with a non-CandidateContract address", async function() {
+      Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
 
-  it("should not initially violate the State Not Changed Policy", async function() {
-    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), false);
-  });
+    it("should not initially violate the State Not Changed Policy", async function() {
+      assert.isFalse(await stateNoteChangedPolicy.isViolated(candidateContract.address));
+    });
 
-  it("should violate the State Not Changed Policy after the contract is locked", async function() {
-    await candidateContract.lockContract();
-    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), true);
+    it("should violate the State Not Changed Policy after the contract is locked", async function() {
+      await candidateContract.lockContract();
+      assert.isTrue(await stateNoteChangedPolicy.isViolated(candidateContract.address));
+    });
   });
-
 });
 
 contract('CandidateToken', function(accounts) {

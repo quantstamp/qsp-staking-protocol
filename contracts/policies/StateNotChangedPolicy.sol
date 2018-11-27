@@ -4,8 +4,8 @@ import "../IPolicy.sol";
 import "../test/CandidateContract.sol";
 
 
-/// @title StateNotChangedPolicy - the policy is violated if the state has changed
-/// @author Jan Gorzny
+/// @title StateNotChangedPolicy - the policy is violated if the state, as
+///                                indicated by an `enum`, has changed
 
 contract StateNotChangedPolicy is IPolicy {
 

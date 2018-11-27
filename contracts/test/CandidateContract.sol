@@ -31,7 +31,7 @@ contract CandidateContract {
         emit Withdraw(amount);
     }
 
-    //Real contracts wouldn't have such a public function.
+    // Real contracts wouldn't have such a public function.
     function lockContract() public {
       state = ContractState.Locked;
     }
