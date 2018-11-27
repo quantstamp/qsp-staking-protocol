@@ -11,6 +11,7 @@ const TrustedOpinionPolicy = artifacts.require('TrustedOpinionPolicy');
 const CandidateToken = artifacts.require('CandidateToken');
 const TotalSupplyNotExceededPolicy = artifacts.require('TotalSupplyNotExceededPolicy');
 const OwnerNotChangedPolicy = artifacts.require('OwnerNotChangedPolicy');
+const StateNotChangedPolicy = artifacts.require('StateNotChangedPolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -28,6 +29,7 @@ contract('CandidateContract', function(accounts) {
   let tcrContainsEntryPolicy;
   let democraticPolicy;
   let trustedOpinionPolicy;
+  let stateNoteChangedPolicy;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
@@ -38,6 +40,7 @@ contract('CandidateContract', function(accounts) {
     tcrContainsEntryPolicy = await TCRContainsEntryPolicy.new(listing);
     democraticPolicy = await DemocraticViolationPolicy.deployed();
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
+    stateNoteChangedPolicy = await StateNotChangedPolicy.deployed();
   });
 
   it("should not initially violate the zero-balance policy", async function() {
@@ -129,6 +132,19 @@ contract('CandidateContract', function(accounts) {
     await trustedOpinionPolicy.vote(1, {from: accounts[2]});
     await trustedOpinionPolicy.vote(1, {from: accounts[3]});
     assert.equal(await trustedOpinionPolicy.isViolated(candidateContract.address), true);
+  });
+
+  it("should not matter when the State Not Changed Policy is checked with a non-CandidateContract address", async function() {
+    Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+  });
+
+  it("should not initially violate the State Not Changed Policy", async function() {
+    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), false);
+  });
+
+  it("should violate the State Not Changed Policy after the contract is locked", async function() {
+    await candidateContract.lockContract();
+    assert.equal(await stateNoteChangedPolicy.isViolated(candidateContract.address), true);
   });
 
 });

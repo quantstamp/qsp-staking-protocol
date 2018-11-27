@@ -4,6 +4,7 @@ const TrivialBackdoorPolicy = artifacts.require('test/TrivialBackdoorPolicy');
 const CandidateToken = artifacts.require('test/CandidateToken');
 const TotalSupplyNotExceededPolicy = artifacts.require('test/TotalSupplyNotExceededPolicy');
 const DemocraticViolationPolicy = artifacts.require('test/DemocraticViolationPolicy');
+const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 
 module.exports = function(deployer) {
   //TODO: should these only be dployed on the development environment? they're only samples
@@ -14,4 +15,5 @@ module.exports = function(deployer) {
   deployer.deploy(TrivialBackdoorPolicy);
   deployer.deploy(CandidateToken);
   deployer.deploy(TotalSupplyNotExceededPolicy, 0);
+  deployer.deploy(StateNotChangedPolicy,0);
 };
