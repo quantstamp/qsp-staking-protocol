@@ -5,7 +5,6 @@ import "../test/CandidateToken.sol";
 
 
 /// @title TotalSupplyNotExceededPolicy - the policy is violated if too many coins are minted
-/// @author Jan Gorzny
 
 contract TotalSupplyNotExceededPolicy is IPolicy {
 

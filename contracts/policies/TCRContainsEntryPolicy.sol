@@ -5,7 +5,6 @@ import "../test/Registry.sol";
 
 
 /// @title TCRContainsEntryPolicy - the policy is violated if some entry is not on a TCR
-/// @author Jan Gorzny
 
 contract TCRContainsEntryPolicy is IPolicy {
 
