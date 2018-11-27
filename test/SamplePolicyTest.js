@@ -260,10 +260,5 @@ contract('CandidateToken', function(accounts) {
       await tcrOpinionPolicy.vote(true, {from: applicantB});
       assert.isTrue(await tcrOpinionPolicy.isViolated(candidateToken.address));
     });
-
-    it("should not be voted on by the same TCR expert", async function() {
-      // ApplicantA votes in a prior test
-      Util.assertTxFail(tcrOpinionPolicy.vote(true, {from: applicantA}));
-    });
   });
 });

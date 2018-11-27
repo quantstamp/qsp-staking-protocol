@@ -10,8 +10,16 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract TCROpinionPolicy is IPolicy {
     using SafeMath for uint256;
 
-    // Tracks whether an address has voted
-    mapping(address => bool) public voted;
+    // This declares a new complex type which will
+    // be used for variables later.
+    // It will represent a single voter.
+    struct Voter {
+        bool voted;  // if true, that person already voted
+        bool vote;   // index of the voted proposal
+    }
+    // This declares a state variable that
+    // stores a `Voter` struct for each possible address.
+    mapping(address => Voter) public voters;
     // Defines the required number of votes before violation can occur
     uint256 public quorum;
     // Counts the totla number of votes received;
@@ -45,14 +53,26 @@ contract TCROpinionPolicy is IPolicy {
 
     function vote(bool voteForViolated) public {
         require(isExpert(msg.sender), "Only TCR experts can vote");
-        require(!voted[msg.sender], "Already voted.");
-        voted[msg.sender] = true;
+        Voter storage sender = voters[msg.sender];
+        // Uncomment this line if you want to prevent vote changes.
+        //require(!sender.voted, "Already voted.");
+        if(!sender.voted){
+          numOfVotesReceived = numOfVotesReceived.add(1);
+          sender.voted = true;
+        } else {
+          bool previousVote = sender.vote;
+          if (previousVote) {
+            numOfVotesInFavor = numOfVotesInFavor.sub(1);
+          } else {
+            numOfVotesAgainst = numOfVotesAgainst.sub(1);
+          }
+        }
+        sender.vote = voteForViolated;
         if(voteForViolated){
           numOfVotesInFavor = numOfVotesInFavor.add(1);
         } else {
           numOfVotesAgainst = numOfVotesAgainst.add(1);
         }
-        numOfVotesReceived = numOfVotesReceived.add(1);
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
