@@ -2,6 +2,7 @@ const Util = require("./util.js");
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
+<<<<<<< HEAD
 const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
 const CandidateContract = artifacts.require('test/CandidateContract');
 const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
@@ -13,6 +14,18 @@ const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotE
 const OwnerNotChangedPolicy = artifacts.require('policies/OwnerNotChangedPolicy');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
+=======
+const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
+const CandidateContract = artifacts.require('CandidateContract');
+const TrivialBackdoorPolicy = artifacts.require('TrivialBackdoorPolicy');
+const TCRContainsEntryPolicy = artifacts.require('TCRContainsEntryPolicy');
+const DemocraticViolationPolicy = artifacts.require('DemocraticViolationPolicy');
+const TrustedOpinionPolicy = artifacts.require('TrustedOpinionPolicy');
+const CandidateToken = artifacts.require('CandidateToken');
+const TotalSupplyNotExceededPolicy = artifacts.require('TotalSupplyNotExceededPolicy');
+const OwnerNotChangedPolicy = artifacts.require('OwnerNotChangedPolicy');
+const StateNotChangedPolicy = artifacts.require('StateNotChangedPolicy');
+>>>>>>> 55c974a56da9b8635e3e1dc38bc3ca1248459cad
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -152,6 +165,7 @@ contract('CandidateContract', function(accounts) {
       assert.isTrue(await stateNoteChangedPolicy.isViolated(candidateContract.address));
     });
   });
+
 });
 
 contract('CandidateToken', function(accounts) {
