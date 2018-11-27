@@ -373,7 +373,7 @@ contract('QuantstampStaking', function(accounts) {
 
   describe("setRegistry", async function() {
     beforeEach("when staking funds", async function() {
-      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       const voting = await Voting.new(quantstampToken.address);
       const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
@@ -388,7 +388,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.setStakingRegistry(newAddress, {from: owner});
       assert.equal(await qspb.getStakingRegistry(), returnFormat);
     });
-    
+
     it("should not allow replacement of the if not an owner", async function() {
       const newAddress = "0xFFFFDDDD";
       Util.assertTxFail(qspb.setStakingRegistry(newAddress, {from: staker2}));
