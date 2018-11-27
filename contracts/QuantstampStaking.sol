@@ -124,7 +124,7 @@ contract QuantstampStaking is Ownable {
     event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
     // Indicates registry update
-    event RegistryUpdate(address newRegistry);  
+    event RegistryUpdated(address newRegistry);  
 
     /* Allows execution only when the policy of the pool is violated.
     * @param poolIndex - index of the pool where the policy is checked
@@ -181,7 +181,7 @@ contract QuantstampStaking is Ownable {
     */
     function setStakingRegistry(address _registry) public onlyOwner {
         stakingRegistry = Registry(_registry);
-        emit RegistryUpdate(_registry);
+        emit RegistryUpdated(_registry);
     }
 
     /**
