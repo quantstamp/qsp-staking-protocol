@@ -17,5 +17,5 @@ module.exports = function(deployer) {
   deployer.deploy(CandidateToken);
   deployer.deploy(TotalSupplyNotExceededPolicy, 0);
   deployer.deploy(Registry)
-    .then(() => deployer.deploy(TCROpinionPolicy,2, CandidateToken.address, Registry.address));
+    .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address));
 };

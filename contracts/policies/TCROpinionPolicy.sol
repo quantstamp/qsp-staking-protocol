@@ -10,14 +10,14 @@ contract TCROpinionPolicy is IPolicy {
 
     mapping(address => bool) public voted;
 
-    uint256 minimumNumberOfVotesForViolation;
-    uint256 numOfVotesReceived;
+    uint256 public minimumNumberOfVotesForViolation;
+    uint256 public numOfVotesReceived;
 
     // Never directly interact with the candidate, but noted for voter's reference
-    address candidateContract;
+    address public candidateContract;
 
-    //The TCR for the experts
-    Registry registry;
+    // The TCR for the experts
+    Registry public registry;
 
     constructor (uint256 minVotes, address contractAddress, address tcrAddress) public {
         minimumNumberOfVotesForViolation = minVotes;
@@ -45,11 +45,7 @@ contract TCROpinionPolicy is IPolicy {
 
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == candidateContract);
-        if (numOfVotesReceived >= minimumNumberOfVotesForViolation) {
-            return true;
-        } else {
-            return false;
-        }
+        return numOfVotesReceived >= minimumNumberOfVotesForViolation;
     }
 
 }

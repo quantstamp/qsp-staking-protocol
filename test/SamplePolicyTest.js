@@ -77,7 +77,7 @@ contract('CandidateContract', function(accounts) {
 
     const quantstampParameterizer = await QuantstampParameterizer.deployed();
     await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-    await tcr.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+    await tcr.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
     const applicant = listing;
     const minDeposit = TCRUtil.minDep;
@@ -177,13 +177,13 @@ contract('CandidateToken', function(accounts) {
 
   it("should not matter when the TCR policy is checked with a non-TCR address", async function() {
     const expertTCR = await Registry.deployed();
-    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
     Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
   });
 
   it("should not be violated by the TCR policy before experts vote", async function() {
     const expertTCR = await Registry.deployed();
-    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
     assert.equal(await tcrOpinionPolicy.isViolated(candidateToken.address), false);
   });
 
@@ -196,7 +196,7 @@ contract('CandidateToken', function(accounts) {
     const quantstampToken = await QuantstampToken.deployed();
     const quantstampParameterizer = await QuantstampParameterizer.deployed();
     await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-    await expertTCR.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+    await expertTCR.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
     const applicantA = accounts[9];
     const listingA = applicantA;
@@ -229,7 +229,7 @@ contract('CandidateToken', function(accounts) {
 
     await TCRUtil.addToWhitelist(listingB, minDeposit, applicantB, expertTCR);
 
-    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address,expertTCR.address);
 
     await tcrOpinionPolicy.vote(1, {from: applicantA});
     await tcrOpinionPolicy.vote(1, {from: applicantB});
@@ -246,7 +246,7 @@ contract('CandidateToken', function(accounts) {
     const quantstampToken = await QuantstampToken.deployed();
     const quantstampParameterizer = await QuantstampParameterizer.deployed();
     //Note that quantstampParameterizer has `init` called in the previous test.
-    await expertTCR.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+    await expertTCR.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
     const applicantC = accounts[7];
     const listingC = applicantC;
@@ -264,7 +264,7 @@ contract('CandidateToken', function(accounts) {
 
     await TCRUtil.addToWhitelist(listingC, minDeposit, applicantC, expertTCR);
 
-    const tcrOpinionPolicy = await TCROpinionPolicy.new(2,candidateToken.address,expertTCR.address);
+    const tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
 
     await tcrOpinionPolicy.vote(1, {from: applicantC});
     Util.assertTxFail(tcrOpinionPolicy.vote(1, {from: applicantC}));
