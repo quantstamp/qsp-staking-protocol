@@ -373,7 +373,6 @@ contract('QuantstampStaking', function(accounts) {
 
   describe("setRegistry", async function() {
     beforeEach("when staking funds", async function() {
-      const minDeposit = TCRUtil.minDep;
       quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
       const voting = await Voting.new(quantstampToken.address);
       const quantstampParameterizer = await QuantstampParameterizer.new();
