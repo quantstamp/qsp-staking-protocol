@@ -41,88 +41,98 @@ contract('CandidateContract', function(accounts) {
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
   });
 
-  it("should not initially violate the zero-balance policy", async function() {
-    assert.isFalse(await zeroBalancePolicy.isViolated(candidateContract.address));
+  describe('ZeroBalancePolicy', () => {
+    it("should not initially violate the zero-balance policy", async function() {
+      assert.isFalse(await zeroBalancePolicy.isViolated(candidateContract.address));
+    });
+
+    it("should violate the zero-balance policy after the balance is withdrawn", async function() {
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      assert.isTrue(await zeroBalancePolicy.isViolated(candidateContract.address));
+    });
+
+    it("should throw an error", async function() {
+      Util.assertTxFail(zeroBalancePolicy.isViolated(accounts[0]));
+    });
   });
 
-  it("should violate the zero-balance policy after the balance is withdrawn", async function() {
-    await candidateContract.withdraw(await candidateContract.balance.call());
-    assert.isTrue(await zeroBalancePolicy.isViolated(candidateContract.address));
+  describe('TrivialBackdoorPolicy', () => {
+    it("should not initially violate the trivial-backdoor policy", async function() {
+      assert.isFalse(await trivialBackdoorPolicy.isViolated(candidateContract.address));
+    });
+
+    it("should violate the trivial-backdoor policy after that policy status is updated", async function() {
+      await trivialBackdoorPolicy.updateStatus(true);
+      assert.isTrue(await trivialBackdoorPolicy.isViolated(candidateContract.address));
+    });
   });
 
-  it("should throw an error", async function() {
-    Util.assertTxFail(zeroBalancePolicy.isViolated(accounts[0]));
+  describe('TCRContainsEntryPolicy', () => {
+    it("should not matter when the TCR entry policy is checked with a non-TCR address", async function() {
+      Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should initially violate the TCR entry policy (entry missing)", async function() {
+      assert.isTrue(await tcrContainsEntryPolicy.isViolated(tcr.address));
+    });
+
+    it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
+      const voting = await Voting.deployed();
+      await voting.init(QuantstampToken.address);
+      const quantstampParameterizer = await QuantstampParameterizer.deployed();
+      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
+      await tcr.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+      const applicant = listing;
+      const minDeposit = TCRUtil.minDep;
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer the minimum number of tokens to the requestor
+      await quantstampToken.transfer(applicant, minDeposit, {from : owner});
+      // allow the registry contract use up to minDeposit for audits
+      await quantstampToken.approve(tcr.address, Util.toQsp(minDeposit), {from : applicant});
+      // allow the voting contract use up to minDeposit for audits
+      await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicant});
+      await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
+      assert.isFalse(await tcrContainsEntryPolicy.isViolated(tcr.address));
+    });
   });
 
-  it("should not initially violate the trivial-backdoor policy", async function() {
-    assert.isFalse(await trivialBackdoorPolicy.isViolated(candidateContract.address));
+  describe('DemocraticViolationPolicy', () => {
+    it("should not matter when the democratic opinion policy is checked with the wrong address", async function() {
+      Util.assertTxFail(democraticPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not initially violate the democratic policy", async function() {
+      assert.isFalse(await democraticPolicy.isViolated(candidateContract.address));
+    });
+
+    it("should not have its status voted on by the same address more than once", async function() {
+      await democraticPolicy.vote(1, {from: accounts[1]});
+      Util.assertTxFail(democraticPolicy.vote(1, {from: accounts[1]}));
+    });
+
+    it("should violate the democratic policy after some people vote for violation", async function() {
+      await democraticPolicy.vote(1, {from: accounts[2]});
+      await democraticPolicy.vote(1, {from: accounts[3]});
+      assert.isTrue(await democraticPolicy.isViolated(candidateContract.address));
+    });
   });
 
-  it("should violate the trivial-backdoor policy after that policy status is updated", async function() {
-    await trivialBackdoorPolicy.updateStatus(true);
-    assert.isTrue(await trivialBackdoorPolicy.isViolated(candidateContract.address));
-  });
+  describe('TrustedOpinionPolicy', () => {
+    it("should not matter when the trusted opinion policy is checked with the wrong address", async function() {
+      Util.assertTxFail(trustedOpinionPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
 
-  it("should not matter when the TCR entry policy is checked with a non-TCR address", async function() {
-    Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
-  });
+    it("should not initially violate the trusted opinion policy", async function() {
+      assert.isFalse(await trustedOpinionPolicy.isViolated(candidateContract.address));
+    });
 
-  it("should initially violate the TCR entry policy (entry missing)", async function() {
-    assert.isTrue(await tcrContainsEntryPolicy.isViolated(tcr.address));
-  });
-
-  it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
-    const voting = await Voting.deployed();
-    await voting.init(QuantstampToken.address);
-    const quantstampParameterizer = await QuantstampParameterizer.deployed();
-    await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-    await tcr.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-    const applicant = listing;
-    const minDeposit = TCRUtil.minDep;
-    await quantstampToken.enableTransfer({from : owner});
-    // transfer the minimum number of tokens to the requestor
-    await quantstampToken.transfer(applicant, minDeposit, {from : owner});
-    // allow the registry contract use up to minDeposit for audits
-    await quantstampToken.approve(tcr.address, Util.toQsp(minDeposit), {from : applicant});
-    // allow the voting contract use up to minDeposit for audits
-    await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicant});
-    await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
-    assert.isFalse(await tcrContainsEntryPolicy.isViolated(tcr.address));
-  });
-
-  it("should not matter when the democratic opinion policy is checked with the wrong address", async function() {
-    Util.assertTxFail(democraticPolicy.isViolated(Util.ZERO_ADDRESS));
-  });
-
-  it("should not initially violate the democratic policy", async function() {
-    assert.isFalse(await democraticPolicy.isViolated(candidateContract.address));
-  });
-
-  it("should not have its status voted on by the same address more than once", async function() {
-    await democraticPolicy.vote(1, {from: accounts[1]});
-    Util.assertTxFail(democraticPolicy.vote(1, {from: accounts[1]}));
-  });
-
-  it("should violate the democratic policy after some people vote for violation", async function() {
-    await democraticPolicy.vote(1, {from: accounts[2]});
-    await democraticPolicy.vote(1, {from: accounts[3]});
-    assert.isTrue(await democraticPolicy.isViolated(candidateContract.address));
-  });
-
-  it("should not matter when the trusted opinion policy is checked with the wrong address", async function() {
-    Util.assertTxFail(trustedOpinionPolicy.isViolated(Util.ZERO_ADDRESS));
-  });
-
-  it("should not initially violate the trusted opinion policy", async function() {
-    assert.isFalse(await trustedOpinionPolicy.isViolated(candidateContract.address));
-  });
-
-  it("should violate the trusted policy after some trusted people vote for violation", async function() {
-    await trustedOpinionPolicy.giveRightToVote(accounts[2], {from: accounts[0]});
-    await trustedOpinionPolicy.giveRightToVote(accounts[3], {from: accounts[0]});
-    await trustedOpinionPolicy.vote(1, {from: accounts[2]});
-    await trustedOpinionPolicy.vote(1, {from: accounts[3]});
-    assert.isTrue(await trustedOpinionPolicy.isViolated(candidateContract.address));
+    it("should violate the trusted policy after some trusted people vote for violation", async function() {
+      await trustedOpinionPolicy.giveRightToVote(accounts[2], {from: accounts[0]});
+      await trustedOpinionPolicy.giveRightToVote(accounts[3], {from: accounts[0]});
+      await trustedOpinionPolicy.vote(1, {from: accounts[2]});
+      await trustedOpinionPolicy.vote(1, {from: accounts[3]});
+      assert.isTrue(await trustedOpinionPolicy.isViolated(candidateContract.address));
+    });
   });
 
 });
@@ -141,33 +151,37 @@ contract('CandidateToken', function(accounts) {
     ownerNotChangedPolicy = await OwnerNotChangedPolicy.new(owner);
   });
 
-  it("should not matter when the total supply policy is checked with a non-token address", async function() {
-    Util.assertTxFail(totalSupplyPolicy.isViolated(owner));
+  describe('TotalSupplyNotExceededPolicy', () => {
+    it("should not matter when the total supply policy is checked with a non-token address", async function() {
+      Util.assertTxFail(totalSupplyPolicy.isViolated(owner));
+    });
+
+    it("should not initially violate minted tokens policy (no tokens minted yet)", async function() {
+      assert.isFalse(await totalSupplyPolicy.isViolated(candidateToken.address));
+    });
+
+    it("should violate the minted tokens policy when too many (1) additional tokens are minted", async function() {
+      await candidateToken.mint(owner, 1);
+      assert.isTrue(await totalSupplyPolicy.isViolated(candidateToken.address));
+    });
   });
 
-  it("should not initially violate minted tokens policy (no tokens minted yet)", async function() {
-    assert.isFalse(await totalSupplyPolicy.isViolated(candidateToken.address));
+  describe('OwnerNotChangedPolicy', () => {
+    it("should not violate the OwnerNotChangedPolicy if the owner remains the same", async function() {
+      assert.isFalse(await ownerNotChangedPolicy.isViolated(candidateToken.address));
+    });
+
+    it("should throw an exception on OwnerNotChangedPolicy if the address is not compatible with Candidate Token", async function() {
+      Util.assertTxFail(ownerNotChangedPolicy.isViolated(totalSupplyPolicy.address));
+    });
+
+    it("should violate the OwnerNotChangedPolicy if the owner has changed", async function() {
+      candidateToken.transferOwnership(newOwner);
+      assert.isTrue(await ownerNotChangedPolicy.isViolated(candidateToken.address));
+    });
   });
 
-  it("should violate the minted tokens policy when too many (1) additional tokens are minted", async function() {
-    await candidateToken.mint(owner, 1);
-    assert.isTrue(await totalSupplyPolicy.isViolated(candidateToken.address));
-  });
-
-  it("should not violate the OwnerNotChangedPolicy if the owner remains the same", async function() {
-    assert.isFalse(await ownerNotChangedPolicy.isViolated(candidateToken.address));
-  });
-
-  it("should throw an exception on OwnerNotChangedPolicy if the address is not compatible with Candidate Token", async function() {
-    Util.assertTxFail(ownerNotChangedPolicy.isViolated(totalSupplyPolicy.address));
-  });
-
-  it("should violate the OwnerNotChangedPolicy if the owner has changed", async function() {
-    candidateToken.transferOwnership(newOwner);
-    assert.isTrue(await ownerNotChangedPolicy.isViolated(candidateToken.address));
-  });
-
-  describe('TCR opinion policy', () => {
+  describe('TCROpinionPolicy', () => {
     let tcrOpinionPolicy;
     let quantstampParameterizer;
     let quantstampToken;
