@@ -15,6 +15,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const staker2 = accounts[3]; // expert staker
   const staker3 = accounts[4]; // non-expert staker
   const staker4 = accounts[5]; // non-expert staker
+  const qspAdmin = accounts[6]; // non-expert staker
   const poolOwnerBudget = Util.toQsp(100000);
   const minDeposit = TCRUtil.minDep;
   const stakerBudget = Util.toQsp(100);
@@ -51,7 +52,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   let currentPoolIndex;
   
   beforeEach(async function() {
-    quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+    quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
     voting = await Voting.new(quantstampToken.address);
     quantstampParameterizer = await QuantstampParameterizer.new();
     await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);

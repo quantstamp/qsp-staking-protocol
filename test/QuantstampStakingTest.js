@@ -13,6 +13,7 @@ const BigNumber = require('bignumber.js');
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
+  const qspAdmin = accounts[1];
   const poolOwner = accounts[3];
   const staker = accounts[4];
   const staker2 = accounts[5];
@@ -57,7 +58,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should fail if a TCR with address zero is passed into the constructor", async function () {
-      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS));
     });
   });
@@ -172,7 +173,6 @@ contract('QuantstampStaking', function(accounts) {
     let policy;
     let candidateContract;
     const staker = accounts[4];
-    const admin = "0x0";
     const poolId = 0;
     const stakerBudget = Util.toQsp("1000");
 
@@ -189,7 +189,7 @@ contract('QuantstampStaking', function(accounts) {
     const policyBalance = 1;
 
     beforeEach("setup token and tcr", async function() {
-      quantstampToken = await QuantstampToken.new(admin, {from : owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from : owner});
       candidateContract = await CandidateContract.new(policyBalance);
       quantstampRegistry = await QuantstampStakingRegistry.deployed();
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address);
@@ -398,7 +398,7 @@ contract('QuantstampStaking', function(accounts) {
   describe("stakeFunds", async function() {
     beforeEach("when staking funds", async function() {
       const minDeposit = TCRUtil.minDep;
-      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       const voting = await Voting.new(quantstampToken.address);
       const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
@@ -506,7 +506,7 @@ contract('QuantstampStaking', function(accounts) {
 
   describe("withdrawStake", async function() {
     beforeEach("when withdrawing stakes", async function() {
-      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       candidateContract = await CandidateContract.new(candidateContractBalance);
@@ -588,7 +588,7 @@ contract('QuantstampStaking', function(accounts) {
 
   describe("isStaker", async function() {
     beforeEach("when the GUI needs to check if the current user is a staker in a pool", async function() {
-      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       candidateContract = await CandidateContract.new(candidateContractBalance);

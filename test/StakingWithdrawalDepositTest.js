@@ -7,6 +7,7 @@ const CandidateContract = artifacts.require('CandidateContract');
 
 contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
+  const qspAdmin = accounts[1];
   const poolOwner = accounts[3];
   const adversary = accounts[4];
   const poolOwnerBudget = Util.toQsp(100);
@@ -21,7 +22,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   const minStakeQspWei = Util.toQsp(10);
 
   beforeEach(async function() {
-    quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+    quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
     quantstampRegistry = await QuantstampStakingRegistry.new();
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
@@ -86,7 +87,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
       assert.equal(await qspb.balanceQspWei(), initialDepositQspWei);
       assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
-      await quantstampToken.increaseApproval(qspb.address, addedDepositAmount, {from : poolOwner});
+      await quantstampToken.increaseAllowance(qspb.address, addedDepositAmount, {from : poolOwner});
       
       await qspb.depositFunds(0, addedDepositAmount, {from: poolOwner});
 
@@ -111,7 +112,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
 
     it("should fail if the pool is in the Cancelled state", async function() {
       await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
-      await quantstampToken.increaseApproval(qspb.address, addedDepositAmount, {from : poolOwner});
+      await quantstampToken.increaseAllowance(qspb.address, addedDepositAmount, {from : poolOwner});
       await qspb.depositFunds(0, addedDepositAmount, {from: poolOwner});
       await qspb.withdrawDeposit(0, {from: poolOwner});
       Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
