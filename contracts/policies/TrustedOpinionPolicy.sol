@@ -6,8 +6,9 @@ import "../IPolicy.sol";
 // https://solidity.readthedocs.io/en/develop/solidity-by-example.html
 // (19 November 2018)
 
-/// @title TrustedOpinionPolicy
-/// @author Jan Gorzny
+/// @title TrustedOpinionPolicy The contract is violated if some stakeholder-
+///                             whitelisted addresses say so.
+
 contract TrustedOpinionPolicy is IPolicy {
 
     // This declares a new complex type which will

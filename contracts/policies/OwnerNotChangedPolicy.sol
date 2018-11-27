@@ -5,7 +5,6 @@ import "../test/CandidateToken.sol";
 
 
 /// @title OwnerNotChangedPolicy - the policy is violated if the owner has changed
-/// @author Alex Murashkin
 
 contract OwnerNotChangedPolicy is IPolicy {
 
