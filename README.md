@@ -60,6 +60,8 @@ This includes running Truffle tests and collecting coverage report for [Coverall
     * `truffle migrate --network dev` (Ropsten network, development environment)
     * `truffle migrate --network prod` (Ethereum MainNet, to be implemented)
 
+*Note*: if deployment does not start, append the `--reset` flag to the command.
+
 ## Deploy to Ganache
 
 `npm test` automatically deploys the contract to Ganache and runs tests against it. To deploy the contract to Ganache manually (e.g., for purposes of manual testing), do `truffle test --migrate development`
