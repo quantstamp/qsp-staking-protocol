@@ -2,7 +2,7 @@ const Web3 = require('web3');
 const BigNumber = require('bignumber.js');
 
 function toQsp(n) {
-  return Web3.utils.toWei(n, "ether");
+  return Web3.toWei(n, "ether");
 }
 
 function daysToSeconds(n) {
