@@ -8,6 +8,7 @@ import "../test/Registry.sol";
 
 contract TCROpinionPolicy is IPolicy {
 
+    // Tracks whether an address has voted
     mapping(address => bool) public voted;
 
     uint256 public minimumNumberOfVotesForViolation;

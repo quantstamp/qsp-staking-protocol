@@ -17,7 +17,7 @@ const TCRUtil = require('./tcrutils.js');
 
 contract('CandidateContract', function(accounts) {
 
-  //Necessary for TCR policy test
+  // Necessary for TCR policy test
   const owner = accounts[0];
   let quantstampToken;
   const listing = accounts[9];
@@ -90,7 +90,7 @@ contract('CandidateContract', function(accounts) {
     await quantstampToken.approve(tcr.address, Util.toQsp(minDeposit), {from : applicant});
 
     // allow the voting contract use up to minDeposit for audits
-    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicant});
+    await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicant});
 
     await TCRUtil.addToWhitelist(listing, minDeposit, applicant, tcr);
 
@@ -175,7 +175,7 @@ contract('CandidateToken', function(accounts) {
     assert.equal(await ownerNotChangedPolicy.isViolated(candidateToken.address), true);
   });
 
-  it("should not matter when the TCR policy is checked with a non-TCR address", async function() {
+  it("should not matter when the TCR policy is checked with a non-TCR address as an argument for the policy", async function() {
     const expertTCR = await Registry.deployed();
     const tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
     Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
@@ -210,7 +210,7 @@ contract('CandidateToken', function(accounts) {
     await quantstampToken.approve(expertTCR.address, Util.toQsp(minDeposit), {from : applicantA});
 
     // allow the voting contract use up to minDeposit for audits
-    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicantA});
+    await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicantA});
 
     await TCRUtil.addToWhitelist(listingA, minDeposit, applicantA, expertTCR);
 
@@ -225,7 +225,7 @@ contract('CandidateToken', function(accounts) {
     await quantstampToken.approve(expertTCR.address, Util.toQsp(minDeposit), {from : applicantB});
 
     // allow the voting contract use up to minDeposit for audits
-    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicantB});
+    await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicantB});
 
     await TCRUtil.addToWhitelist(listingB, minDeposit, applicantB, expertTCR);
 
@@ -239,20 +239,20 @@ contract('CandidateToken', function(accounts) {
 
   it("should not be voted on by the same TCR expert", async function() {
     const voting = await Voting.deployed();
-    //Note that voting has `init` called in the previous test.
+    // Note that voting has `init` called in the previous test.
 
     const expertTCR = await Registry.new();
 
     const quantstampToken = await QuantstampToken.deployed();
     const quantstampParameterizer = await QuantstampParameterizer.deployed();
-    //Note that quantstampParameterizer has `init` called in the previous test.
+    // Note that quantstampParameterizer has `init` called in the previous test.
     await expertTCR.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
     const applicantC = accounts[7];
     const listingC = applicantC;
     const minDeposit = TCRUtil.minDep;
 
-    //Note that quantstampToken.enableTransfer({from : owner}); is called in the previous test.
+    // Note that quantstampToken.enableTransfer({from : owner}); is called in the previous test.
     // transfer the minimum number of tokens to the requestor
     await quantstampToken.transfer(applicantC, minDeposit, {from : owner});
 
@@ -260,7 +260,7 @@ contract('CandidateToken', function(accounts) {
     await quantstampToken.approve(expertTCR.address, Util.toQsp(minDeposit), {from : applicantC});
 
     // allow the voting contract use up to minDeposit for audits
-    await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : applicantC});
+    await quantstampToken.approve(voting.address, Util.toQsp(minDeposit), {from : applicantC});
 
     await TCRUtil.addToWhitelist(listingC, minDeposit, applicantC, expertTCR);
 
