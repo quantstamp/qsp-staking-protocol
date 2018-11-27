@@ -371,6 +371,30 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
+  describe("setRegistry", async function() {
+    beforeEach("when staking funds", async function() {
+      quantstampToken = await QuantstampToken.new(owner.address, {from: owner});
+      const voting = await Voting.new(quantstampToken.address);
+      const quantstampParameterizer = await QuantstampParameterizer.new();
+      await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
+      const quantstampRegistry = await QuantstampStakingRegistry.new();
+      await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+    });
+
+    it("should allow replacement of the TCR", async function() {
+      const newAddress = "0xFFFFDDDD";
+      const returnFormat = "0x00000000000000000000000000000000ffffdddd";
+      await qspb.setStakingRegistry(newAddress, {from: owner});
+      assert.equal(await qspb.getStakingRegistry(), returnFormat);
+    });
+    
+    it("should not allow replacement of the if not an owner", async function() {
+      const newAddress = "0xFFFFDDDD";
+      Util.assertTxFail(qspb.setStakingRegistry(newAddress, {from: staker2}));
+    });
+  });
+
   describe("stakeFunds", async function() {
     beforeEach("when staking funds", async function() {
       const minDeposit = TCRUtil.minDep;

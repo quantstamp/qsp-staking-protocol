@@ -123,6 +123,9 @@ contract QuantstampStaking is Ownable {
     // Signals that the payout block was updated
     event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
+    // Indicates registry update
+    event RegistryUpdated(address newRegistry);  
+
     /* Allows execution only when the policy of the pool is violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
@@ -170,6 +173,15 @@ contract QuantstampStaking is Ownable {
         token = StandardToken(tokenAddress);
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
+    }
+
+    /**
+    * Replaces the TCR with a new one. This function can be called only by the owner and
+    * we assume that there the owner field will be set to 0x0 in the future.
+    */
+    function setStakingRegistry(address _registry) public onlyOwner {
+        stakingRegistry = Registry(_registry);
+        emit RegistryUpdated(_registry);
     }
 
     /**
