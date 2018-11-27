@@ -244,16 +244,26 @@ contract('CandidateToken', function(accounts) {
       assert.isFalse(await tcrOpinionPolicy.isViolated(candidateToken.address));
     });
 
-    it("should be violated by the TCR policy after experts vote", async function() {
-      await tcrOpinionPolicy.vote(1, {from: applicantA});
-      await tcrOpinionPolicy.vote(1, {from: applicantB});
+    it("should not be violated by the TCR policy after 1 expert votes (quorum not met)", async function() {
+      await tcrOpinionPolicy.vote(true, {from: applicantA});
+      assert.isFalse(await tcrOpinionPolicy.isViolated(candidateToken.address));
+    });
+
+    it("should not be violated if there is a tie", async function() {
+      await TCRUtil.addToWhitelist(listingC, minDeposit, applicantC, expertTCR);
+      await tcrOpinionPolicy.vote(false, {from: applicantC});
+      assert.isFalse(await tcrOpinionPolicy.isViolated(candidateToken.address));
+    });
+
+    it("should be violated by the TCR policy after 2 experts vote in favor", async function() {
+      // ApplicantA votes in the previous test.
+      await tcrOpinionPolicy.vote(true, {from: applicantB});
       assert.isTrue(await tcrOpinionPolicy.isViolated(candidateToken.address));
     });
 
     it("should not be voted on by the same TCR expert", async function() {
-      await TCRUtil.addToWhitelist(listingC, minDeposit, applicantC, expertTCR);
-      await tcrOpinionPolicy.vote(1, {from: applicantC});
-      Util.assertTxFail(tcrOpinionPolicy.vote(1, {from: applicantC}));
+      // ApplicantA votes in a prior test
+      Util.assertTxFail(tcrOpinionPolicy.vote(true, {from: applicantA}));
     });
   });
 });
