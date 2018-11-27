@@ -15,7 +15,7 @@ contract TCROpinionPolicy is IPolicy {
     // It will represent a single voter.
     struct Voter {
         bool voted;  // if true, that person already voted
-        bool vote;   // index of the voted proposal
+        bool vote;   // if true, that person is in favor of violation
     }
     // This declares a state variable that
     // stores a `Voter` struct for each possible address.
