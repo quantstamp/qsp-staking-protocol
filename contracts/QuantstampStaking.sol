@@ -4,7 +4,7 @@ pragma solidity 0.4.24;
 /// @author
 
 import {Registry} from "./test/Registry.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
@@ -79,7 +79,7 @@ contract QuantstampStaking is Ownable {
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
-    StandardToken public token;
+    ERC20 public token;
 
     // TCR used to list expert stakers.
     Registry public stakingRegistry;
@@ -157,7 +157,7 @@ contract QuantstampStaking is Ownable {
         require(poolOwner == msg.sender, "Msg.sender is not pool owner.");
         _;
     }
-
+    
     /**
     * Initializes the Quality Assurance Protocol
     * @param tokenAddress - the address of the QSP Token contract
@@ -167,7 +167,7 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = 0;
         currentPoolNumber = 0;
         require(tokenAddress != address(0), "Token address is 0.");
-        token = StandardToken(tokenAddress);
+        token = ERC20(tokenAddress);
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
     }
@@ -570,7 +570,7 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint startBlockNumber = Math.max256(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
+            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
@@ -601,7 +601,7 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                stakes[poolIndex][msg.sender][i].blockNumber = Math.max256(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
+                stakes[poolIndex][msg.sender][i].blockNumber = Math.max(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
                 if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.4.15;
 
-import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Burnable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -16,7 +16,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * case, the token balance is moved to the token sale contract, which
  * in turn can transfer its tokens to contributors to the sale.
  */
-contract QuantstampToken is StandardToken, BurnableToken, Ownable {
+contract QuantstampToken is ERC20, ERC20Burnable, Ownable {
 
     // Constants
     string  public constant name = "Quantstamp Token";
@@ -53,12 +53,12 @@ contract QuantstampToken is StandardToken, BurnableToken, Ownable {
     modifier validDestination(address _to) {
         require(_to != address(0x0));
         require(_to != address(this));
-        require(_to != owner);
+        require(_to != owner());
         require(_to != address(adminAddr));
         require(_to != address(crowdSaleAddr));
         _;
     }
-
+    
     /**
      * Constructor - instantiates token supply and allocates balanace of
      * to the owner (msg.sender).
@@ -72,13 +72,12 @@ contract QuantstampToken is StandardToken, BurnableToken, Ownable {
 
 	// the latest version of BasicToken in zepplin-solidity is incompatible with our deployed Token code,
 	// since totalSupply is now a function. Renamed here to reference the state variable totalSupply_.
-        totalSupply_ = INITIAL_SUPPLY;
+        uint256 totalSupply_ = INITIAL_SUPPLY;
         crowdSaleAllowance = CROWDSALE_ALLOWANCE;
         adminAllowance = ADMIN_ALLOWANCE;
 
         // mint all tokens
-        balances[msg.sender] = totalSupply();
-        emit Transfer(address(0x0), msg.sender, totalSupply());
+        super._mint(msg.sender, totalSupply_);
 
         adminAddr = _admin;
         approve(adminAddr, adminAllowance);
@@ -104,8 +103,12 @@ contract QuantstampToken is StandardToken, BurnableToken, Ownable {
         uint amount = (_amountForSale == 0) ? crowdSaleAllowance : _amountForSale;
 
         // Clear allowance of old, and set allowance of new
-        approve(crowdSaleAddr, 0);
-        approve(_crowdSaleAddr, amount);
+        if (crowdSaleAddr != address(0)) {
+            approve(crowdSaleAddr, 0);
+        }
+        if (_crowdSaleAddr != address(0)) {
+            approve(_crowdSaleAddr, amount);
+        }
 
         crowdSaleAddr = _crowdSaleAddr;
     }
@@ -117,8 +120,12 @@ contract QuantstampToken is StandardToken, BurnableToken, Ownable {
      */
     function enableTransfer() external onlyOwner {
         transferEnabled = true;
-        approve(crowdSaleAddr, 0);
-        approve(adminAddr, 0);
+        if (crowdSaleAddr != address(0)) {
+            approve(crowdSaleAddr, 0);
+        }
+        if (adminAddr != address(0)) {
+            approve(adminAddr, 0);
+        }
         crowdSaleAllowance = 0;
         adminAllowance = 0;
     }
@@ -153,8 +160,8 @@ contract QuantstampToken is StandardToken, BurnableToken, Ownable {
      * @param _value    The amount of tokens to burn in mini-QSP
      */
     function burn(uint256 _value) public {
-        require(transferEnabled || msg.sender == owner);
-        require(balances[msg.sender] >= _value);
+        require(transferEnabled || msg.sender == owner());
+        require(balanceOf(msg.sender) >= _value);
         super.burn(_value);
         emit Transfer(msg.sender, address(0x0), _value);
     }
