@@ -10,6 +10,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "./IPolicy.sol";
 
+
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
     using Math for uint256;
@@ -54,19 +55,19 @@ contract QuantstampStaking is Ownable {
         uint stakeCount; // the total number of stakes in the pool 
     }
 
-    // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker address
-    // (the inner mapping's key) into the pool
+    // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
+    // address (the inner mapping's key) into the pool
     mapping (uint => mapping(address => Stake[])) public stakes;
 
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
     
     // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
-    mapping (uint => uint[]) bonusExpertAtPower;
+    mapping (uint => uint[]) public bonusExpertAtPower;
 
     // Holds the powers of 100 corresponding to the i-th staker of
     // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
-    mapping (uint => uint[]) powersOf100;
+    mapping (uint => uint[]) public powersOf100;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -173,6 +174,133 @@ contract QuantstampStaking is Ownable {
         token = ERC20(tokenAddress);
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = Registry(tcrAddress);
+    }
+
+    /**
+    * Checks if the given address is a staker of the given pool index
+    * @param poolIndex - the index of the pool where to check for stakers
+    * @param staker - the address of the staker to check for
+    * @return - true if the staker has a stake in the pool, false otherwise
+    */
+    function isStaker(uint poolIndex, address staker) external view returns(bool) {
+        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
+    }
+
+    /**
+    * Allows the staker to withdraw all their stakes from the pool.
+    * @param poolIndex - the index of the pool from which the stake is withdrawn
+    */
+    function withdrawStake(uint poolIndex) external {
+        PoolState state = getPoolState(poolIndex);
+        require(state == PoolState.Initialized ||
+            state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.Cancelled ||
+            (state == PoolState.NotViolatedFunded &&
+                block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)) >= getPoolMinStakeTimeInBlocks(poolIndex)),
+            "Pool is not in the right state when withdrawing stake.");
+
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        require(!IPolicy(poolPolicy).isViolated(candidateContract));
+
+        uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
+
+        if (totalQspWeiTransfer > 0) {
+            balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
+            totalStakes[poolIndex][msg.sender] = 0;
+            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+            // this loop is needed, because the computePayout function uses the stakes array
+            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+                pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
+                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
+                stakes[poolIndex][msg.sender][i].amountQspWei = 0;
+            }
+
+            require(token.transfer(msg.sender, totalQspWeiTransfer));
+            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
+            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+                setState(poolIndex, PoolState.Cancelled);
+            }
+        }
+    }
+
+    /*
+    * Allows the stakeholder to make an additional deposit to the contract
+    */
+    function depositFunds(
+        uint poolIndex, 
+        uint depositQspWei
+    ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
+        address poolOwner = getPoolOwner(poolIndex);
+        PoolState currentState = getPoolState(poolIndex);
+        require(currentState != PoolState.Cancelled);
+        require(token.transferFrom(poolOwner, address(this), depositQspWei),
+            "Token deposit transfer did not succeed");
+        pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
+        balanceQspWei = balanceQspWei.add(depositQspWei);
+
+        if (currentState == PoolState.NotViolatedUnderfunded
+                && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
+            setState(poolIndex, PoolState.NotViolatedFunded);
+        }
+
+        emit DepositMade(poolIndex, poolOwner, depositQspWei);
+    }
+
+    /*
+    * Allows the stakeholder to withdraw their entire deposits from the contract
+    * if the policy is not violated
+    */
+    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) onlyPoolOwner(poolIndex) {
+        address poolOwner = getPoolOwner(poolIndex);
+        uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
+        require(withdrawalAmountQspWei > 0, "The staker has no balance to withdraw");
+        pools[poolIndex].depositQspWei = 0;
+        balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
+        require(token.transfer(poolOwner, withdrawalAmountQspWei), "Token withdrawal transfer did not succeed");
+        setState(poolIndex, PoolState.Cancelled);
+        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+    }
+
+    /**
+    * In case the pool is not violated and the payPeriod duration has passed, it computes the payout of the staker
+    * (defined by msg.sender),
+    * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
+    * @param poolIndex - the index of the pool from which the staker wants to receive a payout
+    */
+    function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
+        // check that the state of the pool is NotViolatedFunded
+        require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
+            "The state of the pool is not NotViolatedFunded, as expected.");
+        // check that enough time (blocks) has passed since the pool has collected stakes totaling 
+        // at least minStakeQspWei
+        require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
+            "Not enough time has passed since the pool is active or the stake was placed.");
+        // compute payout due to be payed to the staker
+        uint payout = computePayout(poolIndex, msg.sender);
+        if (payout == 0) // no need to transfer anything
+            return;
+        // check if the are enough funds in the pool deposit
+        if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
+            pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
+            balanceQspWei = balanceQspWei.sub(payout);
+            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
+                stakes[poolIndex][msg.sender][i].blockNumber = Math.max(stakes[poolIndex][msg.sender][i].blockNumber, 
+                        getPoolTimeOfStateInBlocks(poolIndex));
+                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, 
+                        stakes[poolIndex][msg.sender][i].blockNumber);
+                if (numberOfPayouts > 0) {
+                    stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
+                    emit LastPayoutBlockUpdate(poolIndex, msg.sender);
+                }
+            }
+            
+            require(token.transfer(msg.sender, payout),
+                "Could not transfer the payout to the staker.");
+            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
+        } else { // place the pool in a Cancelled state
+            setState(poolIndex, PoolState.Cancelled);
+        }
     }
 
     /**
@@ -354,16 +482,6 @@ contract QuantstampStaking is Ownable {
         emit StateChanged(currentPoolNumber, PoolState.Initialized);
     }
 
-    /**
-    * Checks if the given address is a staker of the given pool index
-    * @param poolIndex - the index of the pool where to check for stakers
-    * @param staker - the address of the staker to check for
-    * @return - true if the staker has a stake in the pool, false otherwise
-    */
-    function isStaker(uint poolIndex, address staker) external view returns(bool) {
-        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
-    }
-
     /// @dev addr is of type Address which is 20 Bytes, but the TCR expects all
     /// entries to be of type Bytes32. addr is first cast to Uint256 so that it
     /// becomes 32 bytes long, addr is then shifted 12 bytes (96 bits) to the
@@ -375,21 +493,6 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
-    * Sets the state of the pool to a given state, while also marking the block at
-    * which this occured and emitting an event corresponding to the new state.
-    * @param poolIndex - the index of the pool for which the state is changed
-    * @param newState - the new state to which the pool will change
-    */
-    function setState(uint poolIndex, PoolState newState) internal {
-        PoolState poolState = getPoolState(poolIndex);
-        if (poolState != newState) {
-            pools[poolIndex].state = newState; // set the state
-            pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
-            emit StateChanged(poolIndex, newState); // emit an event that the state has changed
-        }
-    }
-
-    /**
     * Checks the policy of the pool. If it is violated, it updates the state accordingly.
     * Fails the transaction otherwise.
     * @param poolIndex - the index of the pool for which the state is changed
@@ -398,7 +501,7 @@ contract QuantstampStaking is Ownable {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
         // fail loud if the policy has not been violated
-        require (IPolicy(poolPolicy).isViolated(candidateContract));
+        require(IPolicy(poolPolicy).isViolated(candidateContract));
 
         PoolState state = getPoolState(poolIndex);
         if (state == PoolState.Initialized) {
@@ -410,7 +513,11 @@ contract QuantstampStaking is Ownable {
         }
     }
 
-    function calculateStakeAmountWithBonuses(uint poolIndex, address staker, uint stakeIndex) public view returns(uint) {
+    function calculateStakeAmountWithBonuses(
+        uint poolIndex, 
+        address staker, 
+        uint stakeIndex
+    ) public view returns(uint) {
         Stake memory stake = stakes[poolIndex][staker][stakeIndex];
         if (stake.amountQspWei == 0) {
             return 0;
@@ -418,8 +525,9 @@ contract QuantstampStaking is Ownable {
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
         if (isExpert(stake.staker)) {
-            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex-1].
-                add(powersOf100[poolIndex][stake.contributionIndex-1])).div(powersOf100[poolIndex][stake.contributionIndex-1]);
+            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex-1]
+                    .add(powersOf100[poolIndex][stake.contributionIndex-1]))
+                    .div(powersOf100[poolIndex][stake.contributionIndex-1]);
             /* Check if it is the first stake of the first expert */
             if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
@@ -471,7 +579,8 @@ contract QuantstampStaking is Ownable {
             calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
 
         // Check if there are enough stakes in the pool
-        if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { // Minimum staking value was reached
+        if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { 
+            // Minimum staking value was reached
             if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
                 setState(poolIndex, PoolState.NotViolatedFunded);
@@ -481,79 +590,6 @@ contract QuantstampStaking is Ownable {
             }
         }
         emit StakePlaced(poolIndex, msg.sender, amountQspWei);
-    }
-
-    /**
-    * Allows the staker to withdraw all their stakes from the pool.
-    * @param poolIndex - the index of the pool from which the stake is withdrawn
-    */
-    function withdrawStake(uint poolIndex) external {
-        PoolState state = getPoolState(poolIndex);
-        require(state == PoolState.Initialized ||
-            state == PoolState.NotViolatedUnderfunded ||
-            state == PoolState.Cancelled ||
-            (state == PoolState.NotViolatedFunded &&
-                block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)) >= getPoolMinStakeTimeInBlocks(poolIndex)),
-            "Pool is not in the right state when withdrawing stake.");
-
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
-        require(!IPolicy(poolPolicy).isViolated(candidateContract));
-
-        uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
-
-        if (totalQspWeiTransfer > 0) {
-            balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
-            totalStakes[poolIndex][msg.sender] = 0;
-            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
-            // this loop is needed, because the computePayout function uses the stakes array
-            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
-                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
-                stakes[poolIndex][msg.sender][i].amountQspWei = 0;
-            }
-
-            require(token.transfer(msg.sender, totalQspWeiTransfer));
-            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
-            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
-                setState(poolIndex, PoolState.Cancelled);
-            }
-        }
-    }
-
-    /*
-    * Allows the stakeholder to make an additional deposit to the contract
-    */
-    function depositFunds(uint poolIndex, uint depositQspWei) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
-        address poolOwner = getPoolOwner(poolIndex);
-        PoolState currentState = getPoolState(poolIndex);
-        require(currentState != PoolState.Cancelled);
-        require(token.transferFrom(poolOwner, address(this), depositQspWei),
-            'Token deposit transfer did not succeed');
-        pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
-        balanceQspWei = balanceQspWei.add(depositQspWei);
-
-        if (currentState == PoolState.NotViolatedUnderfunded
-            && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
-                setState(poolIndex, PoolState.NotViolatedFunded);
-        }
-
-        emit DepositMade(poolIndex, poolOwner, depositQspWei);
-    }
-
-    /*
-    * Allows the stakeholder to withdraw their entire deposits from the contract
-    * if the policy is not violated
-    */
-    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) onlyPoolOwner(poolIndex) {
-        address poolOwner = getPoolOwner(poolIndex);
-        uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
-        require(withdrawalAmountQspWei > 0, 'The staker has no balance to withdraw');
-        pools[poolIndex].depositQspWei = 0;
-        balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
-        require(token.transfer(poolOwner, withdrawalAmountQspWei), 'Token withdrawal transfer did not succeed');
-        setState(poolIndex, PoolState.Cancelled);
-        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 
     /**
@@ -582,8 +618,10 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].lastPayoutBlock, getPoolTimeOfStateInBlocks(poolIndex));
-            // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
+            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].lastPayoutBlock, 
+                    getPoolTimeOfStateInBlocks(poolIndex));
+            // multiply the stakeAmount by the number of payPeriods for which the stake 
+            // has been active and not payed out
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
@@ -591,44 +629,6 @@ contract QuantstampStaking is Ownable {
         return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(getPoolSizeQspWei(poolIndex));
     }
     
-    /**
-    * In case the pool is not violated and the payPeriod duration has passed, it computes the payout of the staker
-    * (defined by msg.sender),
-    * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
-    * @param poolIndex - the index of the pool from which the staker wants to receive a payout
-    */
-    function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
-        // check that the state of the pool is NotViolatedFunded
-        require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
-            "The state of the pool is not NotViolatedFunded, as expected.");
-        // check that enough time (blocks) has passed since the pool has collected stakes totaling at least minStakeQspWei
-        require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
-            "Not enough time has passed since the pool is active or the stake was placed.");
-        // compute payout due to be payed to the staker
-        uint payout = computePayout(poolIndex, msg.sender);
-        if (payout == 0) // no need to transfer anything
-            return;
-        // check if the are enough funds in the pool deposit
-        if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
-            pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
-            balanceQspWei = balanceQspWei.sub(payout);
-            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                stakes[poolIndex][msg.sender][i].blockNumber = Math.max(stakes[poolIndex][msg.sender][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, stakes[poolIndex][msg.sender][i].blockNumber);
-                if (numberOfPayouts > 0) {
-                    stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
-                    emit LastPayoutBlockUpdate(poolIndex, msg.sender);
-                }
-            }
-            
-            require(token.transfer(msg.sender, payout),
-                "Could not transfer the payout to the staker.");
-            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
-        } else { // place the pool in a Cancelled state
-            setState(poolIndex, PoolState.Cancelled);
-        }
-    }
-
     /** This function returns the number of payouts that a staker must receive for his/her stake in a pool.
     * @param poolIndex - the index of the pool where the stake was placed
     * @param i - the index of the stake in the stakes array
@@ -636,14 +636,38 @@ contract QuantstampStaking is Ownable {
     * @param startBlockNumber - the block number where the stake begins to be active (waiting for payouts)
     * @return - the number of payout periods that the staker needs to receive payouts for
     */
-    function getNumberOfPayoutsForStaker(uint poolIndex, uint i, address staker, uint startBlockNumber) internal view returns(uint) {
+    function getNumberOfPayoutsForStaker(
+        uint poolIndex, 
+        uint i, 
+        address staker, 
+        uint startBlockNumber
+    ) internal view returns(uint) {
         uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
         uint lastPayPeriods;
-        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { // then avoid integer underflow
+        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { 
+            // then avoid integer underflow
             lastPayPeriods = 0;
         } else {
-            lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+            lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock
+                    .sub(startBlockNumber)
+                    .div(getPoolPayPeriodInBlocks(poolIndex));
         }
         return currentPayPeriods.sub(lastPayPeriods);
     }
+    
+    /**
+    * Sets the state of the pool to a given state, while also marking the block at
+    * which this occured and emitting an event corresponding to the new state.
+    * @param poolIndex - the index of the pool for which the state is changed
+    * @param newState - the new state to which the pool will change
+    */
+    function setState(uint poolIndex, PoolState newState) internal {
+        PoolState poolState = getPoolState(poolIndex);
+        if (poolState != newState) {
+            pools[poolIndex].state = newState; // set the state
+            pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+            emit StateChanged(poolIndex, newState); // emit an event that the state has changed
+        }
+    }
+
 }
