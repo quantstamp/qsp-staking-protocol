@@ -157,7 +157,7 @@ contract QuantstampStaking is Ownable {
         require(poolOwner == msg.sender, "Msg.sender is not pool owner.");
         _;
     }
-    
+
     /**
     * Initializes the Quality Assurance Protocol
     * @param tokenAddress - the address of the QSP Token contract

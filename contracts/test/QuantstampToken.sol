@@ -58,7 +58,7 @@ contract QuantstampToken is ERC20, ERC20Burnable, Ownable {
         require(_to != address(crowdSaleAddr));
         _;
     }
-    
+
     /**
      * Constructor - instantiates token supply and allocates balanace of
      * to the owner (msg.sender).
