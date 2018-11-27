@@ -10,13 +10,12 @@ contract TCROpinionPolicy is IPolicy {
 
     // Tracks whether an address has voted
     mapping(address => bool) public voted;
-
+    // Defines the required number of votes in favor of violation
     uint256 public minimumNumberOfVotesForViolation;
+    // Counts the number of votes recieved
     uint256 public numOfVotesReceived;
-
     // Never directly interact with the candidate, but noted for voter's reference
     address public candidateContract;
-
     // The TCR for the experts
     Registry public registry;
 
