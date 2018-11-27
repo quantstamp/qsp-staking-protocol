@@ -82,7 +82,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
       // allow the qspb contract use up to 1000QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
-      
+
       // balance should be 0 in the beginning
       assert.equal(await qspb.balanceQspWei.call(), 0);
       // create pool
@@ -122,7 +122,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should not create a pool if the initial deposit is zero", async function() {
-      // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake 
+      // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake
       Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         minStakeQspWei, 0, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner}));
@@ -217,7 +217,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should fail if policy is not violated", async function() {
       Util.assertTxFail(qspb.checkPolicy(poolId));
     });
-    
+
     it("should not allow claim withdraw when pool is cancelled", async function() {
       assert.equal(await qspb.getPoolState(poolId), PoolState.Initialized);
       // violate policy and cancel pool
@@ -345,7 +345,7 @@ contract('QuantstampStaking', function(accounts) {
 
       const quantstampParameterizer = await QuantstampParameterizer.deployed();
       await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-      await quantstampRegistry.init(QuantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+      await quantstampRegistry.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
 
       const applicant = accounts[4];
       const listing = applicant;
@@ -363,11 +363,11 @@ contract('QuantstampStaking', function(accounts) {
 
       await TCRUtil.addToWhitelist(listing, minDeposit, applicant, quantstampRegistry);
 
-      assert.strictEqual(await qspb.isExpert(applicant),true,'Applicant was not set as expert');
+      assert.strictEqual(await qspb.isExpert(applicant), true, 'Applicant was not set as expert');
     });
 
     it("should return false if the expert is not on the list", async function() {
-      assert.strictEqual(await qspb.isExpert(Util.ZERO_ADDRESS),false,'Zero address was apparently an expert');
+      assert.strictEqual(await qspb.isExpert(Util.ZERO_ADDRESS), false, 'Zero address was apparently an expert');
     });
   });
 
@@ -403,7 +403,7 @@ contract('QuantstampStaking', function(accounts) {
       const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       const quantstampRegistry = await QuantstampStakingRegistry.new();
-      await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+      await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
@@ -599,7 +599,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
       await quantstampToken.transfer(staker, stakerBudget, {from : owner});
       await quantstampToken.approve(qspb.address, stakerBudget, {from : staker});
-      
+
       // create pool and stake funds
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,

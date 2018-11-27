@@ -14,7 +14,8 @@
     },
     "rules": {
       "semi": [2],
-      "indent": [2, 2, { "SwitchCase": 1 }]
+      "indent": [2, 2, { "SwitchCase": 1 }],
+      "comma-spacing": ["error", { "before": false, "after": true }]
     },
     "globals": {
         "artifacts": true,
