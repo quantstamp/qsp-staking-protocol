@@ -102,7 +102,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
       assert.equal(await qspb.getPoolMinStakeTimeInBlocks(0), minStakeTimeInBlocks);
       assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
-      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), web3.eth.getBlock("latest").number);
+      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), (await web3.eth.getBlock("latest")).number);
       assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
       assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
       // balance should be increased
@@ -439,7 +439,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should not allow funds to be staked because the timeout has occured", async function() {
-      Util.mineNBlocks(timeoutInBlocks);
+      await Util.mineNBlocks(timeoutInBlocks);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
       // should throw an error since stakes cannot be made in the Cancelled state
@@ -577,7 +577,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      Util.mineNBlocks(minStakeTimeInBlocks);
+      await Util.mineNBlocks(minStakeTimeInBlocks);
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
       assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(maxPayoutQspWei));
@@ -623,7 +623,7 @@ contract('QuantstampStaking', function(accounts) {
 
     it("should return false if the staker has withdrawn his stake from the pool", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
-      Util.mineNBlocks(minStakeTimeInBlocks/2);
+      await Util.mineNBlocks(minStakeTimeInBlocks/2);
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
       assert.equal(await qspb.isStaker(currentPoolIndex, staker), false);
     });

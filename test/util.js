@@ -2,7 +2,7 @@ const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
 function toEther (n) {
-  return web3.toWei(n, "ether");
+  return web3.utils.toWei(String(n), "ether");
 }
 
 async function assertTxFail (promise) {
@@ -17,12 +17,12 @@ async function assertTxFail (promise) {
 }
 
 async function mineOneBlock () {
-  await web3.currentProvider.send({
+  await new Promise(resolve => web3.currentProvider.send({
     jsonrpc: '2.0',
     method: 'evm_mine',
     params: [],
     id: 0,
-  });
+  }, resolve));
 }
 
 async function mineNBlocks (n) {
