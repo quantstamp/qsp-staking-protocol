@@ -527,7 +527,8 @@ contract QuantstampStaking is Ownable {
         // check if the staker is an expert
         if (isExpert(stake.staker)) {
             stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
-                add(powersOf100[poolIndex][stake.contributionIndex])).div(powersOf100[poolIndex][stake.contributionIndex]);
+                add(powersOf100[poolIndex][stake.contributionIndex])).
+                div(powersOf100[poolIndex][stake.contributionIndex]);
             /* Check if it is the first stake of the first expert */
             if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
@@ -618,8 +619,9 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint startBlockNumber = Math.max256(stakes[poolIndex][staker][i].blockNumber, getPoolTimeOfStateInBlocks(poolIndex));
-            // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed out
+            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].blockNumber,
+                getPoolTimeOfStateInBlocks(poolIndex));
+            // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
