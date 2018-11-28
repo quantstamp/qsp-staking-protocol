@@ -177,16 +177,6 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
-    * Checks if the given address is a staker of the given pool index
-    * @param poolIndex - the index of the pool where to check for stakers
-    * @param staker - the address of the staker to check for
-    * @return - true if the staker has a stake in the pool, false otherwise
-    */
-    function isStaker(uint poolIndex, address staker) external view returns(bool) {
-        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
-    }
-
-    /**
     * Allows the staker to withdraw all their stakes from the pool.
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
@@ -304,6 +294,16 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
+    * Checks if the given address is a staker of the given pool index
+    * @param poolIndex - the index of the pool where to check for stakers
+    * @param staker - the address of the staker to check for
+    * @return - true if the staker has a stake in the pool, false otherwise
+    */
+    function isStaker(uint poolIndex, address staker) external view returns(bool) {
+        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
+    }
+
+    /**
     * Replaces the TCR with a new one. This function can be called only by the owner and
     * we assume that there the owner field will be set to 0x0 in the future.
     */
@@ -325,12 +325,12 @@ contract QuantstampStaking is Ownable {
 
         // claim all stakes
         uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
-        require(token.transfer(poolOwner, total),
-            "Token transfer failed during withdrawClaim");
         balanceQspWei = balanceQspWei.sub(total);
         pools[poolIndex].depositQspWei = 0;
         pools[poolIndex].totalStakeQspWei = 0;
         setState(poolIndex, PoolState.ViolatedFunded);
+        require(token.transfer(poolOwner, total),
+            "Token transfer failed during withdrawClaim");
         emit ClaimWithdrawn(poolIndex, total);
     }
 
