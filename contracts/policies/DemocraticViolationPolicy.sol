@@ -7,7 +7,6 @@ import "../IPolicy.sol";
 // (19 November 2018)
 
 /// @title DemocraticViolationPolicy
-/// @author Jan Gorzny
 
 // A policy that returns true if and only if a number of accounts have submitted
 // votes indicating an attack has occurred prior to isViolated being called.

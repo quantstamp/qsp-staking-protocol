@@ -1,9 +1,12 @@
 const CandidateContract = artifacts.require('test/CandidateContract');
-const ZeroBalancePolicy = artifacts.require('test/ZeroBalancePolicy');
-const TrivialBackdoorPolicy = artifacts.require('test/TrivialBackdoorPolicy');
+const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
+const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
 const CandidateToken = artifacts.require('test/CandidateToken');
-const TotalSupplyNotExceededPolicy = artifacts.require('test/TotalSupplyNotExceededPolicy');
-const DemocraticViolationPolicy = artifacts.require('test/DemocraticViolationPolicy');
+const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotExceededPolicy');
+const DemocraticViolationPolicy = artifacts.require('policies/DemocraticViolationPolicy');
+const Registry = artifacts.require('test/Registry');
+const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
+const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 
 module.exports = function(deployer, network) {
   if (network === 'development') {
@@ -13,6 +16,9 @@ module.exports = function(deployer, network) {
       .then(() => deployer.deploy(DemocraticViolationPolicy, 2, CandidateContract.address));
     deployer.deploy(TrivialBackdoorPolicy);
     deployer.deploy(CandidateToken);
-    deployer.deploy(TotalSupplyNotExceededPolicy, 0);    
+    deployer.deploy(TotalSupplyNotExceededPolicy, 0);
+    deployer.deploy(Registry)
+      .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address));
+    deployer.deploy(StateNotChangedPolicy, 0);
   }
 };
