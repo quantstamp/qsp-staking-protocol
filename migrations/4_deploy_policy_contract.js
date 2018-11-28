@@ -6,6 +6,7 @@ const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotE
 const DemocraticViolationPolicy = artifacts.require('policies/DemocraticViolationPolicy');
 const Registry = artifacts.require('test/Registry');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
+const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 
 module.exports = function(deployer) {
   //TODO: should these only be dployed on the development environment? they're only samples
@@ -18,4 +19,5 @@ module.exports = function(deployer) {
   deployer.deploy(TotalSupplyNotExceededPolicy, 0);
   deployer.deploy(Registry)
     .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address));
+  deployer.deploy(StateNotChangedPolicy, 0);
 };
