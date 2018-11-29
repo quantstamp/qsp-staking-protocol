@@ -243,7 +243,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     quantstampParameterizer = await QuantstampParameterizer.new();
     await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
     quantstampRegistry = await QuantstampStakingRegistry.new();
-    await quantstampRegistry.init(quantstampToken.address,voting.address,quantstampParameterizer.address, 'QSPtest');
+    await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // award budget to staker1
