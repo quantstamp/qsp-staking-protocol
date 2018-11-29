@@ -42,10 +42,12 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     const minStakeTimeInBlocks = 10000;
     const timeoutInBlocks = 100;
     const urlOfAuditReport = "URL";
+    const poolName = "myPool";
+    
     // create pool
     await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayableQspWei, minStakeQspWei,
       initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, {from: poolOwner});
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, {from: poolOwner});
   });
   
   describe("withdrawDeposit", async function() {
