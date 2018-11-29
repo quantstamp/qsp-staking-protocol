@@ -1,5 +1,8 @@
 const util = require('../test/util.js');
 
+// TCR parameters are desccribed here:
+// https://quantstamp.atlassian.net/wiki/spaces/QUAN/pages/138444953/Token-Curated+Registry+TCR
+
 module.exports = {
   paramDefaults: {
     minDeposit: util.toQsp('5000'),
