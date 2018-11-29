@@ -5,6 +5,23 @@
 
 Quantstamp Staking Protocol contract.
 
+## Access deployed contracts
+
+Below is the list of urls associated with version _V0_ of the contract. To retrieve the minor versions, replace the major version with a full 
+version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v0.1.0_, 
+change `QuantstampStaking-v-0-meta.json` to `QuantstampStaking-v-0.1.0-meta.json` in the corresponding url.
+
+### Dev (Ropsten)
+
+1. Staking contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-0-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-0-abi.json
+1. TCR contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-0-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-0-abi.json
+
+For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract , where `{address}` is `contractAddress` copied from the corresponding metadata file.
+
 ## Run locally
 ### Requirements
 
@@ -30,11 +47,20 @@ This includes running Truffle tests and collecting coverage report for [Coverall
 
 ## Deploy to Ropsten or MainNet
 
-1. Place the secret mnemonic phrase and the infura API token into `credentials.js`.
+1. Place the secret mnemonic phrase and the Infura API token into `credentials.js`.
+1. Edit `truffle.js` to specify `true` besides the contracts you are willing to redeploy:
+  ```
+  deploy: {
+    Registry: false,
+    QuantstampStaking: true
+  },
+  ```
+
 1. Deploy the contract(s) to the desired network:
-    * `truffle migrate --network dev` (to be implemented)
-    * `truffle migrate --network prod` (to be implemented)
-    * `truffle migrate --network ropsten` - Ropsten for independent testing (does not overwrite address from dev or prod network).
+    * `truffle migrate --network dev` (Ropsten network, development environment)
+    * `truffle migrate --network prod` (Ethereum MainNet, to be implemented)
+
+*Note*: if deployment does not start, append the `--reset` flag to the command.
 
 ## Deploy to Ganache
 

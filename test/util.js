@@ -1,8 +1,13 @@
+const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
 function toEther (n) {
   return web3.utils.toWei(String(n), "ether");
+}
+
+function daysToSeconds(n) {
+  return (new BigNumber(n)).mul(24).mul(3600);
 }
 
 async function assertTxFail (promise) {
@@ -42,6 +47,7 @@ async function balanceOfRaw (token, user) {
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
+  daysToSeconds: daysToSeconds,
   assertTxFail : assertTxFail,
   mineOneBlock: mineOneBlock,
   mineNBlocks: mineNBlocks,

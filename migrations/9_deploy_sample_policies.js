@@ -8,16 +8,16 @@ const Registry = artifacts.require('test/Registry');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 
-module.exports = function(deployer) {
-  //TODO: should these only be dployed on the development environment? they're only samples
-  const balance = 100;
-  deployer.deploy(CandidateContract, balance)
-    .then(() => deployer.deploy(ZeroBalancePolicy))
-    .then(() => deployer.deploy(DemocraticViolationPolicy, 2, CandidateContract.address));
-  deployer.deploy(TrivialBackdoorPolicy);
-  deployer.deploy(CandidateToken);
-  deployer.deploy(TotalSupplyNotExceededPolicy, 0);
-  deployer.deploy(Registry)
-    .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address));
-  deployer.deploy(StateNotChangedPolicy, 0);
+module.exports = function(deployer, network) {
+  if (network === 'development') {
+    const balance = 100;
+    deployer.deploy(CandidateContract, balance)
+      .then(() => deployer.deploy(ZeroBalancePolicy))
+      .then(() => deployer.deploy(DemocraticViolationPolicy, 2, CandidateContract.address))
+      .then(() => deployer.deploy(TrivialBackdoorPolicy))
+      .then(() => deployer.deploy(CandidateToken))
+      .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address))
+      .then(() => deployer.deploy(TotalSupplyNotExceededPolicy, 0))
+      .then(() => deployer.deploy(StateNotChangedPolicy, 0));
+  }
 };
