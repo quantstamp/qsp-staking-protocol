@@ -3,7 +3,7 @@
 ![Build status](https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiS01CNlNuU3RRaVp6ekJzbTZCNDVWekJwY1psMWczN1FMYTBEMDRLcmQ2ZS90U2ZhbUlkUVdBaEV4S3JIaEo5NTJndWtDbDk1TnMxVm0zbWl6NDFhU3hvPSIsIml2UGFyYW1ldGVyU3BlYyI6IldvaTZHMVpaUnBzYzIvS3UiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/quantstamp/qsp-staking-protocol/badge.svg?branch=master&t=H4hlEY)](https://coveralls.io/github/quantstamp/qsp-staking-protocol?branch=master)
 
-Quantstamp Staking Protocol contract.
+Quantstamp Assurance Protocol contract.
 
 ## Access deployed contracts
 
@@ -82,3 +82,11 @@ is executable from the command-line. A successful execution of `java -version` s
 
 Without using a hardware wallet, one alternatively use `HDWalletProvider` for signing transactions. This wallet accepts 
 a mnemonic key and a web3 provider address for signing transactions.  
+
+## Automated Testing
+
+All automated tests are implemented in JavaScript files under the `test` directory. All tests are independent from each other and target the testing of a particular functionality / use-case of the cotnract, with the exception of the `ComplexFunctionalTest.js`. As indicated by its file name, the test aims to simulate a complex scenario where there are 5 pools with different parameters and owners, as well as 5 different stakeholders, 3 of which are security experts. The tests in this file are dependent on each other and they are illustrated in the figure below.
+
+![Complex Functional Test Diagram](figures/ComplexFunctionalTest.png)
+
+The timeline flows horizontally from left to right. Each pool has a particular color and different parameters which are indicated at the bottom of the figure. Each staker has a different color and can stake in several pools. All text boxes represent an aspect that must be tested and the line connecting a text box to the timeline represents the point in time when the test should be performed. The code in `ComplexFunctionalTest.js` should mirror the steps in this figure.
