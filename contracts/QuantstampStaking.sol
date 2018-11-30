@@ -53,6 +53,7 @@ contract QuantstampStaking is Ownable {
         uint totalStakeQspWei; // total amount of stake contributed so far
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
         uint stakeCount; // the total number of stakes in the pool 
+        string poolName; // an alphanumeric string defined by the pool owner
     }
 
     // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
@@ -418,6 +419,10 @@ contract QuantstampStaking is Ownable {
         return pools[index].stakeCount;
     }
 
+    function getPoolName(uint index) public view returns(string) {
+        return pools[index].poolName;
+    }
+
     /**
     * Creates a new staking pool.
     * @param candidateContract - the contract that must be protected
@@ -431,6 +436,7 @@ contract QuantstampStaking is Ownable {
     * @param minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
     * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
+    * @param poolName - an alphanumeric string defined by the pool owner
     */
     function createPool(
         address candidateContract,
@@ -443,7 +449,8 @@ contract QuantstampStaking is Ownable {
         uint payPeriodInBlocks,
         uint minStakeTimeInBlocks,
         uint timeoutInBlocks,
-        string urlOfAuditReport
+        string urlOfAuditReport,
+        string poolName
     ) public {
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
@@ -472,7 +479,8 @@ contract QuantstampStaking is Ownable {
             PoolState.Initialized,
             0, // the initial total stake is 0,
             0, // the pool size is initially 0
-            0 // total stakes in this pool
+            0, // total stakes in this pool
+            poolName
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
