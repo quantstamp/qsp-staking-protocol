@@ -235,8 +235,7 @@ contract QuantstampStaking is Ownable {
         PoolState state = getPoolState(poolIndex);
         require((
                 state == PoolState.Initialized || // always allow to withdraw in these states
-                state == PoolState.NotViolatedUnderfunded ||
-                state == PoolState.Cancelled
+                state == PoolState.NotViolatedUnderfunded
             ) || (
                 state == PoolState.NotViolatedFunded &&
                 !isViolated(poolIndex)
