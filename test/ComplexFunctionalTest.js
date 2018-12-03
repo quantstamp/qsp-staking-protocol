@@ -101,21 +101,21 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   const staker4 = accounts[8]; // non-expert staker
   const staker5 = accounts[9]; // expert staker
 
-  const stakeholder1Budget = new BigNumber(Util.toQsp(15000));
-  const stakeholder2Budget = new BigNumber(Util.toQsp(50000));
-  const stakeholder3Budget = new BigNumber(Util.toQsp(10000));
+  const stakeholder1Budget = new BigNumber(Util.toQsp(15453));
+  const stakeholder2Budget = new BigNumber(Util.toQsp(54321));
+  const stakeholder3Budget = new BigNumber(Util.toQsp(18592));
 
-  const staker1StakeOrangePool = new BigNumber(Util.toQsp(100));
-  const staker1StakeWhitePool = new BigNumber(Util.toQsp(100));
-  const staker1StakeBluePool = new BigNumber(Util.toQsp(500));
-  const staker2StakeOrangePool = new BigNumber(Util.toQsp(400));
-  const staker2StakePurplePool = new BigNumber(Util.toQsp(100));
-  const staker3StakeGrayPool = new BigNumber(Util.toQsp(300));
-  const staker4StakeOrangePool = new BigNumber(Util.toQsp(500));
-  const staker4StakePurplePool = new BigNumber(Util.toQsp(100));
+  const staker1StakeOrangePool = new BigNumber(Util.toQsp(154));
+  const staker1StakeWhitePool = new BigNumber(Util.toQsp(123));
+  const staker1StakeBluePool = new BigNumber(Util.toQsp(565));
+  const staker2StakeOrangePool = new BigNumber(Util.toQsp(487));
+  const staker2StakePurplePool = new BigNumber(Util.toQsp(196));
+  const staker3StakeGrayPool = new BigNumber(Util.toQsp(379));
+  const staker4StakeOrangePool = new BigNumber(Util.toQsp(550));
+  const staker4StakePurplePool = new BigNumber(Util.toQsp(134));
   const staker5StakeOrangePool = new BigNumber(Util.toQsp(42));
-  const staker5StakeGrayPool = new BigNumber(Util.toQsp(100));
-  const staker5StakeWhitePool = new BigNumber(Util.toQsp(200));
+  const staker5StakeGrayPool = new BigNumber(Util.toQsp(129));
+  const staker5StakeWhitePool = new BigNumber(Util.toQsp(296));
   
   const staker1Budget = staker1StakeOrangePool.plus(staker1StakeWhitePool).plus(staker1StakeBluePool).plus(minDeposit);
   const staker2Budget = staker2StakeOrangePool.plus(staker2StakePurplePool).plus(minDeposit);
