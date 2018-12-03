@@ -128,19 +128,6 @@ contract QuantstampStaking is Ownable {
     // Indicates registry update
     event RegistryUpdated(address newRegistry);  
 
-    /* Allows execution only when the policy of the pool is violated.
-    * @param poolIndex - index of the pool where the policy is checked
-    */
-    modifier whenViolated(uint poolIndex) {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
-        require(IPolicy(poolPolicy).isViolated(candidateContract) ||
-            getPoolState(poolIndex) == PoolState.ViolatedFunded ||
-            getPoolState(poolIndex) == PoolState.ViolatedUnderfunded,
-            "Contract policy is not violated.");
-        _;
-    }
-
     /* Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
@@ -332,7 +319,10 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
         // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
-        require(getPoolState(poolIndex) == PoolState.NotViolatedFunded && isViolated(poolIndex));
+        require(
+            (getPoolState(poolIndex) == PoolState.ViolatedFunded) ||
+            (getPoolState(poolIndex) == PoolState.NotViolatedFunded && isViolated(poolIndex))
+        );
 
         // claim all stakes
         uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
@@ -516,10 +506,8 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool for which the state is changed
     */
     function checkPolicy(uint poolIndex) public {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
         // fail loud if the policy has not been violated
-        require(IPolicy(poolPolicy).isViolated(candidateContract));
+        require(isViolated(poolIndex));
 
         PoolState state = getPoolState(poolIndex);
         if (state == PoolState.Initialized) {
