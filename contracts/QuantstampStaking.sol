@@ -319,6 +319,7 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
         // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
+        // or the pool is in ViolatedFunded state already
         require(
             (getPoolState(poolIndex) == PoolState.ViolatedFunded) ||
             (getPoolState(poolIndex) == PoolState.NotViolatedFunded && isViolated(poolIndex))
