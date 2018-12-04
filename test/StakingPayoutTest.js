@@ -141,10 +141,10 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      var payout1 = new BigNumber(await qspb.computePayout(currentPoolIndex, staker1));
-      var payout2 = new BigNumber(await qspb.computePayout(currentPoolIndex, staker2));
-      var payout3 = new BigNumber(await qspb.computePayout(currentPoolIndex, staker3));
-      var payout4 = new BigNumber(await qspb.computePayout(currentPoolIndex, staker4));
+      var payout1 = await qspb.computePayout(currentPoolIndex, staker1);
+      var payout2 = await qspb.computePayout(currentPoolIndex, staker2);
+      var payout3 = await qspb.computePayout(currentPoolIndex, staker3);
+      var payout4 = await qspb.computePayout(currentPoolIndex, staker4);
       // first expert should have a higher payout than the 2nd expert
       assert.isTrue(payout1.gt(payout2), "The payout of the first expert is not higher than the 2nd expert,");
       // 2nd expert should have a higher payout than non-experts
