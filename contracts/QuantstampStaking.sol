@@ -182,10 +182,6 @@ contract QuantstampStaking is Ownable {
             state == PoolState.PolicyExpired,
             "Pool is not in the right state when withdrawing stake.");
 
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
-        require(state == PoolState.PolicyExpired || !IPolicy(poolPolicy).isViolated(candidateContract));
-
         uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
 
         if (totalQspWeiTransfer > 0) { // transfer the stake back
@@ -284,10 +280,6 @@ contract QuantstampStaking is Ownable {
         // at least minStakeQspWei
         require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
             "Not enough time has passed since the pool is active or the stake was placed.");
-        // if the policy is expired then the stakes must also be withdrawn
-        if (state == PoolState.PolicyExpired) {
-            withdrawStake(poolIndex);
-        }
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, msg.sender);
         if (payout == 0) // no need to transfer anything
@@ -313,7 +305,6 @@ contract QuantstampStaking is Ownable {
         } else if (state == PoolState.NotViolatedFunded &&
             block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))) {
             setState(poolIndex, PoolState.PolicyExpired);
-            withdrawStake(poolIndex);
         } else if (state != PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }

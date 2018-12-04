@@ -36,7 +36,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
   const payPeriodInBlocks = 8;
-  const minStakeTimeInBlocks = 10;
+  const minStakeTimeInBlocks = 30;
   const timeoutInBlocks = 5;
   const urlOfAuditReport = "URL";
   const initialDepositQspWei = maxPayoutQspWei;
