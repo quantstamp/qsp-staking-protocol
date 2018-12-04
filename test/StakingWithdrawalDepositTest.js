@@ -10,9 +10,20 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   const qspAdmin = accounts[1];
   const poolOwner = accounts[3];
   const adversary = accounts[4];
+  const staker = accounts[5];
   const poolOwnerBudget = Util.toQsp(100);
   const candidateContractBalance = Util.toEther(100);
-  
+
+  const PoolState = Object.freeze({
+    None : 0,
+    Initialized : 1,
+    NotViolatedUnderfunded : 2,
+    ViolatedUnderfunded : 3,
+    NotViolatedFunded : 4,
+    ViolatedFunded : 5,
+    Cancelled: 6
+  });
+
   let qspb;
   let quantstampToken;
   let candidateContract;
@@ -20,6 +31,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   let quantstampRegistry;
   const initialDepositQspWei = poolOwnerBudget;
   const minStakeQspWei = Util.toQsp(10);
+  const maxPayableQspWei = Util.toQsp(200);
 
   beforeEach(async function() {
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
@@ -32,10 +44,12 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     await quantstampToken.enableTransfer({from : owner});
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
     await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+    
+    await quantstampToken.transfer(staker, minStakeQspWei, {from : owner});
+    await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
 
     assert.equal(await qspb.balanceQspWei.call(), 0);
 
-    const maxPayableQspWei = 10;
     const bonusExpertFactor = 3;
     const bonusFirstExpertFactor = 5;
     const payPeriodInBlocks = 15;
@@ -70,7 +84,33 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
     });
 
-    it("should fail if the pool is in a Violated state", async function() {
+    it("should succeed if the policy is violated but the pool is in the Initialized state", async function() {
+      assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.Initialized);
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      await qspb.withdrawDeposit(0, {from: poolOwner});
+      assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
+      assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
+      assert.equal(await qspb.balanceQspWei(), Util.toQsp(0));
+    });
+
+    it("should succeed if the policy is violated but the pool is in the NotViolatedUnderfunded state", async function() {
+      await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
+      assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.NotViolatedUnderfunded);
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      await qspb.withdrawDeposit(0, {from: poolOwner});
+      assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
+      assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
+      assert.equal(await qspb.balanceQspWei(), minStakeQspWei);
+    });
+
+    it("should fail if the policy is violated and the pool is in the NotViolatedFunded state", async function() {
+      await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
+      // deposit more QSP to make the pool fully funded
+      await quantstampToken.transfer(poolOwner, maxPayableQspWei, {from : owner});
+      await quantstampToken.approve(qspb.address, maxPayableQspWei, {from : poolOwner});
+      await qspb.depositFunds(0, maxPayableQspWei, {from: poolOwner});
+
+      assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.NotViolatedFunded);
       await candidateContract.withdraw(await candidateContract.balance.call());
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
     });
