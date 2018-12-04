@@ -330,6 +330,10 @@ contract('QuantstampStaking', function(accounts) {
         anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, {from: poolOwner});
 
+      // approve and stake funds into the new pool
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
+
       await candidateContract.withdraw(policyBalance);
       await qspb.withdrawClaim(nextPool, {from: poolOwner});
       assert.equal(await qspb.getPoolState(nextPool), PoolState.ViolatedFunded);
@@ -559,13 +563,22 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), minStakeQspWei);
     });
 
-    it("should not withdraw stake because policy is violated", async function() {
+    it("should withdraw stake when state is NotViolatedUnderfunded and policy is violated", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       await candidateContract.withdraw(await candidateContract.balance.call());
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), 0);
+      assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), 0);
+    });
+
+    it("should not withdraw stake when state is NotViolatedFunded and policy is violated", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
+      await candidateContract.withdraw(await candidateContract.balance.call());
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
       Util.assertTxFail(qspb.withdrawStake(currentPoolIndex, {from: staker}));
-      assert.equal(await qspb.balanceQspWei.call(), parseInt(depositQspWei) + parseInt(minStakeQspWei));
       assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), minStakeQspWei);
-      assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), minStakeQspWei);
     });
 
     it("should not withdraw stake before the policy period", async function() {

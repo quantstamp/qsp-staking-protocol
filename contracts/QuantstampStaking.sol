@@ -129,19 +129,6 @@ contract QuantstampStaking is Ownable {
     // Indicates registry update
     event RegistryUpdated(address newRegistry);  
 
-    /* Allows execution only when the policy of the pool is violated.
-    * @param poolIndex - index of the pool where the policy is checked
-    */
-    modifier whenViolated(uint poolIndex) {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
-        require(IPolicy(poolPolicy).isViolated(candidateContract) ||
-            getPoolState(poolIndex) == PoolState.ViolatedFunded ||
-            getPoolState(poolIndex) == PoolState.ViolatedUnderfunded,
-            "Contract policy is not violated.");
-        _;
-    }
-
     /* Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
@@ -250,7 +237,7 @@ contract QuantstampStaking is Ownable {
     * Allows the stakeholder to withdraw their entire deposits from the contract
     * if the policy is not violated
     */
-    function withdrawDeposit(uint poolIndex) external whenNotViolated(poolIndex) onlyPoolOwner(poolIndex) {
+    function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
         PoolState state = getPoolState(poolIndex);
         if (state == PoolState.NotViolatedFunded &&
             block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))) {
@@ -262,6 +249,16 @@ contract QuantstampStaking is Ownable {
             return;
         }
         address poolOwner = getPoolOwner(poolIndex);
+        require((
+                state == PoolState.Initialized || // always allow to withdraw in these states
+                state == PoolState.NotViolatedUnderfunded ||
+                state == PoolState.PolicyExpired
+            ) || (
+                state == PoolState.NotViolatedFunded &&
+                !isViolated(poolIndex)
+            ),
+            "Pool is not in the right state when withdrawing deposit."
+        );
         uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
         require(withdrawalAmountQspWei > 0, "The staker has no balance to withdraw");
         pools[poolIndex].depositQspWei = 0;
@@ -346,12 +343,13 @@ contract QuantstampStaking is Ownable {
     * state of the contract allows.
     * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
-    function withdrawClaim(uint poolIndex) public whenViolated(poolIndex) onlyPoolOwner(poolIndex) {
-        address poolOwner = getPoolOwner(poolIndex);
-        PoolState currentState = getPoolState(poolIndex);
-        require(currentState != PoolState.ViolatedUnderfunded);
-        require(currentState != PoolState.Cancelled);
-        require(currentState != PoolState.PolicyExpired);
+    function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
+        // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
+        // or the pool is in ViolatedFunded state already
+        require(
+            (getPoolState(poolIndex) == PoolState.ViolatedFunded) ||
+            (getPoolState(poolIndex) == PoolState.NotViolatedFunded && isViolated(poolIndex))
+        );
 
         // claim all stakes
         uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
@@ -359,7 +357,7 @@ contract QuantstampStaking is Ownable {
         pools[poolIndex].depositQspWei = 0;
         pools[poolIndex].totalStakeQspWei = 0;
         setState(poolIndex, PoolState.ViolatedFunded);
-        require(token.transfer(poolOwner, total),
+        require(token.transfer(getPoolOwner(poolIndex), total),
             "Token transfer failed during withdrawClaim");
         emit ClaimWithdrawn(poolIndex, total);
     }
@@ -535,10 +533,8 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool for which the state is changed
     */
     function checkPolicy(uint poolIndex) public {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
         // fail loud if the policy has not been violated
-        require(IPolicy(poolPolicy).isViolated(candidateContract));
+        require(isViolated(poolIndex));
 
         PoolState state = getPoolState(poolIndex);
         if (state == PoolState.Initialized) {
@@ -665,7 +661,16 @@ contract QuantstampStaking is Ownable {
 
         return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(getPoolSizeQspWei(poolIndex));
     }
-    
+
+    /* Returns true if and only if the contract policy for the pool poolIndex is violated
+    * @param poolIndex - index of the pool where the policy is checked
+    */
+    function isViolated(uint poolIndex) internal returns (bool) {
+        address poolPolicy = getPoolContractPolicy(poolIndex);
+        address candidateContract = getPoolCandidateContract(poolIndex);
+        return IPolicy(poolPolicy).isViolated(candidateContract);
+    }
+
     /** This function returns the number of payouts that a staker must receive for his/her stake in a pool.
     * @param poolIndex - the index of the pool where the stake was placed
     * @param i - the index of the stake in the stakes array
