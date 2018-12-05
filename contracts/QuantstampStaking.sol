@@ -214,8 +214,10 @@ contract QuantstampStaking is Ownable {
     ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-        require(currentState != PoolState.Cancelled);
-        require(currentState != PoolState.PolicyExpired);
+        require(currentState == PoolState.Initialized ||
+            currentState == PoolState.NotViolatedUnderfunded ||
+            currentState == PoolState.NotViolatedFunded ||
+            currentState == PoolState.PolicyExpired);
         require(token.transferFrom(poolOwner, address(this), depositQspWei),
             "Token deposit transfer did not succeed");
         pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
