@@ -13,8 +13,8 @@ const TotalSupplyNotExceededPolicy = artifacts.require('policies/TotalSupplyNotE
 const OwnerNotChangedPolicy = artifacts.require('policies/OwnerNotChangedPolicy');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
-const AlwaysTruePolicy = artifacts.require('policies/AlwaysTruePolicy');
-const AlwaysFalsePolicy = artifacts.require('policies/AlwaysFalsePolicy');
+const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
+const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
@@ -34,8 +34,8 @@ contract('CandidateContract', function(accounts) {
   let democraticPolicy;
   let trustedOpinionPolicy;
   let stateNoteChangedPolicy;
-  let alwaysTruePolicy;
-  let alwaysFalsePolicy;
+  let alwaysViolatedPolicy;
+  let neverViolatedPolicy;
   let upgradeablePolicy;
 
   beforeEach(async function () {
@@ -48,13 +48,13 @@ contract('CandidateContract', function(accounts) {
     democraticPolicy = await DemocraticViolationPolicy.deployed();
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
     stateNoteChangedPolicy = await StateNotChangedPolicy.deployed();
-    alwaysTruePolicy = await AlwaysTruePolicy.deployed();
-    alwaysFalsePolicy = await AlwaysFalsePolicy.deployed();
-    upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, alwaysFalsePolicy.address);
+    alwaysViolatedPolicy = await AlwaysViolatedPolicy.deployed();
+    neverViolatedPolicy = await NeverViolatedPolicy.deployed();
+    upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
   });
 
   describe('UpgradeablePolicy', () => {
-    it("should not matter when the policy is checked with a different contract address", async function() {
+    it("should throw an exception when the policy is checked with a different contract address", async function() {
       Util.assertTxFail(upgradeablePolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
@@ -63,7 +63,7 @@ contract('CandidateContract', function(accounts) {
     });
 
     it("should be violated after the logic is updated", async function() {
-      await upgradeablePolicy.changePolicyLogic(alwaysTruePolicy.address, {from : owner});
+      await upgradeablePolicy.changePolicyLogic(alwaysViolatedPolicy.address, {from : owner});
       assert.isTrue(await upgradeablePolicy.isViolated(candidateContract.address));
     });
 

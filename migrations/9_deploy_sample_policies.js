@@ -7,8 +7,8 @@ const DemocraticViolationPolicy = artifacts.require('policies/DemocraticViolatio
 const Registry = artifacts.require('test/Registry');
 const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
-const AlwaysTruePolicy = artifacts.require('policies/AlwaysTruePolicy');
-const AlwaysFalsePolicy = artifacts.require('policies/AlwaysFalsePolicy');
+const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
+const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 
 module.exports = function(deployer, network) {
   if (network === 'development') {
@@ -21,7 +21,7 @@ module.exports = function(deployer, network) {
       .then(() => deployer.deploy(TCROpinionPolicy, 2, CandidateToken.address, Registry.address))
       .then(() => deployer.deploy(TotalSupplyNotExceededPolicy, 0))
       .then(() => deployer.deploy(StateNotChangedPolicy, 0))
-      .then(() => deployer.deploy(AlwaysTruePolicy))
-      .then(() => deployer.deploy(AlwaysFalsePolicy));
+      .then(() => deployer.deploy(AlwaysViolatedPolicy))
+      .then(() => deployer.deploy(NeverViolatedPolicy));
   }
 };

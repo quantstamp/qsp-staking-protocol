@@ -2,11 +2,11 @@ pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
 
-/// @title AlwaysTruePolicy - the policy is always violated.
+/// @title NeverViolatedPolicy - the policy is never violated.
 
-contract AlwaysTruePolicy is IPolicy {
+contract NeverViolatedPolicy is IPolicy {
 
     function isViolated(address contractAddress) external view returns(bool) {
-      return true;
+      return false;
     }
 }
