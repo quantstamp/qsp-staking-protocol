@@ -7,6 +7,7 @@ const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
 const Util = require("./util.js");
+const BigNumber = require('bignumber.js');
 
 contract('QuantstampStaking: staker requests payout', function(accounts) {
   const owner = accounts[0];
@@ -27,11 +28,12 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     ViolatedUnderfunded : 3,
     NotViolatedFunded : 4,
     ViolatedFunded : 5,
-    Cancelled: 6
+    Cancelled: 6,
+    PolicyExpired: 7
   });
 
   // vars needed for creating pool
-  const maxPayoutQspWei = Util.toQsp(10);
+  const maxPayoutQspWei = new BigNumber(Util.toQsp(10));
   const minStakeQspWei = Util.toQsp(10);
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
@@ -120,7 +122,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), maxPayoutQspWei);
+      assert.isTrue(maxPayoutQspWei.eq(await qspb.computePayout(currentPoolIndex, staker1)));
     });
 
     it("should return maxPayoutQspWei/2 if there are two non-expert stakers with the same amount at stake", async function() {
@@ -129,7 +131,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker3), maxPayoutQspWei/2);
+      assert.isTrue(maxPayoutQspWei.dividedBy(2).eq(await qspb.computePayout(currentPoolIndex, staker3)));
     });
 
     it("should give a higher payout to the security expert than to a non-expert and even more to the first expert", async function() {
@@ -240,6 +242,15 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       assert(payoutStakerTwoStakes > payoutStakerOneStake, "Payout is not higher for 2 stakes than 1");
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
       assert.equal(await Util.balanceOf(quantstampToken, staker3), parseInt(balanceOfStaker3) + parseInt(payoutStakerOneStake) + parseInt(payoutStakerTwoStakes), "Staker balance not right");
+    });
+
+    it("should transition into the PolicyExpired state if the policy has expired", async function() {
+      await qspb.stakeFunds(currentPoolIndex, maxPayoutQspWei, {from : staker1});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei.times(10), {from : poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      await Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.PolicyExpired);
     });
   });
 });

@@ -123,8 +123,11 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.isTrue(balanceOfStaker.plus(minStakeQspWei).eq(await quantstampToken.balanceOf(staker)));
       // afterwards the stakholder can withdraw his funds
       assert.equal(await qspb.getPoolTotalStakeQspWei(0), 0);
+      const poolDeposit = await qspb.getPoolDepositQspWei(0);
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.isTrue(balanceOfPoolOwner.plus(maxPayableQspWei).eq(await quantstampToken.balanceOf(poolOwner)));
+      assert.isTrue(balanceOfPoolOwner.plus(poolDeposit).eq(await quantstampToken.balanceOf(poolOwner)));
+      // it should fail if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
+      Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
     });
   });
   
