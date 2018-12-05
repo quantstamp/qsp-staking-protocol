@@ -247,16 +247,11 @@ contract QuantstampStaking is Ownable {
             return;
         }
         address poolOwner = getPoolOwner(poolIndex);
-        require((
-                state == PoolState.Initialized || // always allow to withdraw in these states
-                state == PoolState.NotViolatedUnderfunded ||
-                state == PoolState.PolicyExpired
-            ) || (
-                state == PoolState.NotViolatedFunded &&
-                !isViolated(poolIndex)
-            ),
-            "Pool is not in the right state when withdrawing deposit."
-        );
+        require(state == PoolState.Initialized || // always allow to withdraw in these states
+            state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.PolicyExpired ||
+            state == PoolState.NotViolatedFunded,
+            "Pool is not in the right state when withdrawing deposit.");
         uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
         require(withdrawalAmountQspWei > 0, "The staker has no balance to withdraw");
         pools[poolIndex].depositQspWei = 0;
