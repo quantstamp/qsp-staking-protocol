@@ -7,6 +7,7 @@ const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
 const Util = require("./util.js");
+const BigNumber = require('bignumber.js');
 
 contract('QuantstampStaking: staker requests payout', function(accounts) {
   const owner = accounts[0];
@@ -18,7 +19,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const qspAdmin = accounts[6]; // non-expert staker
   const poolOwnerBudget = Util.toQsp(100000);
   const minDeposit = TCRUtil.minDep;
-  const stakerBudget = Util.toQsp(100);
+  const stakerBudget = new BigNumber(Util.toQsp(100));
   const candidateContractBalance = Util.toEther(100);
   const PoolState = Object.freeze({
     None : 0,
@@ -27,16 +28,17 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     ViolatedUnderfunded : 3,
     NotViolatedFunded : 4,
     ViolatedFunded : 5,
-    Cancelled: 6
+    Cancelled: 6,
+    PolicyExpired: 7
   });
 
   // vars needed for creating pool
-  const maxPayoutQspWei = Util.toQsp(10);
+  const maxPayoutQspWei = new BigNumber(Util.toQsp(10));
   const minStakeQspWei = Util.toQsp(10);
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
   const payPeriodInBlocks = 8;
-  const minStakeTimeInBlocks = 10;
+  const minStakeTimeInBlocks = 30;
   const timeoutInBlocks = 5;
   const urlOfAuditReport = "URL";
   const initialDepositQspWei = maxPayoutQspWei;
@@ -69,11 +71,11 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
     await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
     // expert stakers
-    await quantstampToken.transfer(staker1, parseInt(stakerBudget) + 2 * Util.toQsp(minDeposit), {from : owner});
+    await quantstampToken.transfer(staker1, stakerBudget.plus(new BigNumber(Util.toQsp(minDeposit)).plus(2)), {from : owner});
     await quantstampToken.approve(qspb.address, stakerBudget, {from : staker1});
     await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : staker1});
     await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : staker1});
-    await quantstampToken.transfer(staker2, parseInt(stakerBudget) + 2 * Util.toQsp(minDeposit), {from : owner});
+    await quantstampToken.transfer(staker2, stakerBudget.plus(new BigNumber(Util.toQsp(minDeposit)).plus(2)), {from : owner});
     await quantstampToken.approve(qspb.address, stakerBudget, {from : staker2});
     await quantstampToken.approve(quantstampRegistry.address, Util.toQsp(minDeposit), {from : staker2});
     await quantstampToken.approve(voting.address,  Util.toQsp(minDeposit), {from : staker2});
@@ -120,7 +122,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), maxPayoutQspWei);
+      assert.equal(maxPayoutQspWei.toNumber(), (await qspb.computePayout(currentPoolIndex, staker1)).toNumber());
     });
 
     it("should return maxPayoutQspWei/2 if there are two non-expert stakers with the same amount at stake", async function() {
@@ -129,7 +131,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.equal(await qspb.computePayout(currentPoolIndex, staker3), maxPayoutQspWei/2);
+      assert.equal(maxPayoutQspWei.dividedBy(2).toNumber(), (await qspb.computePayout(currentPoolIndex, staker3)).toNumber());
     });
 
     it("should give a higher payout to the security expert than to a non-expert and even more to the first expert", async function() {
@@ -145,16 +147,16 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       var payout3 = await qspb.computePayout(currentPoolIndex, staker3);
       var payout4 = await qspb.computePayout(currentPoolIndex, staker4);
       // first expert should have a higher payout than the 2nd expert
-      assert(payout1 > payout2, "The payout of the first expert is not higher than the 2nd expert,");
+      assert.isTrue(payout1.gt(payout2), "The payout of the first expert is not higher than the 2nd expert,");
       // 2nd expert should have a higher payout than non-experts
-      assert(payout2 > payout3, "The payout of the second expert is not higher than non-experts.");
+      assert.isTrue(payout2.gt(payout3), "The payout of the second expert is not higher than non-experts.");
       // non-experts should have the same payout
-      assert.equal(payout3.toNumber(), payout4, "The payout of non-experts is not equal.");
+      assert.equal(payout4.toNumber(), payout3.toNumber(), "The payout of non-experts is not equal.");
       // all payouts must be positive
-      assert(payout4 > 0, "All payouts must be positive values.");
-      // the sum of all payouts should be equal to maxPayoutQspWei
-      assert.equal(payout1.toNumber() + payout2.toNumber() + payout3.toNumber() + payout4.toNumber(), maxPayoutQspWei,
-        "The sum of payouts of all stakers is not equal to maxPayoutQspWei.");
+      assert.isTrue(payout4.gt(0), "All payouts must be positive values.");
+      // the sum of all payouts should be approximately equal to maxPayoutQspWei, but not higher
+      assert.isTrue(payout1.plus(payout2).plus(payout3).plus(payout4).lt(maxPayoutQspWei),
+        "The sum of payouts of all stakers is greather than maxPayoutQspWei");
     });
 
     it("should return 0 if all the stakes have been withdawn", async function() {
@@ -194,7 +196,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks/2);
       // at this point staker3 can get a payout, but staker4 cannot
-      var balanceOfStaker4 = await Util.balanceOf(quantstampToken, staker4);
+      var balanceOfStaker4 = new BigNumber(await Util.balanceOf(quantstampToken, staker4));
       var payoutStaker = await qspb.computePayout(currentPoolIndex, staker3);
       // the request of staker3 must succeed
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
@@ -205,7 +207,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // after waiting for an entire payPeriod the request of staker 4 must succeed
       await Util.mineNBlocks(payPeriodInBlocks/2);
       await qspb.withdrawInterest(currentPoolIndex, {from: staker4});
-      assert.equal(await Util.balanceOf(quantstampToken, staker4), parseInt(balanceOfStaker4) + parseInt(payoutStaker),
+      assert.equal(await Util.balanceOf(quantstampToken, staker4), balanceOfStaker4.plus(payoutStaker),
         "The balance of staker 4 does not include the payout");
     });
 
@@ -231,7 +233,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
       await Util.mineNBlocks(payPeriodInBlocks-2);
       // at this point staker3 can get a payout only for his first stake
-      var balanceOfStaker3 = await Util.balanceOf(quantstampToken, staker3);
+      var balanceOfStaker3 = new BigNumber(await Util.balanceOf(quantstampToken, staker3));
       var payoutStakerOneStake = await qspb.computePayout(currentPoolIndex, staker3);
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
       // after waiting a full payPeriod, staker3 must receive a higher payout for both stakes
@@ -239,7 +241,17 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       var payoutStakerTwoStakes = await qspb.computePayout(currentPoolIndex, staker3);
       assert(payoutStakerTwoStakes > payoutStakerOneStake, "Payout is not higher for 2 stakes than 1");
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
-      assert.equal(await Util.balanceOf(quantstampToken, staker3), parseInt(balanceOfStaker3) + parseInt(payoutStakerOneStake) + parseInt(payoutStakerTwoStakes), "Staker balance not right");
+      assert.equal(balanceOfStaker3.plus(payoutStakerOneStake).plus(payoutStakerTwoStakes).toNumber(),
+        await Util.balanceOf(quantstampToken, staker3), "Staker balance not right");
+    });
+
+    it("should transition into the PolicyExpired state if the policy has expired", async function() {
+      await qspb.stakeFunds(currentPoolIndex, maxPayoutQspWei, {from : staker1});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei.times(10), {from : poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      await Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.PolicyExpired);
     });
   });
 });

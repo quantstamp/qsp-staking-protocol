@@ -31,7 +31,8 @@ contract QuantstampStaking is Ownable {
         ViolatedUnderfunded, // sufficient stakes, insufficient deposit, violated
         NotViolatedFunded,  // sufficient stakes, sufficient deposit
         ViolatedFunded, // sufficient stakes, sufficient deposit, violated
-        Cancelled
+        Cancelled,
+        PolicyExpired // similar to Cancelled, but in this state stakers can request and receive payouts which are due
     }
 
     struct Pool {
@@ -169,22 +170,16 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
     function withdrawStake(uint poolIndex) external {
-        PoolState state = getPoolState(poolIndex);
-        require((
-                state == PoolState.Initialized || // always allow to withdraw in these states
-                state == PoolState.NotViolatedUnderfunded ||
-                state == PoolState.Cancelled
-            ) || (
-                state == PoolState.NotViolatedFunded &&
-                !isViolated(poolIndex) &&
-                block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)) >= getPoolMinStakeTimeInBlocks(poolIndex)
-            ),
-            "Pool is not in the right state when withdrawing stake."
-        );
+        PoolState state = updatePoolState(poolIndex);
+        require(state == PoolState.Initialized ||
+            state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.Cancelled ||
+            state == PoolState.PolicyExpired,
+            "Pool is not in the right state when withdrawing stake.");
 
         uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
 
-        if (totalQspWeiTransfer > 0) {
+        if (totalQspWeiTransfer > 0) { // transfer the stake back
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
@@ -194,10 +189,12 @@ contract QuantstampStaking is Ownable {
                     calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
-
+            // actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
-            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+            // update the pool state if necessary
+            if (state != PoolState.PolicyExpired &&
+                getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
                 setState(poolIndex, PoolState.Cancelled);
             }
         }
@@ -212,7 +209,10 @@ contract QuantstampStaking is Ownable {
     ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
         PoolState currentState = getPoolState(poolIndex);
-        require(currentState != PoolState.Cancelled);
+        require(currentState == PoolState.Initialized ||
+            currentState == PoolState.NotViolatedUnderfunded ||
+            currentState == PoolState.NotViolatedFunded ||
+            currentState == PoolState.PolicyExpired);
         require(token.transferFrom(poolOwner, address(this), depositQspWei),
             "Token deposit transfer did not succeed");
         pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
@@ -231,20 +231,22 @@ contract QuantstampStaking is Ownable {
     * if the policy is not violated
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
+        PoolState state = updatePoolState(poolIndex);
+        /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out or
+        * if the minimum time for staking has passed twice since the pool transitioned into the NotViolated funded state
+        */
+        if (state == PoolState.PolicyExpired && getPoolTotalStakeQspWei(poolIndex) > 0 &&
+            getPoolTimeOfStateInBlocks(poolIndex).add(getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
+            return;
+        }
         address poolOwner = getPoolOwner(poolIndex);
-        PoolState state = getPoolState(poolIndex);
-        require((
-                state == PoolState.Initialized || // always allow to withdraw in these states
-                state == PoolState.NotViolatedUnderfunded ||
-                state == PoolState.Cancelled
-            ) || (
-                state == PoolState.NotViolatedFunded &&
-                !isViolated(poolIndex)
-            ),
-            "Pool is not in the right state when withdrawing deposit."
-        );
+        require(state == PoolState.Initialized || // always allow to withdraw in these states
+            state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.PolicyExpired ||
+            state == PoolState.NotViolatedFunded,
+            "Pool is not in the right state when withdrawing deposit.");
         uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
-        require(withdrawalAmountQspWei > 0, "The staker has no balance to withdraw");
+        require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
         pools[poolIndex].depositQspWei = 0;
         balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
         require(token.transfer(poolOwner, withdrawalAmountQspWei), "Token withdrawal transfer did not succeed");
@@ -259,12 +261,15 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the staker wants to receive a payout
     */
     function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
-        // check that the state of the pool is NotViolatedFunded
-        require(getPoolState(poolIndex) == PoolState.NotViolatedFunded,
-            "The state of the pool is not NotViolatedFunded, as expected.");
+        // update the state of the pool if necessary
+        PoolState state = updatePoolState(poolIndex);
+        // check that the state of the pool
+        require(state == PoolState.NotViolatedFunded ||
+            state == PoolState.PolicyExpired,
+            "The state of the pool is not as expected.");
         // check that enough time (blocks) has passed since the pool has collected stakes totaling 
         // at least minStakeQspWei
-        require(block.number > (getPoolPayPeriodInBlocks(poolIndex) + getPoolTimeOfStateInBlocks(poolIndex)),
+        require(block.number > (getPoolPayPeriodInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))),
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, msg.sender);
@@ -288,7 +293,7 @@ contract QuantstampStaking is Ownable {
             require(token.transfer(msg.sender, payout),
                 "Could not transfer the payout to the staker.");
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
-        } else { // place the pool in a Cancelled state
+        } else if (state != PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }
     }
@@ -681,9 +686,28 @@ contract QuantstampStaking is Ownable {
         PoolState poolState = getPoolState(poolIndex);
         if (poolState != newState) {
             pools[poolIndex].state = newState; // set the state
-            pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+            /* Don't update the time of the stake if the policy expired because payouts still need to be awarded 
+               accoring to the time of the NonViolatedFunded state */
+            if (newState != PoolState.PolicyExpired) { 
+                pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+            }
             emit StateChanged(poolIndex, newState); // emit an event that the state has changed
         }
+    }
+
+    /**
+     * Checks if the policy has expired and sets the state accordingly
+     * @param poolIndex - the index of the pool for which the state is updated 
+     * @return the current state of the pool 
+     */
+    function updatePoolState(uint poolIndex) internal returns(PoolState) {
+        PoolState state = getPoolState(poolIndex);
+        if (state == PoolState.NotViolatedFunded &&
+            block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, PoolState.PolicyExpired);
+            state = PoolState.PolicyExpired;
+        }
+        return state;
     }
 
 }
