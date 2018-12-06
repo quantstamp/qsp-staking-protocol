@@ -116,17 +116,17 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       // nothing should be transfered to pool owner if he requests his deposit back
       const balanceOfPoolOwner = await quantstampToken.balanceOf(poolOwner);
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.isTrue(balanceOfPoolOwner.eq(await quantstampToken.balanceOf(poolOwner)),
+      assert.equal(balanceOfPoolOwner.toNumber(), (await quantstampToken.balanceOf(poolOwner)),
         "Current balance of stakeholder " + await quantstampToken.balanceOf(poolOwner) + " is different than exptected " + balanceOfPoolOwner);
       // stakers should be able to withdraw their stakes
       const balanceOfStaker = await quantstampToken.balanceOf(staker);
       await qspb.withdrawStake(0, {from: staker});
-      assert.isTrue(balanceOfStaker.plus(minStakeQspWei).eq(await quantstampToken.balanceOf(staker)));
+      assert.equal(balanceOfStaker.plus(minStakeQspWei).toNumber(), (await quantstampToken.balanceOf(staker)).toNumber());
       // afterwards the stakholder can withdraw his funds
       assert.equal(await qspb.getPoolTotalStakeQspWei(0), 0);
       const poolDeposit = await qspb.getPoolDepositQspWei(0);
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.isTrue(balanceOfPoolOwner.plus(poolDeposit).eq(await quantstampToken.balanceOf(poolOwner)));
+      assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
       // it should fail if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
     });
@@ -144,7 +144,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       const poolDeposit = await qspb.getPoolDepositQspWei(0);
       const balanceOfPoolOwner = await quantstampToken.balanceOf(poolOwner);
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.isTrue(balanceOfPoolOwner.plus(poolDeposit).eq(await quantstampToken.balanceOf(poolOwner)));
+      assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
     });
   });
   

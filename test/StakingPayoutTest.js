@@ -122,7 +122,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.isTrue(maxPayoutQspWei.eq(await qspb.computePayout(currentPoolIndex, staker1)));
+      assert.equal(maxPayoutQspWei.toNumber(), (await qspb.computePayout(currentPoolIndex, staker1)).toNumber());
     });
 
     it("should return maxPayoutQspWei/2 if there are two non-expert stakers with the same amount at stake", async function() {
@@ -131,7 +131,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.isTrue(maxPayoutQspWei.dividedBy(2).eq(await qspb.computePayout(currentPoolIndex, staker3)));
+      assert.equal(maxPayoutQspWei.dividedBy(2).toNumber(), (await qspb.computePayout(currentPoolIndex, staker3)).toNumber());
     });
 
     it("should give a higher payout to the security expert than to a non-expert and even more to the first expert", async function() {
