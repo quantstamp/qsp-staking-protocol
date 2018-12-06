@@ -41,30 +41,26 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   }
 
   async function assertEntirePoolState(qspb, poolParams, balanceOfQspb) {
-    try {
-      assert.equal(await qspb.getPoolCandidateContract(poolParams.index), poolParams.candidateContract.address, "candidateContract not equal");
-      assert.equal(await qspb.getPoolContractPolicy(poolParams.index), poolParams.contractPolicy.address, "contractPolicy not equal");
-      assert.equal(await qspb.getPoolOwner(poolParams.index), poolParams.owner, "pool owner not equal");
-      assert.isTrue(poolParams.maxPayoutQspWei.eq(await qspb.getPoolMaxPayoutQspWei(poolParams.index)), "maxPayoutQspWei not equal");
-      assert.isTrue(poolParams.minStakeQspWei.eq(await qspb.getPoolMinStakeQspWei(poolParams.index)), "minStakeQspWei not equal");
-      assert.isTrue(poolParams.depositQspWei.eq(await qspb.getPoolDepositQspWei(poolParams.index)), "depositQspWei not equal " + poolParams.depositQspWei.toString() + " != " + await qspb.getPoolDepositQspWei(poolParams.index));
-      assert.isTrue(poolParams.bonusExpertFactor.eq(await qspb.getPoolBonusExpertFactor(poolParams.index)), "bonusExpertFactor not equal");
-      assert.isTrue(poolParams.bonusFirstExpertFactor.eq(await qspb.getPoolBonusFirstExpertFactor(poolParams.index)), "bonusFirstExpertFactor not equal");
-      assert.equal(await qspb.getPoolFirstExpertStaker(poolParams.index), poolParams.firstExpertStaker, "firstExpertStaker not equal");
-      assert.isTrue(poolParams.payPeriodInBlocks.eq(await qspb.getPoolPayPeriodInBlocks(poolParams.index)), "payPeriodInBlocks not equal");
-      assert.isTrue(poolParams.minStakeTimeInBlocks.eq(await qspb.getPoolMinStakeTimeInBlocks(poolParams.index)), "minStakeTimeInBlocks not equal");
-      assert.isTrue(poolParams.timeoutInBlocks.eq(await qspb.getPoolTimeoutInBlocks(poolParams.index)), "timeoutInBlocks not equal");
-      assert.isTrue(poolParams.timeOfStateInBlocks.eq(await qspb.getPoolTimeOfStateInBlocks(poolParams.index)), "timeOfStateInBlocks not equal");
-      assert.equal(await qspb.getPoolUrlOfAuditReport(poolParams.index), poolParams.urlOfAuditReport, "urlOfAuditReport not equal");
-      assert.equal(await qspb.getPoolState(poolParams.index), poolParams.state, "poolState not equal");
-      assert.isTrue(poolParams.totalStakeQspWei.eq(await qspb.getPoolTotalStakeQspWei(poolParams.index)), "totalStakeQspWei not equal");
-      assert.isTrue(poolParams.poolSizeQspWei.eq(await qspb.getPoolSizeQspWei(poolParams.index)), "poolSizeQspWei not equal " + poolParams.poolSizeQspWei.toString() + " != " + await qspb.getPoolSizeQspWei(poolParams.index));
-      assert.isTrue(poolParams.stakeCount.eq(await qspb.getPoolStakeCount(poolParams.index)), "stakeCount not equal");
-      assert.equal(await qspb.getPoolName(poolParams.index), poolParams.poolName);
-      assert.isTrue(balanceOfQspb.eq(await qspb.balanceQspWei.call()));
-    } catch (err) {
-      return err.message;
-    }
+    assert.equal(await qspb.getPoolCandidateContract(poolParams.index), poolParams.candidateContract.address, "candidateContract not equal");
+    assert.equal(await qspb.getPoolContractPolicy(poolParams.index), poolParams.contractPolicy.address, "contractPolicy not equal");
+    assert.equal(await qspb.getPoolOwner(poolParams.index), poolParams.owner, "pool owner not equal");
+    assert.isTrue(poolParams.maxPayoutQspWei.eq(await qspb.getPoolMaxPayoutQspWei(poolParams.index)), "maxPayoutQspWei not equal");
+    assert.isTrue(poolParams.minStakeQspWei.eq(await qspb.getPoolMinStakeQspWei(poolParams.index)), "minStakeQspWei not equal");
+    assert.isTrue(poolParams.depositQspWei.eq(await qspb.getPoolDepositQspWei(poolParams.index)), "depositQspWei not equal " + poolParams.depositQspWei.toString() + " != " + await qspb.getPoolDepositQspWei(poolParams.index));
+    assert.isTrue(poolParams.bonusExpertFactor.eq(await qspb.getPoolBonusExpertFactor(poolParams.index)), "bonusExpertFactor not equal");
+    assert.isTrue(poolParams.bonusFirstExpertFactor.eq(await qspb.getPoolBonusFirstExpertFactor(poolParams.index)), "bonusFirstExpertFactor not equal");
+    assert.equal(await qspb.getPoolFirstExpertStaker(poolParams.index), poolParams.firstExpertStaker, "firstExpertStaker not equal");
+    assert.isTrue(poolParams.payPeriodInBlocks.eq(await qspb.getPoolPayPeriodInBlocks(poolParams.index)), "payPeriodInBlocks not equal");
+    assert.isTrue(poolParams.minStakeTimeInBlocks.eq(await qspb.getPoolMinStakeTimeInBlocks(poolParams.index)), "minStakeTimeInBlocks not equal");
+    assert.isTrue(poolParams.timeoutInBlocks.eq(await qspb.getPoolTimeoutInBlocks(poolParams.index)), "timeoutInBlocks not equal");
+    assert.isTrue(poolParams.timeOfStateInBlocks.eq(await qspb.getPoolTimeOfStateInBlocks(poolParams.index)), "timeOfStateInBlocks not equal");
+    assert.equal(await qspb.getPoolUrlOfAuditReport(poolParams.index), poolParams.urlOfAuditReport, "urlOfAuditReport not equal");
+    assert.equal(await qspb.getPoolState(poolParams.index), poolParams.state, "poolState not equal");
+    assert.isTrue(poolParams.totalStakeQspWei.eq(await qspb.getPoolTotalStakeQspWei(poolParams.index)), "totalStakeQspWei not equal");
+    assert.isTrue(poolParams.poolSizeQspWei.eq(await qspb.getPoolSizeQspWei(poolParams.index)), "poolSizeQspWei not equal " + poolParams.poolSizeQspWei.toString() + " != " + await qspb.getPoolSizeQspWei(poolParams.index));
+    assert.isTrue(poolParams.stakeCount.eq(await qspb.getPoolStakeCount(poolParams.index)), "stakeCount not equal");
+    assert.equal(await qspb.getPoolName(poolParams.index), poolParams.poolName);
+    assert.isTrue(balanceOfQspb.eq(await qspb.balanceQspWei.call()));
     return true;
   }
 
