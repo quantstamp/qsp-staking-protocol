@@ -28,7 +28,8 @@ contract('QuantstampStaking', function(accounts) {
     ViolatedUnderfunded : 3,
     NotViolatedFunded : 4,
     ViolatedFunded : 5,
-    Cancelled: 6
+    Cancelled: 6,
+    PolicyExpired: 7
   });
 
   // vars needed for creating pool
@@ -594,7 +595,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
       await Util.mineNBlocks(minStakeTimeInBlocks);
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
-      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Cancelled);
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.PolicyExpired);
       assert.equal(depositQspWei.plus(maxPayoutQspWei).toNumber(), (await qspb.balanceQspWei.call()).toNumber());
       assert.equal(await qspb.getPoolTotalStakeQspWei(currentPoolIndex), 0);
       assert.equal(await qspb.getPoolSizeQspWei(currentPoolIndex), 0);

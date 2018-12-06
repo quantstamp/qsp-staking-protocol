@@ -28,7 +28,8 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     ViolatedUnderfunded : 3,
     NotViolatedFunded : 4,
     ViolatedFunded : 5,
-    Cancelled: 6
+    Cancelled: 6,
+    PolicyExpired: 7
   });
 
   // vars needed for creating pool
@@ -37,7 +38,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
   const payPeriodInBlocks = 8;
-  const minStakeTimeInBlocks = 10;
+  const minStakeTimeInBlocks = 30;
   const timeoutInBlocks = 5;
   const urlOfAuditReport = "URL";
   const initialDepositQspWei = maxPayoutQspWei;
@@ -242,6 +243,15 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
       assert.equal(balanceOfStaker3.plus(payoutStakerOneStake).plus(payoutStakerTwoStakes).toNumber(),
         await Util.balanceOf(quantstampToken, staker3), "Staker balance not right");
+    });
+
+    it("should transition into the PolicyExpired state if the policy has expired", async function() {
+      await qspb.stakeFunds(currentPoolIndex, maxPayoutQspWei, {from : staker1});
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei.times(10), {from : poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      await Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.PolicyExpired);
     });
   });
 });
