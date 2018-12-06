@@ -4,6 +4,7 @@ const QuantstampStakingRegistry = artifacts.require('Registry');
 const Util = require("./util.js");
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
+const BigNumber = require('bignumber.js');
 
 contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
   const owner = accounts[0];
@@ -36,7 +37,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
   const payPeriodInBlocks = 15;
-  const minStakeTimeInBlocks = 20;
+  const minStakeTimeInBlocks = new BigNumber(20);
   const timeoutInBlocks = 100;
   const urlOfAuditReport = "URL";
   const poolName = "myPool";  
@@ -128,6 +129,22 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.isTrue(balanceOfPoolOwner.plus(poolDeposit).eq(await quantstampToken.balanceOf(poolOwner)));
       // it should fail if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
       Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
+    });
+
+    it("should allow the stakeholder to withdraw their deposit when the policy expired twice even before all stakers withdraw their payouts and stakes", async function() {
+      await qspb.stakeFunds(0, minStakeQspWei, {from: staker});
+      // deposit more QSP to make the pool fully funded
+      await quantstampToken.transfer(poolOwner, maxPayableQspWei, {from : owner});
+      await quantstampToken.approve(qspb.address, maxPayableQspWei, {from : poolOwner});
+      await qspb.depositFunds(0, maxPayableQspWei, {from: poolOwner});
+      assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.NotViolatedFunded);
+      // wait until the policy expires twice
+      await Util.mineNBlocks(minStakeTimeInBlocks.times(2));
+      // the stakholder can withdraw his funds
+      const poolDeposit = await qspb.getPoolDepositQspWei(0);
+      const balanceOfPoolOwner = await quantstampToken.balanceOf(poolOwner);
+      await qspb.withdrawDeposit(0, {from: poolOwner});
+      assert.isTrue(balanceOfPoolOwner.plus(poolDeposit).eq(await quantstampToken.balanceOf(poolOwner)));
     });
   });
   

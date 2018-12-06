@@ -232,8 +232,11 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
         PoolState state = updatePoolState(poolIndex);
-        // if the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out
-        if (state == PoolState.PolicyExpired && getPoolTotalStakeQspWei(poolIndex) > 0) {
+        /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out or
+        * if the minimum time for staking has passed twice since the pool transitioned into the NotViolated funded state
+        */
+        if (state == PoolState.PolicyExpired && getPoolTotalStakeQspWei(poolIndex) > 0 &&
+            getPoolTimeOfStateInBlocks(poolIndex).add(getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
             return;
         }
         address poolOwner = getPoolOwner(poolIndex);
