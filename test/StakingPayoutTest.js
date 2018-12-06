@@ -121,7 +121,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.isTrue(maxPayoutQspWei.eq(await qspb.computePayout(currentPoolIndex, staker1)));
+      assert.equal(maxPayoutQspWei.toNumber(), (await qspb.computePayout(currentPoolIndex, staker1)).toNumber());
     });
 
     it("should return maxPayoutQspWei/2 if there are two non-expert stakers with the same amount at stake", async function() {
@@ -130,7 +130,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
       await Util.mineNBlocks(payPeriodInBlocks);
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      assert.isTrue(maxPayoutQspWei.dividedBy(2).eq(await qspb.computePayout(currentPoolIndex, staker3)));
+      assert.equal(maxPayoutQspWei.dividedBy(2).toNumber(), (await qspb.computePayout(currentPoolIndex, staker3)).toNumber());
     });
 
     it("should give a higher payout to the security expert than to a non-expert and even more to the first expert", async function() {
@@ -150,7 +150,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // 2nd expert should have a higher payout than non-experts
       assert.isTrue(payout2.gt(payout3), "The payout of the second expert is not higher than non-experts.");
       // non-experts should have the same payout
-      assert.isTrue(payout4.eq(payout3), "The payout of non-experts is not equal.");
+      assert.equal(payout4.toNumber(), payout3.toNumber(), "The payout of non-experts is not equal.");
       // all payouts must be positive
       assert.isTrue(payout4.gt(0), "All payouts must be positive values.");
       // the sum of all payouts should be approximately equal to maxPayoutQspWei, but not higher
@@ -240,8 +240,8 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       var payoutStakerTwoStakes = await qspb.computePayout(currentPoolIndex, staker3);
       assert(payoutStakerTwoStakes > payoutStakerOneStake, "Payout is not higher for 2 stakes than 1");
       await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
-      assert.isTrue(balanceOfStaker3.plus(payoutStakerOneStake).plus(payoutStakerTwoStakes).
-        eq(await Util.balanceOf(quantstampToken, staker3)), "Staker balance not right");
+      assert.equal(balanceOfStaker3.plus(payoutStakerOneStake).plus(payoutStakerTwoStakes).toNumber(),
+        await Util.balanceOf(quantstampToken, staker3), "Staker balance not right");
     });
   });
 });
