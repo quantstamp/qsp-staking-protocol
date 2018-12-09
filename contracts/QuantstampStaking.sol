@@ -644,7 +644,7 @@ contract QuantstampStaking is Ownable {
     /* Returns true if and only if the contract policy for the pool poolIndex is violated
     * @param poolIndex - index of the pool where the policy is checked
     */
-    function isViolated(uint poolIndex) internal returns (bool) {
+    function isViolated(uint poolIndex) internal view returns (bool) {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
         return IPolicy(poolPolicy).isViolated(candidateContract);
