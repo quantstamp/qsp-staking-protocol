@@ -394,7 +394,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
-    assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)), currentBlock.toString() + " != " + orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks).toString());
+    assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)));
     // staker1 wants to withdraw his payout before the pay period has passed and gets rejected
     Util.assertTxFail(qspb.withdrawInterest(orangePoolParams.index, {from : staker1}));
     // check that all pool properties are as expected
@@ -426,14 +426,17 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   it("should award the payout to staker1 after the first pay period has passed", async function() {
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
-    assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)), currentBlock.toString() + " != " + orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks).toString());
+    assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)));
     // fast-forward to block where the first pay period ends
     const blocksUntilFirstPayout = orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilFirstPayout);
     // compute payout for staker1
     const payoutStaker1 = staker1PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
+    const balanceOfStaker1 = (await quantstampToken.balanceOf(staker1)).toNumber();
     // staker1 wants to withdraw his payout and receives it
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker1});
+    // check balance of staker 1
+    assert.equal(payoutStaker1.plus(balanceOfStaker1).toNumber(), (await quantstampToken.balanceOf(staker1)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker1);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
@@ -488,14 +491,14 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     const balanceOfStaker2 = await quantstampToken.balanceOf(staker2);
     // staker2 wants to withdraw his payout and receives it
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker2});
+    // the balance of staker2 should have increased
+    assert.equal(balanceOfStaker2.plus(payoutStaker2).toNumber(), (await quantstampToken.balanceOf(staker2)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker2);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
     balanceOfQspb = balanceOfQspb.minus(payoutStaker2);
     // check that all pool properties are as expected
     await assertEntirePoolState(qspb, orangePoolParams, balanceOfQspb);
-    // the balance of staker2 should have increased
-    assert.equal(balanceOfStaker2.plus(payoutStaker2).toNumber(), (await quantstampToken.balanceOf(staker2)).toNumber());
   });
 
   it("should not award a payout to staker4 because not enough time has passed since he has placed his stake", async function() {
@@ -507,10 +510,10 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.isTrue(currentBlock.lt(staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks)));
     // staker4 wants to withdraw his payout before a pay period has passed since he staked and gets rejected, i.e. nothing gets transferred
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
-    // check that all pool properties are as expected
-    await assertEntirePoolState(qspb, orangePoolParams, balanceOfQspb);
     // the balance of staker4 should have stayed the same
     assert.equal(balanceOfStaker4.toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
+    // check that all pool properties are as expected
+    await assertEntirePoolState(qspb, orangePoolParams, balanceOfQspb);
   });
 
   it("should award a payout to staker4 after enough time has passed since he has placed his stake", async function() {
@@ -524,14 +527,14 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // staker4 wants to withdraw his payout and receives it
     const payoutStaker4 = staker4PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
+    // the balance of staker4 should have increased
+    assert.equal(balanceOfStaker4.plus(payoutStaker4).toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker4);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
     balanceOfQspb = balanceOfQspb.minus(payoutStaker4);
     // check that all pool properties are as expected
     await assertEntirePoolState(qspb, orangePoolParams, balanceOfQspb);
-    // the balance of staker4 should have increased
-    assert.equal(balanceOfStaker4.plus(payoutStaker4).toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
   });
 
   it("should award a second payout to staker2 exactly at the end of the second pay period of the orange pool", async function() {
@@ -545,9 +548,12 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await Util.mineNBlocks(blocksUntilSecondPayout);
     // compute payout for staker2
     const payoutStaker2 = staker2PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
-    assert.equal(payoutStaker2.toString(), await qspb.computePayout(orangePoolParams.index, staker2), payoutStaker2 + " != " + await qspb.computePayout(orangePoolParams.index, staker2));
+    const balanceOfStaker2 = await quantstampToken.balanceOf(staker2);
+    assert.equal(payoutStaker2.toNumber(), (await qspb.computePayout(orangePoolParams.index, staker2)).toNumber());
     // staker2 wants to withdraw his payout and receives it
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker2});
+    // the balance of staker 2 should have increased
+    assert.equal(payoutStaker2.plus(balanceOfStaker2).toNumber(), (await quantstampToken.balanceOf(staker2)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker2);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
@@ -566,9 +572,12 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await Util.mineNBlocks(blocksUntilSecondPayout);
     // compute payout for staker5
     const payoutStaker5 = staker5PayoutOrangePool.times(2).times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
-    assert.equal(payoutStaker5.toString(), await qspb.computePayout(orangePoolParams.index, staker5), payoutStaker5 + " != " + await qspb.computePayout(orangePoolParams.index, staker5));
+    const balanceOfStaker5 = await quantstampToken.balanceOf(staker5);
+    assert.equal(payoutStaker5.toNumber(), (await qspb.computePayout(orangePoolParams.index, staker5)).toNumber());
     // staker5 wants to withdraw his 2 payouts and receives them
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker5});
+    // the balance of staker 5 should have increased
+    assert.equal(payoutStaker5.plus(balanceOfStaker5).toNumber(), (await quantstampToken.balanceOf(staker5)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker5);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
@@ -586,9 +595,12 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await Util.mineNBlocks(blocksUntilSecondPayout);
     // check that there is not enough deposit for paying out staker4
     const payoutStaker4 = staker4PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
-    assert.equal(payoutStaker4.toString(), (await qspb.computePayout(orangePoolParams.index, staker4)).toString());
+    const balanceOfStaker4 = await quantstampToken.balanceOf(staker4);
+    assert.equal(payoutStaker4.toNumber(), (await qspb.computePayout(orangePoolParams.index, staker4)).toNumber());
     assert.isTrue(payoutStaker4.gt(orangePoolParams.depositQspWei), "Deposit of orange pool is enough to payout staker4 " + orangePoolParams.depositQspWei + " > " + payoutStaker4);
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
+    // the balance of staker 4 should have stayed the same
+    assert.equal(balanceOfStaker4.toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
     // the state of the orange pool needs to be updated
     orangePoolParams.state = PoolState.Cancelled;
     orangePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
@@ -644,10 +656,13 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     const blocksUntilFirstPayout = grayPoolParams.timeOfStateInBlocks.plus(grayPoolParams.payPeriodInBlocks).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilFirstPayout);
     const payoutStaker3 = staker3PayoutGrayPool.times(grayPoolParams.maxPayoutQspWei).dividedToIntegerBy(grayPoolParams.poolSizeQspWei);
+    const balanceOfStaker3 = await quantstampToken.balanceOf(staker3);
     // check that the actual payout is equal to the expected payout
-    assert.equal(payoutStaker3.toString(), await qspb.computePayout(grayPoolParams.index, staker3));
+    assert.equal(payoutStaker3.toNumber(), (await qspb.computePayout(grayPoolParams.index, staker3)).toNumber());
     // staker3 receives payout
     await qspb.withdrawInterest(grayPoolParams.index, {from : staker3});
+    // the balance of staker 3 should have increased
+    assert.equal(balanceOfStaker3.plus(payoutStaker3).toNumber(), (await quantstampToken.balanceOf(staker3)).toNumber());
     // the deposit of the gray pool needs to be updated
     grayPoolParams.depositQspWei = grayPoolParams.depositQspWei.minus(payoutStaker3);
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the gray pool
@@ -818,7 +833,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await Util.mineNBlocks(blocksUntilPayout);
     // compute payout for staker5
     const payoutStaker5 = staker5PayoutGrayPool.times(grayPoolParams.maxPayoutQspWei).dividedToIntegerBy(grayPoolParams.poolSizeQspWei);
-    assert.equal(payoutStaker5.toString(), await qspb.computePayout(grayPoolParams.index, staker5), payoutStaker5 + " != " + await qspb.computePayout(grayPoolParams.index, staker5));
+    assert.equal(payoutStaker5.toNumber(), (await qspb.computePayout(grayPoolParams.index, staker5)).toNumber());
     // staker5 wants to withdraw his 2 payouts and receives them
     await qspb.withdrawInterest(grayPoolParams.index, {from : staker5});
     // the deposit of the orange pool needs to be updated
