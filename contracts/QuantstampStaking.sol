@@ -219,7 +219,7 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = balanceQspWei.add(depositQspWei);
 
         if (currentState == PoolState.NotViolatedUnderfunded
-                && depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
+                && pools[poolIndex].depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
             setState(poolIndex, PoolState.NotViolatedFunded);
         }
 
@@ -243,7 +243,8 @@ contract QuantstampStaking is Ownable {
         require(state == PoolState.Initialized || // always allow to withdraw in these states
             state == PoolState.NotViolatedUnderfunded ||
             state == PoolState.PolicyExpired ||
-            state == PoolState.NotViolatedFunded,
+            state == PoolState.NotViolatedFunded ||
+            state == PoolState.Cancelled,
             "Pool is not in the right state when withdrawing deposit.");
         uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
         require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
@@ -335,6 +336,7 @@ contract QuantstampStaking is Ownable {
         balanceQspWei = balanceQspWei.sub(total);
         pools[poolIndex].depositQspWei = 0;
         pools[poolIndex].totalStakeQspWei = 0;
+        pools[poolIndex].poolSizeQspWei = 0;
         setState(poolIndex, PoolState.ViolatedFunded);
         require(token.transfer(getPoolOwner(poolIndex), total),
             "Token transfer failed during withdrawClaim");
@@ -537,9 +539,9 @@ contract QuantstampStaking is Ownable {
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
         if (isExpert(stake.staker)) {
-            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex-1]
-                    .add(powersOf100[poolIndex][stake.contributionIndex-1]))
-                    .div(powersOf100[poolIndex][stake.contributionIndex-1]);
+            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
+                add(powersOf100[poolIndex][stake.contributionIndex])).
+                div(powersOf100[poolIndex][stake.contributionIndex]);
             /* Check if it is the first stake of the first expert */
             if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
@@ -630,10 +632,10 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].lastPayoutBlock, 
-                    getPoolTimeOfStateInBlocks(poolIndex));
-            // multiply the stakeAmount by the number of payPeriods for which the stake 
-            // has been active and not payed out
+            // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
+            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].blockNumber,
+                getPoolTimeOfStateInBlocks(poolIndex));
+            // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
@@ -663,7 +665,9 @@ contract QuantstampStaking is Ownable {
         address staker, 
         uint startBlockNumber
     ) internal view returns(uint) {
+        // compute the total number of pay periods for this pool and this staker
         uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+        // compute the last period this staker asked for a payout
         uint lastPayPeriods;
         if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { 
             // then avoid integer underflow
