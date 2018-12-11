@@ -1,10 +1,11 @@
 pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 /// @title CandidateContract - an example contract that must be protected according to a policy
 
-contract CandidateContract {
+contract CandidateContract is Ownable {
 
     using SafeMath for uint256;
 
