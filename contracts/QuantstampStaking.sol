@@ -18,7 +18,7 @@ contract QuantstampStaking is Ownable {
     struct Stake {
         address staker; // the address of the staker
         uint amountQspWei; // the amount staked by the staker
-        uint blockNumber; // the Block number when this stake was made
+        uint blockPlaced; // the Block number when this stake was made
         uint lastPayoutBlock; // the Block number where the last payout was made to this staker
         uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
     }
@@ -281,10 +281,10 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                stakes[poolIndex][msg.sender][i].blockNumber = Math.max(stakes[poolIndex][msg.sender][i].blockNumber, 
+                stakes[poolIndex][msg.sender][i].blockPlaced = Math.max(stakes[poolIndex][msg.sender][i].blockPlaced, 
                         getPoolTimeOfStateInBlocks(poolIndex));
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, 
-                        stakes[poolIndex][msg.sender][i].blockNumber);
+                        stakes[poolIndex][msg.sender][i].blockPlaced);
                 if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     emit LastPayoutBlockUpdate(poolIndex, msg.sender);
@@ -633,7 +633,7 @@ contract QuantstampStaking is Ownable {
         for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
-            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].blockNumber,
+            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].blockPlaced,
                 getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
