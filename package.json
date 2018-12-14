@@ -7,16 +7,17 @@
     "test": "test"
   },
   "dependencies": {
+    "aws-sdk": "2.194.0",
     "coveralls": "3.0.0",
     "eslint": "5.6.1",
-    "ganache-cli": "6.1.0",
+    "ethjs-rpc": "0.2.0",
+    "ganache-cli": "6.2.3",
     "openzeppelin-solidity": "2.0.0",
     "sol-tcr": "0.0.2",
-    "solidity-coverage": "0.5.4",
+    "solidity-coverage": "0.5.11",
     "truffle": "4.1.11",
     "truffle-hdwallet-provider": "0.0.3",
-    "aws-sdk": "2.194.0",
-    "web3": "1.0.0-beta.36"
+    "web3": "1.0.0-beta.37"
   },
   "devDependencies": {
     "solhint": "1.2.1"
