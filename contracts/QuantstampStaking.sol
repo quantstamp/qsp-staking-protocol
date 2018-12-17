@@ -724,8 +724,14 @@ contract QuantstampStaking is Ownable {
     * @return true if the transfer was successful, false if the transfer was not possible
     */
     function transferFundsWithAllowance(address source, address destination, uint amount) internal returns(bool) {
+        if (token.balanceOf(source) < amount) {
+            return false;
+        }
+        // if the current allowance is not high enough then increase it
         uint currentAllowance = token.allowance(source, destination);
-        if (currentAllowance < amount && !token.increaseAllowance(destination, amount.sub(currentAllowance))) {
+        if (currentAllowance == 0 && !token.approve(destination, amount)) {
+            return false;
+        } else if (currentAllowance < amount && !token.increaseAllowance(destination, amount.sub(currentAllowance))) {
             return false;
         }
         // if there are enough allowance transfer the funds
