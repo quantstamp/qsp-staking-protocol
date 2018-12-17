@@ -38,6 +38,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
       poolParams.timeoutInBlocks,
       poolParams.urlOfAuditReport,
       poolParams.poolName,
+      poolParams.maxStakesPerAddress,
       {from: poolParams.owner});
   }
 
@@ -60,6 +61,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.totalStakeQspWei.toNumber(), (await qspb.getPoolTotalStakeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.poolSizeQspWei.toNumber(), (await qspb.getPoolSizeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.stakeCount.toNumber(), (await qspb.getPoolStakeCount(poolParams.index)).toNumber());
+    assert.equal(poolParams.maxStakesPerAddress.toNumber(), (await qspb.getPoolMaxStakesPerAddress(poolParams.index)).toNumber());
     assert.equal(poolParams.poolName, await qspb.getPoolName(poolParams.index));
     assert.equal(balanceOfQspb.toNumber(), (await qspb.balanceQspWei.call()));
     return true;
@@ -142,7 +144,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Orange Pool"
+    'poolName' : "Orange Pool",
+    'maxStakesPerAddress' : new BigNumber(21)
   };
 
   // Gray Pool params
@@ -166,7 +169,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Gray Pool"
+    'poolName' : "Gray Pool",
+    'maxStakesPerAddress' : new BigNumber(2)
   };
 
   // White Pool params
@@ -190,7 +194,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "White Pool"
+    'poolName' : "White Pool",
+    'maxStakesPerAddress' : new BigNumber(92)
   };
 
   // Purple Pool params
@@ -214,7 +219,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Purple Pool"
+    'poolName' : "Purple Pool",
+    'maxStakesPerAddress' : new BigNumber(23)
   };
   // Blue Pool params
   let bluePoolParams = {
@@ -237,7 +243,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Blue Pool"
+    'poolName' : "Blue Pool",
+    'maxStakesPerAddress' : new BigNumber(22)
   };
 
   it("should instantiate the Security Expert TCR and add staker1 before the Assurance Contract is created", async function() {

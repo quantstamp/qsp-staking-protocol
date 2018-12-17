@@ -47,6 +47,7 @@ contract QuantstampStaking is Ownable {
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
         uint stakeCount; // the total number of stakes in the pool 
         string poolName; // an alphanumeric string defined by the pool owner
+        uint maxStakesPerAddress; // the maximum number of stakes that one address can place
     }
 
     struct Stake {
@@ -326,12 +327,14 @@ contract QuantstampStaking is Ownable {
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
     function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
+        require(stakes[poolIndex][msg.sender].length < getPoolMaxStakesPerAddress(poolIndex),
+            "There are too many stakes from this address");
+        // Check the pool state
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) ||
             (state == PoolState.NotViolatedUnderfunded) ||
             (state == PoolState.NotViolatedFunded),
             "Pool is not in the right state when staking funds.");
-
         // Check if pool can be switched from the initialized state to another state
         if ((state == PoolState.Initialized) &&
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
@@ -339,7 +342,6 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
-
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), amountQspWei),
             "Token transfer failed when staking funds.");
@@ -355,13 +357,12 @@ contract QuantstampStaking is Ownable {
         if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
         }
-
+        // Update pool size
         bonusExpertAtPower[poolIndex].push(
             bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
         powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
         pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.add(
             calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
-
         // Check if there are enough stakes in the pool
         if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { 
             // Minimum staking value was reached
@@ -492,6 +493,7 @@ contract QuantstampStaking is Ownable {
     * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
+    * @param maxStakesPerAddress - the maximum number of stakes that one address can place
     */
     function createPool(
         address candidateContract,
@@ -505,7 +507,8 @@ contract QuantstampStaking is Ownable {
         uint minStakeTimeInBlocks,
         uint timeoutInBlocks,
         string urlOfAuditReport,
-        string poolName
+        string poolName,
+        uint maxStakesPerAddress
     ) public {
         require(getPoolIndex(poolName) == ~uint(0), "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
@@ -516,6 +519,7 @@ contract QuantstampStaking is Ownable {
         require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
         require(minStakeTimeInBlocks > 0, "Minimum staking period cannot be zero.");
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
+        require(maxStakesPerAddress > 0, "An address should be allowed to place at least one stake.");
         
         Pool memory p = Pool(
             candidateContract,
@@ -536,7 +540,8 @@ contract QuantstampStaking is Ownable {
             0, // the initial total stake is 0,
             0, // the pool size is initially 0
             0, // total stakes in this pool
-            poolName
+            poolName,
+            maxStakesPerAddress
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
@@ -644,6 +649,10 @@ contract QuantstampStaking is Ownable {
 
     function getPoolName(uint index) public view returns(string) {
         return pools[index].poolName;
+    }
+
+    function getPoolMaxStakesPerAddress(uint index) public view returns(uint) {
+        return pools[index].maxStakesPerAddress;
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated

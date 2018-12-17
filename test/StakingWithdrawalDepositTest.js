@@ -40,7 +40,8 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   const minStakeTimeInBlocks = new BigNumber(20);
   const timeoutInBlocks = 100;
   const urlOfAuditReport = "URL";
-  const poolName = "myPool";  
+  const poolName = "myPool";
+  const maxStakesPerAddress = 2;
 
   beforeEach(async function() {
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
@@ -62,7 +63,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     // create pool
     await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayableQspWei, minStakeQspWei,
       initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, {from: poolOwner});
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, maxStakesPerAddress, {from: poolOwner});
   });
   
   describe("withdrawDeposit", async function() {
