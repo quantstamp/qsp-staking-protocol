@@ -169,7 +169,7 @@ contract QuantstampStaking is Ownable {
             currentState == PoolState.NotViolatedUnderfunded ||
             currentState == PoolState.NotViolatedFunded ||
             currentState == PoolState.PolicyExpired);
-        require(token.transferFrom(poolOwner, address(this), depositQspWei),
+        require(transferFundsWithAllowance(poolOwner, address(this), depositQspWei),
             "Token deposit transfer did not succeed");
         pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
         balanceQspWei = balanceQspWei.add(depositQspWei);
@@ -341,8 +341,8 @@ contract QuantstampStaking is Ownable {
         }
 
         // If policy is not violated then transfer the stake
-        require(token.transferFrom(msg.sender, address(this), amountQspWei),
-            "Token transfer failed when staking funds.");
+        require(transferFundsWithAllowance(msg.sender, address(this), amountQspWei),
+            "Token deposit transfer did not succeed");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
@@ -510,7 +510,8 @@ contract QuantstampStaking is Ownable {
         require(getPoolIndex(poolName) == ~uint(0), "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
-        require(token.transferFrom(msg.sender, address(this), depositQspWei));
+        require(transferFundsWithAllowance(msg.sender, address(this), depositQspWei),
+            "Token deposit transfer did not succeed");
         require(maxPayoutQspWei > 0, "Maximum payout cannot be zero.");
         require(minStakeQspWei > 0, "Minimum stake cannot be zero.");
         require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
@@ -713,5 +714,25 @@ contract QuantstampStaking is Ownable {
             state = PoolState.PolicyExpired;
         }
         return state;
+    }
+
+    /** Checks if the destination address may transfer the amount from the source address and if not it 
+    * increases allowance before making the transfer.
+    * @param source - the address which you want to send tokens from
+    * @param destination - the address which you want to send the tokens to
+    * @param amount - the amount that you want to transfer
+    * @return true if the transfer was successful, false if the transfer was not possible
+    */
+    function transferFundsWithAllowance(address source, address destination, uint amount) internal returns(bool) {
+        uint currentAllowance = token.allowance(source, destination);
+        if (currentAllowance < amount && !token.increaseAllowance(destination, amount.sub(currentAllowance))) {
+            return false;
+        }
+        // if there are enough allowance transfer the funds
+        if (token.transferFrom(source, destination, amount)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
