@@ -253,5 +253,21 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.PolicyExpired);
     });
+
+    it("should pay an expert who is kicked off the TCR the same as if they were still on the TCR", async function() {
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1}); // staker1 is an expert
+      assert.strictEqual(await qspb.isExpert(staker1), true, 'Staker1 was not set as judge');
+      // deposit payment funds and run out the duration of the pool
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei.times(10), {from : poolOwner});
+      assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      await Util.mineNBlocks(minStakeTimeInBlocks);
+      var payoutStakerOneOnTCR = await qspb.computePayout(currentPoolIndex, staker1);
+      // remove staker1 from the TCR
+      await TCRUtil.removeFromWhitelist(staker1, staker1, quantstampRegistry);
+      assert.strictEqual(await qspb.isExpert(staker1), false, 'Staker1 was set as judge');
+      var payoutStakerOneOffTCR = await qspb.computePayout(currentPoolIndex, staker1);
+      assert.isTrue(payoutStakerOneOnTCR.eq(payoutStakerOneOffTCR));
+    });
   });
 });

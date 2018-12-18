@@ -402,7 +402,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /** Computes the total amount due to for the staker payout when the contract is not violated.
-    * maxPayout * (amountStaked [* (1+bonusExpert^i)][* (1+bonusFirstExp)] )/poolSize
+    * maxPayout * (amountStaked [* (1+bonusExpert)^i][* (1+bonusFirstExp)] )/poolSize
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
