@@ -344,8 +344,9 @@ contract QuantstampStaking is Ownable {
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         bool senderIsAnExpert = isExpert(msg.sender);
-        // Create new Stake struct. The value of the currentStakeIndex parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex, senderIsAnExpert);
+        // Create new Stake struct. The value of the second last parameter indicates that a payout has not be made yet.
+        Stake memory stake = Stake(msg.sender, amountQspWei,
+            block.number, block.number, currentStakeIndex, senderIsAnExpert);
         stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
