@@ -37,7 +37,6 @@ contract QuantstampStaking is Ownable {
         uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
         uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
         address firstExpertStaker; // the address of the first expert in the pool
-        mapping (address => bool) wasExpertStaker; // true iff the staker was on the TCR when the stake was placed
         uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
         uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
         uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
@@ -56,6 +55,7 @@ contract QuantstampStaking is Ownable {
         uint blockPlaced; // the Block number when this stake was made
         uint lastPayoutBlock; // the Block number where the last payout was made to this staker
         uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
+        bool expertStake; // true iff the staker was on the TCR when the stake was placed
     }
 
     // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
@@ -343,14 +343,17 @@ contract QuantstampStaking is Ownable {
             "Token transfer failed when staking funds.");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
+        bool isAnExpert = isExpert(msg.sender);
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex);
+        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex, isAnExpert);
         stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
 
-        markAsExpert(poolIndex, msg.sender);
+        if (isAnExpert && getPoolFirstExpertStaker(poolIndex) == address(0)) {
+            pools[poolIndex].firstExpertStaker = msg.sender;
+        }
 
         bonusExpertAtPower[poolIndex].push(
             bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
@@ -389,7 +392,7 @@ contract QuantstampStaking is Ownable {
         }
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
-        if (wasExpert(poolIndex, stake.staker)) {
+        if (stake.expertStake) {
             stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
                 add(powersOf100[poolIndex][stake.contributionIndex])).
                 div(powersOf100[poolIndex][stake.contributionIndex]);
@@ -402,7 +405,7 @@ contract QuantstampStaking is Ownable {
     }
 
     /** Computes the total amount due to for the staker payout when the contract is not violated.
-    * maxPayout * (amountStaked [* (1+bonusExpert)^i][* (1+bonusFirstExp)] )/poolSize
+    * maxPayout * (amountStaked [* (1+bonusExpert^i)][* (1+bonusFirstExp)] )/poolSize
     * where [* (1+bonusExpert)^i] is applied if the staker is the ith expert to stake,
     * and [* (1+bonusFirstExp)] applies additionally in the case of the first expert;
     * maxPayout is specified by the stakeholder who created the pool;
@@ -696,28 +699,5 @@ contract QuantstampStaking is Ownable {
             state = PoolState.PolicyExpired;
         }
         return state;
-    }
-
-    /** Checks if the staker was an expert when they staked for a given pool
-     * @param poolIndex - the index of the pool to which the stake was submitted
-     * @param stakerAddress - the staker's address
-     * @return true iff the staker was on the TCR when they staked for this pool
-     */
-    function wasExpert(uint poolIndex, address stakerAddress) internal returns(bool) {
-        return pools[poolIndex].wasExpertStaker[stakerAddress];
-    }
-
-    /** Records if a staker was an expert when they staked for a given pool
-     * @param poolIndex - the index of the pool to which the stake was submitted
-     * @param stakerAddress - the staker's address
-     */
-    function markAsExpert(uint poolIndex, address stakerAddress) internal {
-      // Set first expert if it is not set and the staker is an expert on the TCR
-        if (isExpert(stakerAddress)) {
-            if (getPoolFirstExpertStaker(poolIndex) == address(0)) {
-                pools[poolIndex].firstExpertStaker = stakerAddress;
-            }
-            pools[poolIndex].wasExpertStaker[stakerAddress] = true;
-        }
     }
 }
