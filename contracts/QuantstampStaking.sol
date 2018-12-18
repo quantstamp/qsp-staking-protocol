@@ -343,15 +343,15 @@ contract QuantstampStaking is Ownable {
             "Token transfer failed when staking funds.");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
-        bool isAnExpert = isExpert(msg.sender);
-        // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex, isAnExpert);
+        bool senderIsAnExpert = isExpert(msg.sender);
+        // Create new Stake struct. The value of the currentStakeIndex parameter indicates that a payout has not be made yet.
+        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex, senderIsAnExpert);
         stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
 
-        if (isAnExpert && getPoolFirstExpertStaker(poolIndex) == address(0)) {
+        if (senderIsAnExpert && getPoolFirstExpertStaker(poolIndex) == address(0)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
         }
 
