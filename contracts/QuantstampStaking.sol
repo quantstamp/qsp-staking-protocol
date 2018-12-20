@@ -47,11 +47,8 @@ contract QuantstampStaking is Ownable {
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
         uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
-<<<<<<< HEAD
         uint maxStakesPerAddress; // the maximum number of stakes that one address can place
-=======
         uint maxSize; // The maximum amount that can be staked in this pool
->>>>>>> SP-118 Add max pool attribute
     }
 
     struct Stake {
@@ -346,17 +343,20 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
+
+        uint adjustedAmount = updateStakeAmount(poolIndex, amountQspWei);
+
         // If policy is not violated then transfer the stake
-        require(token.transferFrom(msg.sender, address(this), amountQspWei),
+        require(token.transferFrom(msg.sender, address(this), adjustedAmount),
             "Token transfer failed when staking funds.");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex);
+        Stake memory stake = Stake(msg.sender, adjustedAmount, block.number, block.number, currentStakeIndex);
         stakes[poolIndex][msg.sender].push(stake);
-        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
-        balanceQspWei = balanceQspWei.add(amountQspWei);
-        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
+        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmount);
+        balanceQspWei = balanceQspWei.add(adjustedAmount);
+        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(adjustedAmount);
         // Set first expert if it is not set and the staker is an expert on the TCR
         if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
@@ -378,7 +378,7 @@ contract QuantstampStaking is Ownable {
                 setState(poolIndex, PoolState.NotViolatedUnderfunded);
             }
         }
-        emit StakePlaced(poolIndex, msg.sender, amountQspWei);
+        emit StakePlaced(poolIndex, msg.sender, adjustedAmount);
     }
 
     /** Computes the un-normalized payout amount for experts (including bonuses) and non-experts
@@ -484,7 +484,7 @@ contract QuantstampStaking is Ownable {
         }
     }
 
-    /** Creates a new staking pool.
+    /** Creates a new staking pool (without a limit).
     * @param candidateContract - the contract that must be protected
     * @param contractPolicy - the policy that must be respected by the candidate contract
     * @param maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
@@ -500,25 +500,40 @@ contract QuantstampStaking is Ownable {
     * @param maxStakesPerAddress - the maximum number of stakes that one address can place
     */
     function createPool(
-      address candidateContract,
-      address contractPolicy,
-      uint maxPayoutQspWei,
-      uint minStakeQspWei,
-      uint depositQspWei,
-      uint bonusExpertFactor,
-      uint bonusFirstExpertFactor,
-      uint payPeriodInBlocks,
-      uint minStakeTimeInBlocks,
-      uint timeoutInBlocks,
-      string urlOfAuditReport,
-      string poolName
-      ) public {
-        createPool(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
-          bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
-          urlOfAuditReport, poolName, 0);
-      }
+        address candidateContract,
+        address contractPolicy,
+        uint maxPayoutQspWei,
+        uint minStakeQspWei,
+        uint depositQspWei,
+        uint bonusExpertFactor,
+        uint bonusFirstExpertFactor,
+        uint payPeriodInBlocks,
+        uint minStakeTimeInBlocks,
+        uint timeoutInBlocks,
+        string urlOfAuditReport,
+        string poolName
+    ) public {
+        createPoolWithLimit(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
+            bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
+            urlOfAuditReport, poolName, 0);
+    }
 
-    function createPool(
+    /** Creates a new staking pool.
+    * @param candidateContract - the contract that must be protected
+    * @param contractPolicy - the policy that must be respected by the candidate contract
+    * @param maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
+    * @param minStakeQspWei - the minimum value that needs to be raised from all stakers together
+    * @param depositQspWei - the current value deposited by the owner/stakeholder
+    * @param bonusExpertFactor - the factor by which the payout of an expert is multiplied
+    * @param bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
+    * @param payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
+    * @param minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
+    * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
+    * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
+    * @param poolName - an alphanumeric string defined by the pool owner
+    * @param maximumSize - the maximum number of QSP that can be staked.
+    */
+    function createPoolWithLimit(
         address candidateContract,
         address contractPolicy,
         uint maxPayoutQspWei,
@@ -747,5 +762,21 @@ contract QuantstampStaking is Ownable {
             state = PoolState.PolicyExpired;
         }
         return state;
+    }
+
+    /** Checks if the entire stake can be placed in a pool
+     * @param poolIndex - the index of the pool for which the stake is submitted
+     * @param amountQspWei - the stake size
+     * @return the current state of the pool
+     */
+    function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
+      uint adjustedAmount = amountQspWei;
+      if (pools[poolIndex].maxSize != 0) {
+          require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
+          if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].totalStakeQspWei) {
+              adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
+          }
+      }
+      return adjustedAmount;
     }
 }
