@@ -186,6 +186,10 @@ contract('QuantstampStaking', function(accounts) {
         minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, 0, urlOfAuditReport, poolName, maxStakesPerAddress, {from: poolOwner}));
     });
+
+    it("should create a pool with a zero maximum", async function() {
+      assert.equal(await qspb.getPoolMaxSize(0), 0);
+    });
   });
 
   describe("withdrawClaim", async function() {

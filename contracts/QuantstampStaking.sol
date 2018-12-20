@@ -695,7 +695,7 @@ contract QuantstampStaking is Ownable {
         return pools[index].maxStakesPerAddress;
     }
 
-    function getPoolMaxSize(uint index) public view returns(string) {
+    function getPoolMaxSize(uint index) public view returns(uint) {
         return pools[index].maxSize;
     }
 
