@@ -11,7 +11,7 @@ const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
 
-contract('QuantstampStaking', function(accounts) {
+contract.only('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
   const qspAdmin = accounts[1];
   const poolOwner = accounts[3];
@@ -44,6 +44,7 @@ contract('QuantstampStaking', function(accounts) {
   const urlOfAuditReport = "URL";
   const poolName = "myPool";
   const maxStakesPerAddress = 10;
+  const maxStakeQspWei = minStakeQspWei.mul(2);
 
   let qspb;
   let quantstampToken;
@@ -190,6 +191,39 @@ contract('QuantstampStaking', function(accounts) {
     it("should create a pool with a zero maximum", async function() {
       assert.equal(await qspb.getPoolMaxSize(0), 0);
     });
+  });
+
+  describe("createPoolWithLimit", async function() {
+    it("should create a pool with a specified maximum", async function() {
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer poolOwnerBudget QSP tokens to the poolOwner
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      // allow the qspb contract use up to 1000QSP
+      await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+      // create pool
+      await qspb.createPoolWithLimit(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, maxStakeQspWei, {from: poolOwner});
+      // check all pool properties
+      assert.equal(await qspb.getPoolsLength.call(), 2);
+      assert.equal(await qspb.getPoolCandidateContract(1), candidateContract.address);
+      assert.equal(await qspb.getPoolContractPolicy(1), contractPolicy.address);
+      assert.equal(await qspb.getPoolOwner(1), poolOwner);
+      assert.equal(await qspb.getPoolMaxPayoutQspWei(1), maxPayoutQspWei);
+      assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolMinStakeQspWei(1)).toNumber());
+      assert.equal(depositQspWei.toNumber(), (await qspb.getPoolDepositQspWei(1)).toNumber());
+      assert.equal(await qspb.getPoolBonusExpertFactor(1), bonusExpertFactor);
+      assert.equal(await qspb.getPoolBonusFirstExpertFactor(1), bonusFirstExpertFactor);
+      assert.equal(await qspb.getPoolPayPeriodInBlocks(1), payPeriodInBlocks);
+      assert.equal(minStakeTimeInBlocks.toNumber(), (await qspb.getPoolMinStakeTimeInBlocks(0)).toNumber());
+      assert.equal(await qspb.getPoolTimeoutInBlocks(1), timeoutInBlocks);
+      assert.equal(await qspb.getPoolTimeOfStateInBlocks(1), (await web3.eth.getBlock("latest")).number);
+      assert.equal(await qspb.getPoolUrlOfAuditReport(1), urlOfAuditReport);
+      assert.equal(await qspb.getPoolState(1), PoolState.Initialized);
+      assert.equal(await qspb.getPoolName(1), poolName);
+      assert.equal((await qspb.getPoolMaxSize(1)).toNumber(), maxStakeQspWei.toNumber());
+    })
   });
 
   describe("withdrawClaim", async function() {
