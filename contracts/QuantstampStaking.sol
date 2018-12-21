@@ -774,13 +774,13 @@ contract QuantstampStaking is Ownable {
      * @return the current state of the pool
      */
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
-      uint adjustedAmount = amountQspWei;
-      if (pools[poolIndex].maxSize != 0) {
-          require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
-          if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].totalStakeQspWei) {
-              adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
-          }
-      }
-      return adjustedAmount;
+        uint adjustedAmount = amountQspWei;
+        if (pools[poolIndex].maxSize != 0) {
+            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
+            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].totalStakeQspWei) {
+                adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
+            }
+        }
+        return adjustedAmount;
     }
 }
