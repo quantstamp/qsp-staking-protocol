@@ -511,11 +511,12 @@ contract QuantstampStaking is Ownable {
         uint minStakeTimeInBlocks,
         uint timeoutInBlocks,
         string urlOfAuditReport,
-        string poolName
+        string poolName,
+        uint maxStakesPerAddress,
     ) public {
         createPoolWithLimit(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
             bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
-            urlOfAuditReport, poolName, 0);
+            urlOfAuditReport, maxStakesPerAddress, poolName, 0);
     }
 
     /** Creates a new staking pool.
@@ -531,6 +532,7 @@ contract QuantstampStaking is Ownable {
     * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
+    * @param maxStakesPerAddress - the maximum number of stakes that one address can place    
     * @param maximumSize - the maximum number of QSP that can be staked.
     */
     function createPoolWithLimit(
@@ -546,7 +548,7 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks,
         string urlOfAuditReport,
         string poolName,
-        uint maxStakesPerAddress
+        uint maxStakesPerAddress,
         uint maximumSize
     ) public {
         require(getPoolIndex(poolName) == ~uint(0), "Cannot create a pool with the same name as an existing pool.");
