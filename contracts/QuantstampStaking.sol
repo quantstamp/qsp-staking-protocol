@@ -48,7 +48,7 @@ contract QuantstampStaking is Ownable {
         uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
         uint maxStakesPerAddress; // the maximum number of stakes that one address can place
-        uint maxSize; // The maximum amount that can be staked in this pool
+        //uint maxSize; // The maximum amount that can be staked in this pool //TODO: put back
     }
 
     struct Stake {
@@ -512,11 +512,11 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks,
         string urlOfAuditReport,
         string poolName,
-        uint maxStakesPerAddress,
+        uint maxStakesPerAddress
     ) public {
         createPoolWithLimit(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
             bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
-            urlOfAuditReport, maxStakesPerAddress, poolName, 0);
+            urlOfAuditReport, poolName, maxStakesPerAddress); //TODO: put maxSize back
     }
 
     /** Creates a new staking pool.
@@ -532,8 +532,7 @@ contract QuantstampStaking is Ownable {
     * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
-    * @param maxStakesPerAddress - the maximum number of stakes that one address can place    
-    * @param maximumSize - the maximum number of QSP that can be staked.
+    * @param maxStakesPerAddress - the maximum number of stakes that one address can place
     */
     function createPoolWithLimit(
         address candidateContract,
@@ -548,8 +547,8 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks,
         string urlOfAuditReport,
         string poolName,
-        uint maxStakesPerAddress,
-        uint maximumSize
+        uint maxStakesPerAddress
+        // uint maximumSize //TODO: put back and param maximumSize - the maximum number of QSP that can be staked.
     ) public {
         require(getPoolIndex(poolName) == ~uint(0), "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
@@ -582,8 +581,8 @@ contract QuantstampStaking is Ownable {
             0, // the pool size is initially 0
             0, // total stakes in this pool
             poolName,
-            maxStakesPerAddress,
-            maximumSize
+            maxStakesPerAddress//, TODO: put back
+            // maximumSize //TODO: put back
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
@@ -698,7 +697,7 @@ contract QuantstampStaking is Ownable {
     }
 
     function getPoolMaxSize(uint index) public view returns(uint) {
-        return pools[index].maxSize;
+        return pools[index].maxStakesPerAddress; // TODO: change back to maxSize
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
@@ -777,12 +776,14 @@ contract QuantstampStaking is Ownable {
      */
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
         uint adjustedAmount = amountQspWei;
+        /* //TODO: put back
         if (pools[poolIndex].maxSize != 0) {
             require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
             if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSize) {
                 adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
             }
         }
+        */
         return adjustedAmount;
     }
 }
