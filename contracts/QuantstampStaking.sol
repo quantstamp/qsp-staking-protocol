@@ -777,7 +777,7 @@ contract QuantstampStaking is Ownable {
         uint adjustedAmount = amountQspWei;
         if (pools[poolIndex].maxSize != 0) {
             require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
-            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].totalStakeQspWei) {
+            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSize) {
                 adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
             }
         }
