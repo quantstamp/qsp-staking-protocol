@@ -189,7 +189,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should create a pool with a zero maximum", async function() {
-      assert.equal(await qspb.getPoolMaxSize(0), 0);
+      assert.equal(await qspb.getPoolMaxSizeQspWei(0), 0);
     });
   });
 
@@ -222,7 +222,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolUrlOfAuditReport(1), urlOfAuditReport);
       assert.equal(await qspb.getPoolState(1), PoolState.Initialized);
       assert.equal(await qspb.getPoolName(1), poolName);
-      assert.equal((await qspb.getPoolMaxSize(1)).toNumber(), maxStakeQspWei.toNumber());
+      assert.equal((await qspb.getPoolMaxSizeQspWei(1)).toNumber(), maxStakeQspWei.toNumber());
     });
   });
 
@@ -547,7 +547,7 @@ contract('QuantstampStaking', function(accounts) {
       // the first expert staker is staker2
       assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
       assert.equal(await qspb.getPoolStakeCount(currentPoolIndex), 4);
-      // compute whta the pool size should be according to the bonuses and stakes in the pool
+      // compute what the pool size should be according to the bonuses and stakes in the pool
       const bonusExpert = new BigNumber(bonusExpertFactor);
       const bonusFirstExpert = new BigNumber(bonusFirstExpertFactor);
       var poolSize = new BigNumber(minStakeQspWei);

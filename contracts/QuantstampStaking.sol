@@ -48,7 +48,7 @@ contract QuantstampStaking is Ownable {
         uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
         uint maxStakesPerAddress; // the maximum number of stakes that one address can place
-        //uint maxSize; // The maximum amount that can be staked in this pool //TODO: put back
+        //uint maxSizeQspWei; // The maximum amount that can be staked in this pool //TODO: put back
     }
 
     struct Stake {
@@ -516,7 +516,7 @@ contract QuantstampStaking is Ownable {
     ) public {
         createPoolWithLimit(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
             bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
-            urlOfAuditReport, poolName, maxStakesPerAddress); //TODO: put maxSize back
+            urlOfAuditReport, poolName, maxStakesPerAddress); //TODO: put maxSizeQspWei back
     }
 
     /** Creates a new staking pool.
@@ -696,8 +696,8 @@ contract QuantstampStaking is Ownable {
         return pools[index].maxStakesPerAddress;
     }
 
-    function getPoolMaxSize(uint index) public view returns(uint) {
-        return pools[index].maxStakesPerAddress; // TODO: change back to maxSize
+    function getPoolMaxSizeQspWei(uint index) public view returns(uint) {
+        return pools[index].maxStakesPerAddress; // TODO: change back to maxSizeQspWei
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
@@ -777,10 +777,10 @@ contract QuantstampStaking is Ownable {
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
         uint adjustedAmount = amountQspWei;
         /* //TODO: put back
-        if (pools[poolIndex].maxSize != 0) {
-            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSize);
-            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSize) {
-                adjustedAmount = pools[poolIndex].maxSize.sub(pools[poolIndex].totalStakeQspWei);
+        if (pools[poolIndex].maxSizeQspWei != 0) {
+            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSizeQspWei);
+            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSizeQspWei) {
+                adjustedAmount = pools[poolIndex].maxSizeQspWei.sub(pools[poolIndex].totalStakeQspWei);
             }
         }
         */
