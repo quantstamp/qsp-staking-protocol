@@ -45,7 +45,7 @@ contract QuantstampStaking is Ownable {
         PoolState state; // the current state of the pool
         uint totalStakeQspWei; // total amount of stake contributed so far
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
-        uint stakeCount; // the total number of stakes in the pool 
+        uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
     }
 
@@ -55,6 +55,7 @@ contract QuantstampStaking is Ownable {
         uint blockPlaced; // the Block number when this stake was made
         uint lastPayoutBlock; // the Block number where the last payout was made to this staker
         uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
+        bool expertStake; // true iff the staker was on the TCR when the stake was placed
     }
 
     // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
@@ -63,7 +64,7 @@ contract QuantstampStaking is Ownable {
 
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
-    
+
     // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
     mapping (uint => uint[]) public bonusExpertAtPower;
 
@@ -115,7 +116,7 @@ contract QuantstampStaking is Ownable {
     event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
     // Indicates registry update
-    event RegistryUpdated(address newRegistry);  
+    event RegistryUpdated(address newRegistry);
 
     /** Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
@@ -157,7 +158,7 @@ contract QuantstampStaking is Ownable {
     * @param depositQspWei - the amount to be deposited into de pool
     */
     function depositFunds(
-        uint poolIndex, 
+        uint poolIndex,
         uint depositQspWei
     ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
@@ -254,7 +255,7 @@ contract QuantstampStaking is Ownable {
         require(state == PoolState.NotViolatedFunded ||
             state == PoolState.PolicyExpired,
             "The state of the pool is not as expected.");
-        // check that enough time (blocks) has passed since the pool has collected stakes totaling 
+        // check that enough time (blocks) has passed since the pool has collected stakes totaling
         // at least minStakeQspWei
         require(block.number > (getPoolPayPeriodInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))),
             "Not enough time has passed since the pool is active or the stake was placed.");
@@ -267,16 +268,16 @@ contract QuantstampStaking is Ownable {
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                stakes[poolIndex][msg.sender][i].blockPlaced = Math.max(stakes[poolIndex][msg.sender][i].blockPlaced, 
+                stakes[poolIndex][msg.sender][i].blockPlaced = Math.max(stakes[poolIndex][msg.sender][i].blockPlaced,
                         getPoolTimeOfStateInBlocks(poolIndex));
-                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender, 
+                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender,
                         stakes[poolIndex][msg.sender][i].blockPlaced);
                 if (numberOfPayouts > 0) {
                     stakes[poolIndex][msg.sender][i].lastPayoutBlock = block.number;
                     emit LastPayoutBlockUpdate(poolIndex, msg.sender);
                 }
             }
-            
+
             require(token.transfer(msg.sender, payout),
                 "Could not transfer the payout to the staker.");
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
@@ -342,14 +343,16 @@ contract QuantstampStaking is Ownable {
             "Token transfer failed when staking funds.");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
-        // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, amountQspWei, block.number, block.number, currentStakeIndex);
+        bool senderIsAnExpert = isExpert(msg.sender);
+        // Create new Stake struct. The value of the second last parameter indicates that a payout has not be made yet.
+        Stake memory stake = Stake(msg.sender, amountQspWei,
+            block.number, block.number, currentStakeIndex, senderIsAnExpert);
         stakes[poolIndex][msg.sender].push(stake);
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(amountQspWei);
         balanceQspWei = balanceQspWei.add(amountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(amountQspWei);
-        // Set first expert if it is not set and the staker is an expert on the TCR
-        if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
+
+        if (senderIsAnExpert && getPoolFirstExpertStaker(poolIndex) == address(0)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
         }
 
@@ -360,7 +363,7 @@ contract QuantstampStaking is Ownable {
             calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
 
         // Check if there are enough stakes in the pool
-        if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) { 
+        if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) {
             // Minimum staking value was reached
             if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
@@ -377,11 +380,11 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool for which the payout needs to be computed
     * @param staker - the address of the staker for which the payout needs to be computed
     * @param stakeIndex - the index of the stake placed by the staker
-    * @return the un-normalized payout value which is proportional to the stake amount 
+    * @return the un-normalized payout value which is proportional to the stake amount
     */
     function calculateStakeAmountWithBonuses(
-        uint poolIndex, 
-        address staker, 
+        uint poolIndex,
+        address staker,
         uint stakeIndex
     ) public view returns(uint) {
         Stake memory stake = stakes[poolIndex][staker][stakeIndex];
@@ -390,7 +393,7 @@ contract QuantstampStaking is Ownable {
         }
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
-        if (isExpert(stake.staker)) {
+        if (stake.expertStake) {
             stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
                 add(powersOf100[poolIndex][stake.contributionIndex])).
                 div(powersOf100[poolIndex][stake.contributionIndex]);
@@ -512,7 +515,7 @@ contract QuantstampStaking is Ownable {
         require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
         require(minStakeTimeInBlocks > 0, "Minimum staking period cannot be zero.");
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
-        
+
         Pool memory p = Pool(
             candidateContract,
             contractPolicy,
@@ -647,16 +650,16 @@ contract QuantstampStaking is Ownable {
     * @return - the number of payout periods that the staker needs to receive payouts for
     */
     function getNumberOfPayoutsForStaker(
-        uint poolIndex, 
-        uint i, 
-        address staker, 
+        uint poolIndex,
+        uint i,
+        address staker,
         uint startBlockNumber
     ) internal view returns(uint) {
         // compute the total number of pay periods for this pool and this staker
         uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
         // compute the last period this staker asked for a payout
         uint lastPayPeriods;
-        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) { 
+        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) {
             // then avoid integer underflow
             lastPayPeriods = 0;
         } else {
@@ -666,7 +669,7 @@ contract QuantstampStaking is Ownable {
         }
         return currentPayPeriods.sub(lastPayPeriods);
     }
-    
+
     /** Sets the state of the pool to a given state, while also marking the block at
     * which this occured and emitting an event corresponding to the new state.
     * @param poolIndex - the index of the pool for which the state is changed
@@ -676,9 +679,9 @@ contract QuantstampStaking is Ownable {
         PoolState poolState = getPoolState(poolIndex);
         if (poolState != newState) {
             pools[poolIndex].state = newState; // set the state
-            /* Don't update the time of the stake if the policy expired because payouts still need to be awarded 
+            /* Don't update the time of the stake if the policy expired because payouts still need to be awarded
                accoring to the time of the NonViolatedFunded state */
-            if (newState != PoolState.PolicyExpired) { 
+            if (newState != PoolState.PolicyExpired) {
                 pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
             }
             emit StateChanged(poolIndex, newState); // emit an event that the state has changed
@@ -686,8 +689,8 @@ contract QuantstampStaking is Ownable {
     }
 
     /** Checks if the policy has expired and sets the state accordingly
-     * @param poolIndex - the index of the pool for which the state is updated 
-     * @return the current state of the pool 
+     * @param poolIndex - the index of the pool for which the state is updated
+     * @return the current state of the pool
      */
     function updatePoolState(uint poolIndex) internal returns(PoolState) {
         PoolState state = getPoolState(poolIndex);

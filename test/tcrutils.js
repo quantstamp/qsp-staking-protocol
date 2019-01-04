@@ -60,6 +60,23 @@ const tcrutils = {
   },
 
   /*
+    domain    The listing hash
+    actor     The address submitting the application
+    registry  The TCR address
+  */
+  removeFromWhitelist: async (domain, actor, registry) => {
+    // Have actor apply to withdraw
+    await tcrutils.as(actor, registry.initExit, domain);
+    const seconds = parseInt(paramConfig.exitTimeDelay + 1);
+    // Wait for the exit period to expire, unchallenged.
+    await tcrutils.increaseTime(seconds);
+    // Inform the TCR that the exit period is over, and update status of the
+    // application as appropriate (unwhitelisted)
+    await tcrutils.as(actor, registry.finalizeExit, domain);
+    await tcrutils.increaseTime(seconds);
+  },
+
+  /*
     Run the EVM for some time, to enable TCR challenge/voting periods to expire
     seconds   The time to wait
   */
