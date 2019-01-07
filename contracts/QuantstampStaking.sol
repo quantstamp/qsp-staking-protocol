@@ -15,6 +15,8 @@ contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
     using Math for uint256;
 
+    uint constant internal MAX_UINT = ~uint(0);
+
     // state of the pool's lifecycle
     enum PoolState {
         None,
@@ -74,6 +76,9 @@ contract QuantstampStaking is Ownable {
 
     // All pools including active and canceled pools
     mapping (uint => Pool) internal pools;
+
+    // Mapps pool names to n iff that pool was the n-th pool created (n > 0)
+    mapping (string => uint) internal poolNameToPoolIndex;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -507,6 +512,7 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport,
         string poolName
     ) public {
+        require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
         require(token.transferFrom(msg.sender, address(this), depositQspWei));
@@ -541,8 +547,21 @@ contract QuantstampStaking is Ownable {
         bonusExpertAtPower[currentPoolNumber].push(1);
         powersOf100[currentPoolNumber].push(1);
         currentPoolNumber = currentPoolNumber.add(1);
+        poolNameToPoolIndex[poolName] = currentPoolNumber;
         balanceQspWei = balanceQspWei.add(depositQspWei);
         emit StateChanged(currentPoolNumber, PoolState.Initialized);
+    }
+
+    /** Finds the pool index if a pool with the given name exists
+    * @param poolName - an alphanumeric string indicating a pool name
+    * @return - the index of the pool if a pool with that name exists, otherwise the max value of uint
+    */
+    function getPoolIndex(string poolName) public view returns(uint) {
+        if (poolNameToPoolIndex[poolName] > 0) {
+            return poolNameToPoolIndex[poolName].sub(1);
+        } else {
+            return MAX_UINT;
+        }
     }
 
     function getToken() public view returns (address) {
