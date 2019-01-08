@@ -344,20 +344,20 @@ contract QuantstampStaking is Ownable {
             return;
         }
 
-        uint adjustedAmount = updateStakeAmount(poolIndex, amountQspWei);
+        uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
 
         // If policy is not violated then transfer the stake
-        require(token.transferFrom(msg.sender, address(this), adjustedAmount),
+        require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
             "Token transfer failed when staking funds.");
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, adjustedAmount, block.number, block.number,
+        Stake memory stake = Stake(msg.sender, adjustedAmountQspWei, block.number, block.number,
             currentStakeIndex, isExpert(msg.sender));
         stakes[poolIndex][msg.sender].push(stake);
-        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmount);
-        balanceQspWei = balanceQspWei.add(adjustedAmount);
-        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(adjustedAmount);
+        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmountQspWei);
+        balanceQspWei = balanceQspWei.add(adjustedAmountQspWei);
+        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(adjustedAmountQspWei);
         // Set first expert if it is not set and the staker is an expert on the TCR
         if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
             pools[poolIndex].firstExpertStaker = msg.sender;
@@ -379,7 +379,7 @@ contract QuantstampStaking is Ownable {
                 setState(poolIndex, PoolState.NotViolatedUnderfunded);
             }
         }
-        emit StakePlaced(poolIndex, msg.sender, adjustedAmount);
+        emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
     }
 
     /** Computes the un-normalized payout amount for experts (including bonuses) and non-experts
@@ -768,13 +768,13 @@ contract QuantstampStaking is Ownable {
      * @return the current state of the pool
      */
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
-        uint adjustedAmount = amountQspWei;
+        uint adjustedAmountQspWei = amountQspWei;
         if (pools[poolIndex].maxSizeQspWei != 0) {
             require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSizeQspWei);
             if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSizeQspWei) {
-                adjustedAmount = pools[poolIndex].maxSizeQspWei.sub(pools[poolIndex].totalStakeQspWei);
+                adjustedAmountQspWei = pools[poolIndex].maxSizeQspWei.sub(pools[poolIndex].totalStakeQspWei);
             }
         }
-        return adjustedAmount;
+        return adjustedAmountQspWei;
     }
 }
