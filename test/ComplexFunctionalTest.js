@@ -38,6 +38,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
       poolParams.timeoutInBlocks,
       poolParams.urlOfAuditReport,
       poolParams.poolName,
+      poolParams.maxTotalStake,
       {from: poolParams.owner});
   }
 
@@ -61,6 +62,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.poolSizeQspWei.toNumber(), (await qspb.getPoolSizeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.stakeCount.toNumber(), (await qspb.getPoolStakeCount(poolParams.index)).toNumber());
     assert.equal(poolParams.poolName, await qspb.getPoolName(poolParams.index));
+    assert.equal(poolParams.maxTotalStake, (await qspb.getPoolMaxTotalStakeQspWei(poolParams.index)).toNumber());
     assert.equal(balanceOfQspb.toNumber(), (await qspb.balanceQspWei.call()));
     return true;
   }
@@ -114,13 +116,13 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   const staker5StakeOrangePool = new BigNumber(Util.toQsp(42));
   const staker5StakeGrayPool = new BigNumber(Util.toQsp(129));
   const staker5StakeWhitePool = new BigNumber(Util.toQsp(296));
-  
+
   const staker1Budget = staker1StakeOrangePool.plus(staker1StakeWhitePool).plus(staker1StakeBluePool).plus(minDeposit);
   const staker2Budget = staker2StakeOrangePool.plus(staker2StakePurplePool).plus(minDeposit);
   const staker3Budget = staker3StakeGrayPool;
   const staker4Budget = staker4StakeOrangePool.plus(staker4StakePurplePool);
   const staker5Budget = staker5StakeOrangePool.plus(staker5StakeGrayPool).plus(staker5StakeWhitePool).plus(minDeposit);
-  
+
   // Orange Pool params
   let orangePoolParams = {
     'candidateContract' : Util.ZERO_ADDRESS,
@@ -142,7 +144,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Orange Pool"
+    'poolName' : "Orange Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // Gray Pool params
@@ -166,7 +169,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Gray Pool"
+    'poolName' : "Gray Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // White Pool params
@@ -190,7 +194,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "White Pool"
+    'poolName' : "White Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // Purple Pool params
@@ -214,7 +219,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Purple Pool"
+    'poolName' : "Purple Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
   // Blue Pool params
   let bluePoolParams = {
@@ -237,7 +243,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
     'stakeCount' : new BigNumber(0),
     'index' : -1,
-    'poolName' : "Blue Pool"
+    'poolName' : "Blue Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   it("should instantiate the Security Expert TCR and add staker1 before the Assurance Contract is created", async function() {
@@ -317,8 +324,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     orangePoolParams.totalStakeQspWei = orangePoolParams.totalStakeQspWei.plus(staker1StakeOrangePool);
     staker1PayoutOrangePool = staker1StakeOrangePool.times(orangePoolParams.bonusExpertFactor.plus(100)).
       times(orangePoolParams.bonusFirstExpertFactor.plus(100)).dividedBy(new BigNumber(100).pow(2));
-    orangePoolParams.poolSizeQspWei = orangePoolParams.poolSizeQspWei.plus(staker1PayoutOrangePool); 
-    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1); 
+    orangePoolParams.poolSizeQspWei = orangePoolParams.poolSizeQspWei.plus(staker1PayoutOrangePool);
+    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the orange pool
     balanceOfQspb = balanceOfQspb.plus(staker1StakeOrangePool);
     // check that all pool properties are as expected
@@ -341,7 +348,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     staker2PayoutOrangePool = staker2StakeOrangePool.times(orangePoolParams.bonusExpertFactor.pow(2).plus(new BigNumber(100).pow(2))).
       dividedBy(new BigNumber(100).pow(2));
     orangePoolParams.poolSizeQspWei = orangePoolParams.poolSizeQspWei.plus(staker2PayoutOrangePool);
-    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1); 
+    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the orange pool
     balanceOfQspb = balanceOfQspb.plus(staker2StakeOrangePool);
     // check that all pool properties are as expected
@@ -361,7 +368,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     staker5PayoutOrangePool = staker5StakeOrangePool.times(orangePoolParams.bonusExpertFactor.pow(3).plus(new BigNumber(100).pow(3))).
       dividedBy(new BigNumber(100).pow(3));
     orangePoolParams.poolSizeQspWei = orangePoolParams.poolSizeQspWei.plus(staker5PayoutOrangePool);
-    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1); 
+    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the orange pool
     balanceOfQspb = balanceOfQspb.plus(staker5StakeOrangePool);
     // check that all pool properties are as expected
@@ -416,7 +423,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     staker4PayoutOrangePool = staker4StakeOrangePool.times(orangePoolParams.bonusExpertFactor.pow(4).plus(new BigNumber(100).pow(4))).
       dividedBy(new BigNumber(100).pow(4));
     orangePoolParams.poolSizeQspWei = orangePoolParams.poolSizeQspWei.plus(staker4PayoutOrangePool);
-    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1); 
+    orangePoolParams.stakeCount = orangePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the orange pool
     balanceOfQspb = balanceOfQspb.plus(staker4StakeOrangePool);
     // check that all pool properties are as expected
@@ -467,7 +474,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // the total QSP staked should also increase, as well as the pool size and stake count
     grayPoolParams.totalStakeQspWei = staker3StakeGrayPool;
     grayPoolParams.poolSizeQspWei = staker3StakeGrayPool;
-    grayPoolParams.stakeCount = grayPoolParams.stakeCount.plus(1); 
+    grayPoolParams.stakeCount = grayPoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the gray pool
     balanceOfQspb = balanceOfQspb.plus(staker3StakeGrayPool);
     // check that all pool properties are as expected
@@ -695,8 +702,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     grayPoolParams.totalStakeQspWei = grayPoolParams.totalStakeQspWei.plus(staker5StakeGrayPool);
     staker5PayoutGrayPool = staker5StakeGrayPool.times(grayPoolParams.bonusExpertFactor.pow(2).plus(new BigNumber(100).pow(2))).
       times(grayPoolParams.bonusFirstExpertFactor.plus(100)).dividedBy(new BigNumber(100).pow(3));
-    grayPoolParams.poolSizeQspWei = grayPoolParams.poolSizeQspWei.plus(staker5PayoutGrayPool); 
-    grayPoolParams.stakeCount = grayPoolParams.stakeCount.plus(1); 
+    grayPoolParams.poolSizeQspWei = grayPoolParams.poolSizeQspWei.plus(staker5PayoutGrayPool);
+    grayPoolParams.stakeCount = grayPoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the gray pool
     balanceOfQspb = balanceOfQspb.plus(staker5StakeGrayPool);
     // check that all pool properties are as expected
@@ -732,8 +739,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     whitePoolParams.totalStakeQspWei = whitePoolParams.totalStakeQspWei.plus(staker1StakeWhitePool);
     const staker1PayoutWhitePool = staker1StakeWhitePool.times(whitePoolParams.bonusExpertFactor.plus(100)).
       times(whitePoolParams.bonusFirstExpertFactor.plus(100)).dividedBy(new BigNumber(100).pow(2));
-    whitePoolParams.poolSizeQspWei = whitePoolParams.poolSizeQspWei.plus(staker1PayoutWhitePool); 
-    whitePoolParams.stakeCount = whitePoolParams.stakeCount.plus(1); 
+    whitePoolParams.poolSizeQspWei = whitePoolParams.poolSizeQspWei.plus(staker1PayoutWhitePool);
+    whitePoolParams.stakeCount = whitePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the white pool
     balanceOfQspb = balanceOfQspb.plus(staker1StakeWhitePool);
     // check that all pool properties are as expected
@@ -776,7 +783,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // the state of the white pool should have changed to cancelled
     whitePoolParams.state = PoolState.Cancelled;
     whitePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
-    // staker1 should be allowed to withdraw his stake 
+    // staker1 should be allowed to withdraw his stake
     await qspb.withdrawStake(whitePoolParams.index, {from : staker1});
     // the total QSP staked should also decrease, as well as the pool size
     whitePoolParams.totalStakeQspWei = new BigNumber(0);
@@ -798,8 +805,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     purplePoolParams.totalStakeQspWei = purplePoolParams.totalStakeQspWei.plus(staker2StakePurplePool);
     const staker2PayoutPurplePool = staker2StakePurplePool.times(purplePoolParams.bonusExpertFactor.plus(100)).
       times(purplePoolParams.bonusFirstExpertFactor.plus(100)).dividedBy(new BigNumber(100).pow(2));
-    purplePoolParams.poolSizeQspWei = purplePoolParams.poolSizeQspWei.plus(staker2PayoutPurplePool); 
-    purplePoolParams.stakeCount = purplePoolParams.stakeCount.plus(1); 
+    purplePoolParams.poolSizeQspWei = purplePoolParams.poolSizeQspWei.plus(staker2PayoutPurplePool);
+    purplePoolParams.stakeCount = purplePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the pool
     balanceOfQspb = balanceOfQspb.plus(staker2StakePurplePool);
     // check that all pool properties are as expected
@@ -811,8 +818,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     purplePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // the total QSP staked should also increase, as well as the pool size and stake count
     purplePoolParams.totalStakeQspWei = purplePoolParams.totalStakeQspWei.plus(staker4StakePurplePool);
-    purplePoolParams.poolSizeQspWei = purplePoolParams.poolSizeQspWei.plus(staker4StakePurplePool); 
-    purplePoolParams.stakeCount = purplePoolParams.stakeCount.plus(1); 
+    purplePoolParams.poolSizeQspWei = purplePoolParams.poolSizeQspWei.plus(staker4StakePurplePool);
+    purplePoolParams.stakeCount = purplePoolParams.stakeCount.plus(1);
     // the balance of the Assurance contract should be increased by the amount staked in the pool
     balanceOfQspb = balanceOfQspb.plus(staker4StakePurplePool);
     // check that all pool properties are as expected
@@ -889,8 +896,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     bluePoolParams.totalStakeQspWei = bluePoolParams.totalStakeQspWei.plus(staker1StakeBluePool);
     const staker1PayoutBluePool = staker1StakeBluePool.times(bluePoolParams.bonusExpertFactor.plus(100)).
       times(bluePoolParams.bonusFirstExpertFactor.plus(100)).dividedBy(new BigNumber(100).pow(2));
-    bluePoolParams.poolSizeQspWei = bluePoolParams.poolSizeQspWei.plus(staker1PayoutBluePool); 
-    bluePoolParams.stakeCount = bluePoolParams.stakeCount.plus(1); 
+    bluePoolParams.poolSizeQspWei = bluePoolParams.poolSizeQspWei.plus(staker1PayoutBluePool);
+    bluePoolParams.stakeCount = bluePoolParams.stakeCount.plus(1);
     // the state of the blue pool should have changed to not violated underfunded
     bluePoolParams.state = PoolState.NotViolatedUnderfunded;
     bluePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
