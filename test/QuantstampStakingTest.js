@@ -47,6 +47,7 @@ contract('QuantstampStaking', function(accounts) {
   const anotherLimitedPoolName = "anotherLimtedPool";
   const yetAnotherLimitedPoolName = "yetAnotherLimtedPool";
   const maxStakeQspWei = minStakeQspWei.mul(2);
+  const defaultMaxTotalStake = 0;
 
   let qspb;
   let quantstampToken;
@@ -191,7 +192,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should create a pool with a zero maximum", async function() {
-      assert.equal(await qspb.getPoolMaxSizeQspWei(0), 0);
+      assert.equal(await qspb.getPoolMaxTotalStakeQspWei(0), 0);
     });
   });
 
@@ -224,7 +225,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolUrlOfAuditReport(1), urlOfAuditReport);
       assert.equal(await qspb.getPoolState(1), PoolState.Initialized);
       assert.equal(await qspb.getPoolName(1), limitedPoolName);
-      assert.equal((await qspb.getPoolMaxSizeQspWei(1)).toNumber(), maxStakeQspWei.toNumber());
+      assert.equal((await qspb.getPoolMaxTotalStakeQspWei(1)).toNumber(), maxStakeQspWei.toNumber());
     });
   });
 

@@ -49,7 +49,7 @@ contract QuantstampStaking is Ownable {
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
         uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
-        uint maxSizeQspWei; // The maximum amount that can be staked in this pool
+        uint maxTotalStakeQspWei; // The maximum amount that can be staked in this pool
     }
 
     struct Stake {
@@ -689,8 +689,8 @@ contract QuantstampStaking is Ownable {
         return pools[index].poolName;
     }
 
-    function getPoolMaxSizeQspWei(uint index) public view returns(uint) {
-        return pools[index].maxSizeQspWei;
+    function getPoolMaxTotalStakeQspWei(uint index) public view returns(uint) {
+        return pools[index].maxTotalStakeQspWei;
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
@@ -769,10 +769,10 @@ contract QuantstampStaking is Ownable {
      */
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
         uint adjustedAmountQspWei = amountQspWei;
-        if (pools[poolIndex].maxSizeQspWei != 0) {
-            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxSizeQspWei);
-            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxSizeQspWei) {
-                adjustedAmountQspWei = pools[poolIndex].maxSizeQspWei.sub(pools[poolIndex].totalStakeQspWei);
+        if (pools[poolIndex].maxTotalStakeQspWei != 0) {
+            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxTotalStakeQspWei);
+            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxTotalStakeQspWei) {
+                adjustedAmountQspWei = pools[poolIndex].maxTotalStakeQspWei.sub(pools[poolIndex].totalStakeQspWei);
             }
         }
         return adjustedAmountQspWei;
