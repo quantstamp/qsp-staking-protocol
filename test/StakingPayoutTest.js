@@ -43,7 +43,6 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const urlOfAuditReport = "URL";
   const initialDepositQspWei = maxPayoutQspWei;
   const poolName = "myPool";
-  const maxStakesPerAddress = 2;
 
   let qspb;
   let quantstampToken;
@@ -91,7 +90,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     // create pool
     await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
       initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, maxStakesPerAddress, {from: poolOwner});
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, {from: poolOwner});
 
     currentPoolNumber = await qspb.getPoolsLength();
     currentPoolIndex = currentPoolNumber - 1;
