@@ -84,7 +84,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), MAX_INT.toNumber());
     });
 
-    it("should not create a pool in which the maximum number of stakes that an address can place is zero", async function() {
+    it("should add a pool", async function() {
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       // transfer poolOwnerBudget QSP tokens to the poolOwner
@@ -129,7 +129,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not create a pool with the same name of a pool that already exists", async function() {
       Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, maxStakesPerAddress, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, {from: poolOwner}));
     });
 
     it("should have an owner", async function() {
@@ -308,7 +308,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, depositQspWei, {from : poolOwner});
       await qspb.createPool(candidateContract.address, policy.address, maxPayout, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, maxStakesPerAddress, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, {from: poolOwner});
       // approve and stake funds
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
@@ -323,7 +323,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, depositQspWei, {from : poolOwner});
       await qspb.createPool(candidateContract.address, policy.address, maxPayout, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, maxStakesPerAddress, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, {from: poolOwner});
       // approve and stake funds
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
@@ -387,7 +387,7 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, anotherDepositQspWei, {from : poolOwner});
       await qspb.createPool(candidateContract.address, policy.address, maxPayableQspWei, minStakeQspWei,
         anotherDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, maxStakesPerAddress, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName2, {from: poolOwner});
 
       // approve and stake funds into the new pool
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});

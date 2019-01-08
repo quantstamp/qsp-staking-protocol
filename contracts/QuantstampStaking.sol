@@ -15,6 +15,8 @@ contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
     using Math for uint256;
 
+    uint constant internal MAX_UINT = ~uint(0);
+
     // state of the pool's lifecycle
     enum PoolState {
         None,
@@ -57,6 +59,7 @@ contract QuantstampStaking is Ownable {
         uint blockPlaced; // the Block number when this stake was made
         uint lastPayoutBlock; // the Block number where the last payout was made to this staker
         uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
+        bool expertStake; // true iff the staker was on the TCR when the stake was placed
     }
 
     // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
@@ -77,7 +80,7 @@ contract QuantstampStaking is Ownable {
     mapping (uint => Pool) internal pools;
 
     // Mapps pool names to n iff that pool was the n-th pool created (n > 0)
-    mapping (string => uint) internal poolNames;
+    mapping (string => uint) internal poolNameToPoolIndex;
 
     // The total balance of the contract including all stakes and deposits
     uint public balanceQspWei;
@@ -398,7 +401,7 @@ contract QuantstampStaking is Ownable {
         }
         uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
-        if (isExpert(stake.staker)) {
+        if (stake.expertStake) {
             stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
                 add(powersOf100[poolIndex][stake.contributionIndex])).
                 div(powersOf100[poolIndex][stake.contributionIndex]);
@@ -559,7 +562,6 @@ contract QuantstampStaking is Ownable {
         require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
         require(minStakeTimeInBlocks > 0, "Minimum staking period cannot be zero.");
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
-        require(maxStakesPerAddress > 0, "An address should be allowed to place at least one stake.");
 
         Pool memory p = Pool(
             candidateContract,
@@ -588,7 +590,7 @@ contract QuantstampStaking is Ownable {
         bonusExpertAtPower[currentPoolNumber].push(1);
         powersOf100[currentPoolNumber].push(1);
         currentPoolNumber = currentPoolNumber.add(1);
-        poolNames[poolName] = currentPoolNumber;
+        poolNameToPoolIndex[poolName] = currentPoolNumber;
         balanceQspWei = balanceQspWei.add(depositQspWei);
         emit StateChanged(currentPoolNumber, PoolState.Initialized);
     }
@@ -598,10 +600,11 @@ contract QuantstampStaking is Ownable {
     * @return - the index of the pool if a pool with that name exists, otherwise the max value of uint
     */
     function getPoolIndex(string poolName) public view returns(uint) {
-        if (poolNames[poolName] > 0)
-            return poolNames[poolName].sub(1);
-        else
-            return ~uint(0);
+        if (poolNameToPoolIndex[poolName] > 0) {
+            return poolNameToPoolIndex[poolName].sub(1);
+        } else {
+            return MAX_UINT;
+        }
     }
 
     function getToken() public view returns (address) {
@@ -703,7 +706,7 @@ contract QuantstampStaking is Ownable {
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
     * @param poolIndex - index of the pool where the policy is checked
     */
-    function isViolated(uint poolIndex) internal returns (bool) {
+    function isViolated(uint poolIndex) internal view returns (bool) {
         address poolPolicy = getPoolContractPolicy(poolIndex);
         address candidateContract = getPoolCandidateContract(poolIndex);
         return IPolicy(poolPolicy).isViolated(candidateContract);
