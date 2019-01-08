@@ -38,6 +38,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
       poolParams.timeoutInBlocks,
       poolParams.urlOfAuditReport,
       poolParams.poolName,
+      poolParams.maxTotalStake,
       {from: poolParams.owner});
   }
 
@@ -61,6 +62,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.poolSizeQspWei.toNumber(), (await qspb.getPoolSizeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.stakeCount.toNumber(), (await qspb.getPoolStakeCount(poolParams.index)).toNumber());
     assert.equal(poolParams.poolName, await qspb.getPoolName(poolParams.index));
+    assert.equal(poolParams.maxTotalStake, (await qspb.getPoolMaxTotalStakeQspWei(poolParams.index)).toNumber());
     assert.equal(balanceOfQspb.toNumber(), (await qspb.balanceQspWei.call()));
     return true;
   }
@@ -143,6 +145,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Orange Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // Gray Pool params
@@ -167,6 +170,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Gray Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // White Pool params
@@ -191,6 +195,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "White Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   // Purple Pool params
@@ -215,6 +220,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Purple Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
   // Blue Pool params
   let bluePoolParams = {
@@ -238,6 +244,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Blue Pool",
+    'maxTotalStake' : new BigNumber(0),
   };
 
   it("should instantiate the Security Expert TCR and add staker1 before the Assurance Contract is created", async function() {

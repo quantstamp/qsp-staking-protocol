@@ -485,39 +485,6 @@ contract QuantstampStaking is Ownable {
         }
     }
 
-    /** Creates a new staking pool (without a limit).
-    * @param candidateContract - the contract that must be protected
-    * @param contractPolicy - the policy that must be respected by the candidate contract
-    * @param maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
-    * @param minStakeQspWei - the minimum value that needs to be raised from all stakers together
-    * @param depositQspWei - the current value deposited by the owner/stakeholder
-    * @param bonusExpertFactor - the factor by which the payout of an expert is multiplied
-    * @param bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
-    * @param payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
-    * @param minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
-    * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
-    * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
-    * @param poolName - an alphanumeric string defined by the pool owner
-    */
-    function createPool(
-        address candidateContract,
-        address contractPolicy,
-        uint maxPayoutQspWei,
-        uint minStakeQspWei,
-        uint depositQspWei,
-        uint bonusExpertFactor,
-        uint bonusFirstExpertFactor,
-        uint payPeriodInBlocks,
-        uint minStakeTimeInBlocks,
-        uint timeoutInBlocks,
-        string urlOfAuditReport,
-        string poolName
-    ) public {
-        createPoolWithLimit(candidateContract, contractPolicy, maxPayoutQspWei, minStakeQspWei, depositQspWei,
-            bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks,
-            urlOfAuditReport, poolName, 0);
-    }
-
     /** Creates a new staking pool.
     * @param candidateContract - the contract that must be protected
     * @param contractPolicy - the policy that must be respected by the candidate contract
@@ -531,9 +498,9 @@ contract QuantstampStaking is Ownable {
     * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
-    * @param maximumSizeQspWei - the maximum QSP that can be staked
+    * @param maxTotalStakeQspWei - the maximum QSP that can be staked; 0 if there is no maximum
     */
-    function createPoolWithLimit(
+    function createPool(
         address candidateContract,
         address contractPolicy,
         uint maxPayoutQspWei,
@@ -546,7 +513,7 @@ contract QuantstampStaking is Ownable {
         uint timeoutInBlocks,
         string urlOfAuditReport,
         string poolName,
-        uint maximumSizeQspWei
+        uint maxTotalStakeQspWei
     ) public {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
@@ -578,7 +545,7 @@ contract QuantstampStaking is Ownable {
             0, // the pool size is initially 0
             0, // total stakes in this pool
             poolName,
-            maximumSizeQspWei
+            maxTotalStakeQspWei
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
