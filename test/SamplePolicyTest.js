@@ -2,6 +2,7 @@ const Util = require("./util.js");
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
+const QuantstampStaking = artifacts.require('QuantstampStaking');
 const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
 const CandidateContract = artifacts.require('test/CandidateContract');
 const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
@@ -16,6 +17,7 @@ const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy'
 const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
 const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
+const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 
@@ -37,6 +39,8 @@ contract('CandidateContract', function(accounts) {
   let alwaysViolatedPolicy;
   let neverViolatedPolicy;
   let upgradeablePolicy;
+  let qaPolicy;
+  let qspb;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
@@ -51,6 +55,8 @@ contract('CandidateContract', function(accounts) {
     alwaysViolatedPolicy = await AlwaysViolatedPolicy.deployed();
     neverViolatedPolicy = await NeverViolatedPolicy.deployed();
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
+    qspb = await QuantstampStaking.deployed();
+    qaPolicy = await QuantstampAssurancePolicy.deployed();
   });
 
   describe('UpgradeablePolicy', () => {

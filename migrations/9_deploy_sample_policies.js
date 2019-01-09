@@ -9,6 +9,8 @@ const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
 const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
+const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
+const QuantstampStaking = artifacts.require('QuantstampStaking');
 
 module.exports = function(deployer, network) {
   if (network === 'development') {
@@ -22,6 +24,7 @@ module.exports = function(deployer, network) {
       .then(() => deployer.deploy(TotalSupplyNotExceededPolicy, 0))
       .then(() => deployer.deploy(StateNotChangedPolicy, 0))
       .then(() => deployer.deploy(AlwaysViolatedPolicy))
-      .then(() => deployer.deploy(NeverViolatedPolicy));
+      .then(() => deployer.deploy(NeverViolatedPolicy))
+      .then(() => deployer.deploy(QuantstampAssurancePolicy, QuantstampStaking.address));
   }
 };
