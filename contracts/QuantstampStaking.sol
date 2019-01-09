@@ -344,8 +344,7 @@ contract QuantstampStaking is Ownable {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) ||
             (state == PoolState.NotViolatedUnderfunded) ||
-            (state == PoolState.NotViolatedFunded),
-            "Pool is not in the right state when staking funds.");
+            (state == PoolState.NotViolatedFunded), "Pool is not in the right state when staking funds.");
         // Check if pool can be switched from the initialized state to another state
         if ((state == PoolState.Initialized) &&
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
@@ -353,9 +352,7 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
-
         uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
-
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
             "Token transfer failed when staking funds.");
