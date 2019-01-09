@@ -20,6 +20,8 @@ const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
+const BigNumber = require('bignumber.js');
+
 
 contract('CandidateContract', function(accounts) {
 
@@ -57,6 +59,65 @@ contract('CandidateContract', function(accounts) {
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
     qspb = await QuantstampStaking.deployed();
     qaPolicy = await QuantstampAssurancePolicy.deployed();
+  });
+
+  describe('QuantstampAssurancePolicy', () => {
+    it("should throw an exception when the policy is checked with a different contract address", async function() {
+      Util.assertTxFail(qaPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not initially be violated", async function() {
+      assert.isFalse(await qaPolicy.isViolated(qspb.address));
+    });
+
+    it("should not be violated when a pool is funded", async function() {
+      const owner = accounts[0];
+      const poolOwner = accounts[3];
+      const staker = accounts[4];
+      const poolOwnerBudget = new BigNumber(Util.toQsp(100000));
+      const stakerBudget = new BigNumber(Util.toQsp(1000));
+      const maxPayoutQspWei = Util.toQsp(100);
+      const minStakeQspWei = new BigNumber(Util.toQsp(10));
+      const depositQspWei = new BigNumber(Util.toQsp(100));
+      const bonusExpertFactor = 3;
+      const bonusFirstExpertFactor = 5;
+      const payPeriodInBlocks = 5;
+      const minStakeTimeInBlocks = new BigNumber(10);
+      const timeoutInBlocks = 5;
+      const urlOfAuditReport = "URL";
+      const poolName = "myPool";
+      const defaultMaxTotalStake = 0;
+      const PoolState = Object.freeze({
+        None : 0,
+        Initialized : 1,
+        NotViolatedUnderfunded : 2,
+        ViolatedUnderfunded : 3,
+        NotViolatedFunded : 4,
+        ViolatedFunded : 5,
+        Cancelled: 6,
+        PolicyExpired: 7
+      });
+
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer poolOwnerBudget QSP tokens to the poolOwner
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      await quantstampToken.transfer(staker, stakerBudget, {from : owner});
+      // allow the qspb contract use QSP
+      await quantstampToken.approve(qspb.address, Util.toQsp(100000), {from : poolOwner});
+      // balance should be 0 in the beginning
+      assert.equal(await qspb.balanceQspWei.call(), 0);
+      // create pool
+      await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+      await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+      let currentPool = 0;
+      await qspb.stakeFunds(currentPool, minStakeQspWei, {from: staker});
+      let currentState = (await qspb.getPoolState(currentPool)).toNumber();
+      assert.isTrue(currentState == PoolState.NotViolatedFunded);
+      assert.isFalse(await qaPolicy.isViolated(qspb.address));
+    });
   });
 
   describe('UpgradeablePolicy', () => {

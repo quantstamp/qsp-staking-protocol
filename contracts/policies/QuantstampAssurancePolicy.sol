@@ -21,11 +21,11 @@ contract QuantstampAssurancePolicy is IPolicy {
         staking = QuantstampStaking(contractAddress);
     }
 
-    // Note: may require too much gas
+    // Note: may require too much gas eventually
     function balanceCoversStakes() internal view returns(bool){
         uint currentPoolNumber = staking.getPoolsLength();
         uint totalStaked = 0;
-        for (uint i=0; i < currentPoolNumber-1; i++) {
+        for (uint i=0; i < currentPoolNumber; i++) {
           if (staking.getPoolState(i) == QuantstampStaking.PoolState(4)) {
             totalStaked = totalStaked.add(staking.getPoolSizeQspWei(i));
           }
