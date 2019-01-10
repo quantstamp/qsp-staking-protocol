@@ -543,6 +543,7 @@ contract('QuantstampStaking', function(accounts) {
       // the first expert staker is staker2
       assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
       assert.equal(await qspb.getPoolStakeCount(currentPoolIndex), 4);
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [staker, staker2, staker3]);
       // compute what the pool size should be according to the bonuses and stakes in the pool
       const bonusExpert = new BigNumber(bonusExpertFactor);
       const bonusFirstExpert = new BigNumber(bonusFirstExpertFactor);
@@ -640,6 +641,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
       poolState = await qspb.getPoolState(currentPoolIndex);
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [Util.ZERO_ADDRESS, staker2]);
       assert.equal(parseInt(await qspb.getPoolState(currentPoolIndex)), parseInt(poolState));
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolSizeQspWei(currentPoolIndex)).toNumber());
@@ -724,6 +726,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       await Util.mineNBlocks(minStakeTimeInBlocks.dividedBy(2));
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [Util.ZERO_ADDRESS]);
       assert.equal(await qspb.isStaker(currentPoolIndex, staker), false);
     });
   });

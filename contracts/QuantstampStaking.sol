@@ -65,6 +65,12 @@ contract QuantstampStaking is Ownable {
     // address (the inner mapping's key) into the pool
     mapping (uint => mapping(address => Stake[])) public stakes;
 
+    // A mapping from pool hash onto a list of stakers in that pool in the order in which the have placed their stakes
+    mapping (uint => address[]) public poolToStakers;
+
+    // A mapping from pool hash onto a reverse index for the list of stakers in that given pool
+    mapping (uint => mapping (address => uint)) public poolToStakerIndex;
+
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
 
@@ -238,6 +244,8 @@ contract QuantstampStaking is Ownable {
                     calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
+            // remove this staker from the list of stakers of this pool
+            delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
             // actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
@@ -334,18 +342,14 @@ contract QuantstampStaking is Ownable {
         PoolState state = getPoolState(poolIndex);
         require((state == PoolState.Initialized) ||
             (state == PoolState.NotViolatedUnderfunded) ||
-            (state == PoolState.NotViolatedFunded),
-            "Pool is not in the right state when staking funds.");
+            (state == PoolState.NotViolatedFunded), "Pool is not in the right state when staking funds.");
         // Check if pool can be switched from the initialized state to another state
-        if ((state == PoolState.Initialized) &&
+        if ((state == PoolState.Initialized) && // then timeout has occured and stakes are not allowed
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
-                // then timeout has occured and stakes are not allowed
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
-
         uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
-
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
             "Token transfer failed when staking funds.");
@@ -355,6 +359,10 @@ contract QuantstampStaking is Ownable {
         Stake memory stake = Stake(msg.sender, adjustedAmountQspWei, block.number, block.number,
             currentStakeIndex, isExpert(msg.sender));
         stakes[poolIndex][msg.sender].push(stake);
+        if (stakes[poolIndex][msg.sender].length == 1) { // then this is the first stake placed by this staker
+            poolToStakers[poolIndex].push(msg.sender);
+            poolToStakerIndex[poolIndex][msg.sender] = poolToStakers[poolIndex].length - 1;
+        }
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmountQspWei);
         balanceQspWei = balanceQspWei.add(adjustedAmountQspWei);
         pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(adjustedAmountQspWei);
@@ -660,6 +668,10 @@ contract QuantstampStaking is Ownable {
         return pools[index].maxTotalStakeQspWei;
     }
 
+    function getPoolStakersList(uint index) public view returns(address[]) {
+        return poolToStakers[index];
+    }
+
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
     * @param poolIndex - index of the pool where the policy is checked
     */
@@ -734,7 +746,7 @@ contract QuantstampStaking is Ownable {
      * @param amountQspWei - the stake size
      * @return the current state of the pool
      */
-    function updateStakeAmount(uint poolIndex, uint amountQspWei) internal returns(uint) {
+    function updateStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint adjustedAmountQspWei = amountQspWei;
         if (pools[poolIndex].maxTotalStakeQspWei != 0) {
             require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxTotalStakeQspWei);
