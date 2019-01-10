@@ -68,6 +68,9 @@ contract QuantstampStaking is Ownable {
     // A mapping from pool hash onto a list of stakers in that pool in the order in which the have placed their stakes
     mapping (uint => address[]) public poolToStakers;
 
+    // A mapping from pool hash onto a reverse index for the list of stakers in that given pool
+    mapping (uint => mapping (address => uint)) public poolToStakerIndex;
+
     // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
     mapping (uint => mapping(address => uint)) public totalStakes;
 
@@ -242,12 +245,7 @@ contract QuantstampStaking is Ownable {
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
             // remove this staker from the list of stakers of this pool
-            for (i = 0; i < poolToStakers[poolIndex].length; i++) {
-                if (poolToStakers[poolIndex][i] == msg.sender) {
-                    delete poolToStakers[poolIndex][i];
-                    break;
-                }
-            }
+            delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
             // actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
@@ -364,6 +362,7 @@ contract QuantstampStaking is Ownable {
         stakes[poolIndex][msg.sender].push(stake);
         if (stakes[poolIndex][msg.sender].length == 1) { // then this is the first stake placed by this staker
             poolToStakers[poolIndex].push(msg.sender);
+            poolToStakerIndex[poolIndex][msg.sender] = poolToStakers[poolIndex].length - 1;
         }
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmountQspWei);
         balanceQspWei = balanceQspWei.add(adjustedAmountQspWei);
