@@ -174,17 +174,17 @@ contract QuantstampStaking is Ownable {
         uint depositQspWei
     ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
         address poolOwner = getPoolOwner(poolIndex);
-        PoolState currentState = getPoolState(poolIndex);
-        require(currentState == PoolState.Initialized ||
-            currentState == PoolState.NotViolatedUnderfunded ||
-            currentState == PoolState.NotViolatedFunded ||
-            currentState == PoolState.PolicyExpired);
+        PoolState state = updatePoolState(poolIndex);
+        require(state == PoolState.Initialized ||
+            state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.NotViolatedFunded ||
+            state == PoolState.PolicyExpired);
         require(token.transferFrom(poolOwner, address(this), depositQspWei),
             "Token deposit transfer did not succeed");
         pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
         balanceQspWei = balanceQspWei.add(depositQspWei);
 
-        if (currentState == PoolState.NotViolatedUnderfunded
+        if (state == PoolState.NotViolatedUnderfunded
                 && pools[poolIndex].depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
             setState(poolIndex, PoolState.NotViolatedFunded);
         }
@@ -314,11 +314,12 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
+        PoolState state = updatePoolState(poolIndex);
         // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
         // or the pool is in ViolatedFunded state already
         require(
-            (getPoolState(poolIndex) == PoolState.ViolatedFunded) ||
-            (getPoolState(poolIndex) == PoolState.NotViolatedFunded && isViolated(poolIndex))
+            (state == PoolState.ViolatedFunded) ||
+            (state == PoolState.NotViolatedFunded && isViolated(poolIndex))
         );
 
         // claim all stakes
@@ -339,7 +340,7 @@ contract QuantstampStaking is Ownable {
     */
     function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
         // Check the pool state
-        PoolState state = getPoolState(poolIndex);
+        PoolState state = updatePoolState(poolIndex);
         require((state == PoolState.Initialized) ||
             (state == PoolState.NotViolatedUnderfunded) ||
             (state == PoolState.NotViolatedFunded), "Pool is not in the right state when staking funds.");
