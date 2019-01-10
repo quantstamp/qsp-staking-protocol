@@ -344,9 +344,8 @@ contract QuantstampStaking is Ownable {
             (state == PoolState.NotViolatedUnderfunded) ||
             (state == PoolState.NotViolatedFunded), "Pool is not in the right state when staking funds.");
         // Check if pool can be switched from the initialized state to another state
-        if ((state == PoolState.Initialized) &&
+        if ((state == PoolState.Initialized) && // then timeout has occured and stakes are not allowed
             (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
-                // then timeout has occured and stakes are not allowed
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
