@@ -48,6 +48,7 @@ This includes running Truffle tests and collecting coverage report for [Coverall
 ## Deploy to Ropsten or MainNet
 
 1. Place the secret mnemonic phrase and the Infura API token into `credentials.js`.
+1. Ensure you have AWS credentials allowing publishing artifacts to S3.
 1. Edit `truffle.js` to specify `true` besides the contracts you are willing to redeploy:
   ```
   deploy: {
