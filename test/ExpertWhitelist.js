@@ -28,13 +28,6 @@ contract('ExpertWhitelist', function(accounts) {
       Util.assertTxFail(whitelist.removeExpert(expert, {from: expert}));
     });
 
-    it("should support multiple repeated calls", async function() {
-      await whitelist.addExpert(expert, {from: owner});
-      await whitelist.addExpert(expert, {from: owner});
-      await whitelist.removeExpert(expert, {from: owner});
-      await whitelist.removeExpert(expert, {from: owner});
-    });
-
     it("should succeed when an owner tries to add an expert", async function() {
       await whitelist.addExpert(expert, {from: owner});
       assert.isTrue(await whitelist.isExpert(expert));
