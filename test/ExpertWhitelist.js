@@ -37,7 +37,6 @@ contract('ExpertWhitelist', function(accounts) {
       assert.isFalse(await whitelist.isExpert(expert));
       assert.isFalse(await whitelist.isExpert(nonExpert));
     });
-
   });
-});
 
+});
