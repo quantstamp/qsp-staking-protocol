@@ -23,14 +23,14 @@ contract ExpertWhitelist is Ownable {
 
     /** Returns true if an address is an expert. This is consistent
     * with the TCR interface.
-    * @param address - the address to be checked
+    * @param account - the address to be checked
     */
     function isExpert(address account) public view returns (bool) {
         return experts.has(account);
     }
 
     /** Adds the address to the list of experts. Callable only by the owner.
-    * @param address - the address to be added
+    * @param account - the address to be added
     */
     function addExpert(address account) public onlyOwner {
         experts.add(account);
@@ -38,7 +38,7 @@ contract ExpertWhitelist is Ownable {
     }
 
     /** Removes an address from the list of experts. Callable only by the owner.
-    * @param address - the address to be removed
+    * @param account - the address to be removed
     */
     function removeExpert(address account) public onlyOwner {
         experts.remove(account);
