@@ -53,6 +53,7 @@ contract('QuantstampStaking', function(accounts) {
   let qspb;
   let quantstampToken;
   let quantstampRegistry;
+  let wrapper;
   let candidateContract;
   let contractPolicy;
   let poolState;

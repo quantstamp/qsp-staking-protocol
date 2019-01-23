@@ -244,21 +244,13 @@ contract('CandidateToken', function(accounts) {
 
     before(async function () {
       voting = await Voting.deployed();
-	    console.log(">>>> 1");
       await voting.init(QuantstampToken.address);
-	    console.log(">>>> 1");
       expertTCR = await Registry.deployed();
-	    console.log(">>>> 1");
       quantstampToken = await QuantstampToken.deployed();
-	    console.log(">>>> 1");
       quantstampParameterizer = await QuantstampParameterizer.deployed();
-	    console.log(">>>> 1");
       await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-	    console.log(">>>> 1");
       await expertTCR.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-	    console.log(">>>> 1");
       tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
-	    console.log(">>>> 1");
 
       applicantA = accounts[9];
       listingA = applicantA;
