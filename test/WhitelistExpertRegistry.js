@@ -1,7 +1,7 @@
 const Util = require("./util.js");
-const ExpertWhitelist = artifacts.require('ExpertWhitelist');
+const WhitelistExpertRegistry = artifacts.require('WhitelistExpertRegistry');
 
-contract('ExpertWhitelist', function(accounts) {
+contract('WhitelistExpertRegistry', function(accounts) {
 
   const owner = accounts[0];
   const expert = accounts[1];
@@ -9,10 +9,10 @@ contract('ExpertWhitelist', function(accounts) {
   let whitelist;
 
   beforeEach(async function () {
-    whitelist = await ExpertWhitelist.new();
+    whitelist = await WhitelistExpertRegistry.new();
   });
 
-  describe('ExpertWhitelist', () => {
+  describe('WhitelistExpertRegistry', () => {
     it("nobody should be an expert at first", async function() {
       assert.isFalse(await whitelist.isExpert(nonExpert));
       assert.isFalse(await whitelist.isExpert(expert));

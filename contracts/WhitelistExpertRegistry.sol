@@ -6,7 +6,7 @@ pragma solidity 0.4.24;
 import "openzeppelin-solidity/contracts/access/Roles.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-contract ExpertWhitelist is Ownable {
+contract ExpertWhitelist is Ownable, IRegistry {
     using Roles for Roles.Role;
 
     // Emitted when an expert is added
