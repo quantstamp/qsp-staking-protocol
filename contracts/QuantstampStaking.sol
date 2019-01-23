@@ -9,6 +9,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "./IPolicy.sol";
+import "./IRegistry.sol";
 
 
 contract QuantstampStaking is Ownable {
@@ -98,7 +99,7 @@ contract QuantstampStaking is Ownable {
     ERC20 public token;
 
     // TCR used to list expert stakers.
-    Registry public stakingRegistry;
+    IRegistry public stakingRegistry;
 
     // Signals that a stakeholder has made a deposit
     event DepositMade(uint poolIndex, address actor, uint amountQspWei);
@@ -162,7 +163,7 @@ contract QuantstampStaking is Ownable {
         require(tokenAddress != address(0), "Token address is 0.");
         token = ERC20(tokenAddress);
         require(tcrAddress != address(0), "TCR address is 0.");
-        stakingRegistry = Registry(tcrAddress);
+        stakingRegistry = IRegistry(tcrAddress);
     }
 
     /** Allows the stakeholder to make an additional deposit to the contract
@@ -461,19 +462,16 @@ contract QuantstampStaking is Ownable {
     * @param _registry - the address of the TCR to used instead of the current one
     */
     function setStakingRegistry(address _registry) public onlyOwner {
-        stakingRegistry = Registry(_registry);
+        stakingRegistry = IRegistry(_registry);
         emit RegistryUpdated(_registry);
     }
 
-    /** @dev addr is of type Address which is 20 Bytes, but the TCR expects all
-    * entries to be of type Bytes32. addr is first cast to Uint256 so that it
-    * becomes 32 bytes long, addr is then shifted 12 bytes (96 bits) to the
-    * left so the 20 important bytes are in the correct spot.
+    /** Checks if the addr is an expert.
     * @param addr The address of the person who may be an expert.
-    * @return true If addr is on the TCR (is an expert)
+    * @return true If addr is an expert according to the registry
     */
     function isExpert(address addr) public view returns(bool) {
-        return stakingRegistry.isWhitelisted(bytes32(uint256(addr) << 96));
+        return stakingRegistry.isExpert(addr);
     }
 
     /** Checks the policy of the pool. If it is violated, it updates the state accordingly.

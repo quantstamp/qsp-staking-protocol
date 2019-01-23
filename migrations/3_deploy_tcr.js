@@ -1,5 +1,6 @@
 const utils = require('./utils.js');
 const Registry = artifacts.require('test/Registry');
+const TokenCuratedRegistry = artifacts.require('TokenCuratedRegistry');
 const QuantstampToken = artifacts.require('test/QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const DLL = artifacts.require('dll/DLL.sol');
@@ -66,5 +67,6 @@ module.exports = function(deployer, network) {
       }
     })).then(() => {
       console.log('IMPORTANT: FOR PRODUCTION, MANUALLY CHECK THAT THE TCR WAS INITIALIZED. FAILURE TO DO SO MAY RESULT IN SOMEBODY ELSE INITIALIZING IT');
-    });
+    })
+    .then(() => deployer.deploy(TokenCuratedRegistry, Registry.address));
 };

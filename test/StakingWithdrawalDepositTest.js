@@ -1,6 +1,7 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
+const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
 const Util = require("./util.js");
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
@@ -31,6 +32,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   let candidateContract;
   let contractPolicy;
   let quantstampRegistry;
+  let wrapper;
   const initialDepositQspWei = poolOwnerBudget;
   const minStakeQspWei = Util.toQsp(10);
   const maxPayableQspWei = Util.toQsp(200);
@@ -46,10 +48,11 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   beforeEach(async function() {
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
     quantstampRegistry = await QuantstampStakingRegistry.new();
+    wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
 
-    qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});

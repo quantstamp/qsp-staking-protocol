@@ -1,6 +1,7 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('test/Registry');
+const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
@@ -59,9 +60,10 @@ contract('QuantstampStaking', function(accounts) {
   let currentPoolIndex;
 
   describe("constructor", async function() {
-    it("should not be able to construct the QuantstampAssurnce contract if the token address is 0", async function() {
+    it("should not be able to construct the QuantstampAssurance contract if the token address is 0", async function() {
       quantstampRegistry = await QuantstampStakingRegistry.new();
-      Util.assertTxFail(QuantstampStaking.new(Util.ZERO_ADDRESS, quantstampRegistry.address, {from: owner}));
+      wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      Util.assertTxFail(QuantstampStaking.new(Util.ZERO_ADDRESS, wrapper.address, {from: owner}));
     });
 
     it("should fail if a TCR with address zero is passed into the constructor", async function () {
@@ -74,7 +76,6 @@ contract('QuantstampStaking', function(accounts) {
     it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
       qspb = await QuantstampStaking.deployed();
       quantstampToken = await QuantstampToken.deployed();
-      quantstampRegistry = await QuantstampStakingRegistry.deployed();
       candidateContract = await CandidateContract.deployed();
       contractPolicy = await ZeroBalancePolicy.deployed();
       Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
@@ -138,7 +139,8 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should have the right registry address", async function() {
-      assert.equal(await qspb.getStakingRegistry(), quantstampRegistry.address);
+      wrapper = await RegistryWrapper.deployed();
+      assert.equal(await qspb.getStakingRegistry(), wrapper.address);
     });
 
     it("should not create a pool if the initial deposit is zero", async function() {
@@ -250,7 +252,8 @@ contract('QuantstampStaking', function(accounts) {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from : owner});
       candidateContract = await CandidateContract.new(policyBalance);
       quantstampRegistry = await QuantstampStakingRegistry.deployed();
-      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address);
+      wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address);
       policy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
@@ -441,7 +444,8 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       const quantstampRegistry = await QuantstampStakingRegistry.new();
       await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      const wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
     });
 
     it("should allow replacement of the TCR", async function() {
@@ -466,7 +470,8 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       const quantstampRegistry = await QuantstampStakingRegistry.new();
       await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      const wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -597,7 +602,8 @@ contract('QuantstampStaking', function(accounts) {
     beforeEach("when withdrawing stakes", async function() {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
-      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
@@ -691,7 +697,8 @@ contract('QuantstampStaking', function(accounts) {
     beforeEach("when the GUI needs to check if the current user is a staker in a pool", async function() {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
-      qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+      wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+      qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
