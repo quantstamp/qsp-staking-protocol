@@ -534,7 +534,6 @@ contract QuantstampStaking is Ownable {
         require(minStakeTimeInBlocks > 0, "Minimum staking period cannot be zero.");
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
         require(maxTotalStakeQspWei > minStakeQspWei, "Max total stake cannot be less than min total stake.");
-
         Pool memory p = Pool(
             candidateContract,
             contractPolicy,

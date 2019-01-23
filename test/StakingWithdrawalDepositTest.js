@@ -41,7 +41,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   const timeoutInBlocks = 100;
   const urlOfAuditReport = "URL";
   const poolName = "myPool";
-  const defaultMaxTotalStake = 0;
+  const defaultMaxTotalStake = new BigNumber(Util.toQsp(10000));
 
   beforeEach(async function() {
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});

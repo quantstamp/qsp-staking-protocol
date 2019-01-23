@@ -145,7 +145,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Orange Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(1000)),
+    'maxTotalStake' : new BigNumber(Util.toQsp(1000000)),
   };
 
   // Gray Pool params
@@ -170,7 +170,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Gray Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(300)),
+    'maxTotalStake' : new BigNumber(Util.toQsp(3000000)),
   };
 
   // White Pool params
@@ -220,7 +220,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Purple Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(1000)),
+    'maxTotalStake' : new BigNumber(Util.toQsp(100000)),
   };
   // Blue Pool params
   let bluePoolParams = {
@@ -244,7 +244,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Blue Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(1000)),
+    'maxTotalStake' : new BigNumber(Util.toQsp(1000000)),
   };
 
   it("should instantiate the Security Expert TCR and add staker1 before the Assurance Contract is created", async function() {
