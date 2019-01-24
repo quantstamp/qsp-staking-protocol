@@ -43,7 +43,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const urlOfAuditReport = "URL";
   const initialDepositQspWei = maxPayoutQspWei;
   const poolName = "myPool";
-  const defaultMaxTotalStake = 0;
+  const defaultMaxTotalStake = new BigNumber(Util.toQsp(10000));
 
   let qspb;
   let quantstampToken;
