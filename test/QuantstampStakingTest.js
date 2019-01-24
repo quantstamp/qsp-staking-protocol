@@ -413,7 +413,7 @@ contract('QuantstampStaking', function(accounts) {
       const quantstampParameterizer = await QuantstampParameterizer.deployed();
       await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
       await quantstampRegistry.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-      await qspb.setRegistry(quantstampRegistry.address, {from: owner});
+      await qspb.setStakingRegistry(quantstampRegistry.address, {from: owner});
 
       const applicant = accounts[4];
       const listing = applicant;
