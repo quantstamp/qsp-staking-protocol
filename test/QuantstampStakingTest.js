@@ -2,6 +2,7 @@ const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('test/Registry');
 const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
+const WhitelistExpertRegistry = artifacts.require('WhitelistExpertRegistry');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
@@ -140,8 +141,8 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should have the right registry address", async function() {
-      wrapper = await RegistryWrapper.deployed();
-      assert.equal(await qspb.getStakingRegistry(), wrapper.address);
+      const registry = await WhitelistExpertRegistry.deployed();
+      assert.equal(await qspb.getStakingRegistry(), registry.address);
     });
 
     it("should not create a pool if the initial deposit is zero", async function() {
@@ -412,6 +413,7 @@ contract('QuantstampStaking', function(accounts) {
       const quantstampParameterizer = await QuantstampParameterizer.deployed();
       await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
       await quantstampRegistry.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+      await qspb.setRegistry(quantstampRegistry.address, {from: owner});
 
       const applicant = accounts[4];
       const listing = applicant;

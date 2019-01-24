@@ -68,5 +68,10 @@ module.exports = function(deployer, network) {
     })).then(() => {
       console.log('IMPORTANT: FOR PRODUCTION, MANUALLY CHECK THAT THE TCR WAS INITIALIZED. FAILURE TO DO SO MAY RESULT IN SOMEBODY ELSE INITIALIZING IT');
     })
-    .then(() => deployer.deploy(TokenCuratedRegistry, Registry.address));
+    .then(() => deployer.deploy(TokenCuratedRegistry, Registry.address))
+    .then(async() => await utils.updateAbiAndMetadata(
+      network,
+      'TokenCuratedRegistry',
+      TokenCuratedRegistry.address
+    ));
 };
