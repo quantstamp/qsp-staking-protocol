@@ -5,6 +5,7 @@ const CandidateContract = artifacts.require('CandidateContract');
 const CandidateToken = artifacts.require('CandidateToken');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
+const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
 const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
@@ -70,6 +71,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   let qspb;
   let quantstampToken;
   let quantstampRegistry;
+  let wrapper;
   let quantstampParameterizer;
   let voting;
   let currentPoolNumber;
@@ -256,6 +258,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
     quantstampRegistry = await QuantstampStakingRegistry.new();
     await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+    wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // award budget to staker1
@@ -264,7 +267,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await quantstampToken.approve(quantstampRegistry.address, minDeposit, {from : staker1});
     await TCRUtil.addToWhitelist(staker1, TCRUtil.minDep, staker1, quantstampRegistry);
     // instantiate Assurance Protocol contract
-    qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
     // check if staker1 is considered a security expert from the point of view of the Assurnace Protocol contract
     assert.isTrue(await qspb.isExpert(staker1));
     // allow the Assurance protocol to transfer funds from staker1

@@ -3,6 +3,7 @@ const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
+const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
 const QuantstampParameterizer = artifacts.require('Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const TCRUtil = require('./tcrutils.js');
@@ -50,6 +51,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   let candidateContract;
   let contractPolicy;
   let quantstampRegistry;
+  let wrapper;
   let quantstampParameterizer;
   let voting;
   let currentPoolNumber;
@@ -62,9 +64,10 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
     quantstampRegistry = await QuantstampStakingRegistry.new();
     await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+    wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
-    qspb = await QuantstampStaking.new(quantstampToken.address, quantstampRegistry.address, {from: owner});
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
     // quick check that balance is zero
     assert.equal(await qspb.balanceQspWei.call(), 0);
     // enable transfers before any payments are allowed
