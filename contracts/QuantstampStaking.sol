@@ -1,4 +1,5 @@
 pragma solidity 0.4.24;
+pragma experimental ABIEncoderV2;
 
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author Quantstamp
@@ -666,6 +667,10 @@ contract QuantstampStaking is Ownable {
 
     function getPoolMaxTotalStakeQspWei(uint index) public view returns(uint) {
         return pools[index].maxTotalStakeQspWei;
+    }
+
+    function getPoolDetails(uint index) public view returns(Pool) {
+        return pools[index];
     }
 
     function getPoolStakersList(uint index) public view returns(address[]) {
