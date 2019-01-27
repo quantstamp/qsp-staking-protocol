@@ -344,7 +344,6 @@ contract QuantstampStaking is Ownable {
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
     function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
-        // Check the pool state
         PoolState state = updatePoolState(poolIndex);
         require((state == PoolState.Initialized) ||
             (state == PoolState.NotViolatedUnderfunded) ||
