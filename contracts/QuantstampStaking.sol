@@ -1,5 +1,4 @@
 pragma solidity 0.4.24;
-pragma experimental ABIEncoderV2;
 
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author Quantstamp
@@ -69,6 +68,9 @@ contract QuantstampStaking is Ownable {
 
     // A mapping from pool hash onto a list of stakers in that pool in the order in which the have placed their stakes
     mapping (uint => address[]) public poolToStakers;
+
+    // A maping from pool hash onto a list of booleans indicating if that poolToStakers entry is an expert or not
+    mapping (uint => bool[]) public poolToStakersExpertStatus;
 
     // A mapping from pool hash onto a reverse index for the list of stakers in that given pool
     mapping (uint => mapping (address => uint)) public poolToStakerIndex;
@@ -248,6 +250,7 @@ contract QuantstampStaking is Ownable {
             }
             // remove this staker from the list of stakers of this pool
             delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
+            delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
             // actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
@@ -364,6 +367,7 @@ contract QuantstampStaking is Ownable {
         stakes[poolIndex][msg.sender].push(stake);
         if (stakes[poolIndex][msg.sender].length == 1) { // then this is the first stake placed by this staker
             poolToStakers[poolIndex].push(msg.sender);
+            poolToStakersExpertStatus[poolIndex].push(isExpert(msg.sender));
             poolToStakerIndex[poolIndex][msg.sender] = poolToStakers[poolIndex].length - 1;
         }
         totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmountQspWei);
@@ -669,12 +673,40 @@ contract QuantstampStaking is Ownable {
         return pools[index].maxTotalStakeQspWei;
     }
 
-    function getPoolDetails(uint index) public view returns(Pool) {
-        return pools[index];
+    function getPoolStakersList(uint index) public view returns(address[], bool[]) {
+        return (poolToStakers[index], poolToStakersExpertStatus[index]);
     }
 
-    function getPoolStakersList(uint index) public view returns(address[]) {
-        return poolToStakers[index];
+    function getPoolFixedIntegers(uint index) public view returns(uint, uint, uint, uint, uint, uint, uint) {
+        return (pools[index].maxPayoutQspWei,
+                pools[index].minStakeQspWei,
+                pools[index].maxTotalStakeQspWei,
+                pools[index].bonusExpertFactor,
+                pools[index].bonusFirstExpertFactor,
+                pools[index].payPeriodInBlocks,
+                pools[index].minStakeTimeInBlocks
+        );
+    }
+
+    function getPoolFixedParams(uint index) public view returns(address, address, address, uint, string, string) {
+        return (pools[index].candidateContract,
+                pools[index].contractPolicy,
+                pools[index].owner,
+                pools[index].timeoutInBlocks,
+                pools[index].urlOfAuditReport,
+                pools[index].poolName
+        );
+    }
+
+    function getPoolVariableParams(uint index) public view returns(uint, uint, PoolState, uint, uint, uint, address) {
+        return (pools[index].depositQspWei,
+                pools[index].timeOfStateInBlocks,
+                pools[index].state,
+                pools[index].totalStakeQspWei,
+                pools[index].poolSizeQspWei,
+                pools[index].stakeCount,
+                pools[index].firstExpertStaker
+        );
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
