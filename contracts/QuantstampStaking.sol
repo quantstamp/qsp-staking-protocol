@@ -672,40 +672,63 @@ contract QuantstampStaking is Ownable {
         return pools[index].maxTotalStakeQspWei;
     }
 
+    /** Returns the list of staker addresses that placed stakes in this pool in chronological order
+     * along with a list of booleans indicating if the corresponding staker in the address list is an expert or not.  
+     * @param index - the pool index for which the list of stakers is required
+     * @return - a pair of staker addresses and staker expert flags. 
+     */
     function getPoolStakersList(uint index) public view returns(address[], bool[]) {
         return (poolToStakers[index], poolToStakersExpertStatus[index]);
     }
 
-    function getPoolFixedIntegers(uint index) public view returns(uint, uint, uint, uint, uint, uint, uint) {
-        return (pools[index].maxPayoutQspWei,
-                pools[index].minStakeQspWei,
-                pools[index].maxTotalStakeQspWei,
-                pools[index].bonusExpertFactor,
-                pools[index].bonusFirstExpertFactor,
-                pools[index].payPeriodInBlocks,
-                pools[index].minStakeTimeInBlocks
-        );
-    }
-
-    function getPoolFixedParams(uint index) public view returns(address, address, address, uint, string, string) {
-        return (pools[index].candidateContract,
-                pools[index].contractPolicy,
-                pools[index].owner,
-                pools[index].timeoutInBlocks,
-                pools[index].urlOfAuditReport,
-                pools[index].poolName
-        );
-    }
-
-    function getPoolVariableParams(uint index) public view returns(uint, uint, PoolState, uint, uint, uint, address) {
-        return (pools[index].depositQspWei,
-                pools[index].timeOfStateInBlocks,
-                pools[index].state,
-                pools[index].totalStakeQspWei,
-                pools[index].poolSizeQspWei,
-                pools[index].stakeCount,
-                pools[index].firstExpertStaker
-        );
+    /** Returns all the parameters of the pool that do not change during the entire life-cycle of the pool.
+     * @param index - the pool index for which the list of stakers is required
+     * @return - a 3-tuple containing the following entries:
+     *   0. a list of addresses containing the following entries:
+     *        0. the address of the contract that must be protected
+     *        1. the address of the policy that must be respected by the candidate contract
+     *        2. the address of the owner of the pool (the stakeholder), not the owner of the contract
+     *        3. the address of the first expert to stake in this pool
+     *   1. a list of natural numbers containing the folowing entries:
+     *        0. maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
+     *        1. minStakeQspWei - the minimum value that needs to be raised from all stakers together
+     *        2. maxTotalStakeQspWei - the maximum amount that can be staked in this pool
+     *        3. bonusExpertFactor - the factor by which the payout of an expert is multiplied
+     *        4. bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
+     *        5. payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
+     *        6. minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
+     *        7. timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
+     *        8. depositQspWei - the current value deposited by the owner/stakeholder
+     *        9. timeOfStateQspWei - the block number when the pool was set in its current state
+     *        10. totalStakeQspWei - total amount of stake contributed so far
+     *        11. poolSizeQspWei - the size of all stakes in this pool together with the bonuses awarded for experts
+     *        12. stakeCount - the total number of stakes in the pool
+     *        13. state - the current state of the pool
+     *   2. the URL to the audit report (could also be a white-glove audit) of the pool
+     *   3. the alphanumeric string indicating the name of the pool, defined by the pool owner
+     */
+    function getPoolParams(uint index) public view returns(address[], uint[], string, string) {
+        address[] memory addresses = new address[](4);
+        addresses[0] = pools[index].candidateContract;
+        addresses[1] = pools[index].contractPolicy;
+        addresses[2] = pools[index].owner;
+        addresses[3] = pools[index].firstExpertStaker;
+        uint[] memory numbers = new uint[](14);
+        numbers[0] = pools[index].maxPayoutQspWei;
+        numbers[1] = pools[index].minStakeQspWei;
+        numbers[2] = pools[index].maxTotalStakeQspWei;
+        numbers[3] = pools[index].bonusExpertFactor;
+        numbers[4] = pools[index].bonusFirstExpertFactor;
+        numbers[5] = pools[index].payPeriodInBlocks;
+        numbers[6] = pools[index].minStakeTimeInBlocks;
+        numbers[7] = pools[index].timeoutInBlocks;
+        numbers[8] = pools[index].depositQspWei;
+        numbers[9] = pools[index].timeOfStateInBlocks;
+        numbers[10] = pools[index].totalStakeQspWei;
+        numbers[11] = pools[index].poolSizeQspWei;
+        numbers[12] = pools[index].stakeCount;
+        numbers[13] = uint(pools[index].state);
+        return (addresses, numbers, pools[index].urlOfAuditReport, pools[index].poolName);
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
