@@ -128,8 +128,8 @@ contract('QuantstampStaking', function(accounts) {
       poolParams[1] = poolParams[1].map(function(el){ return el.toNumber(); });
       assert.deepEqual(poolParams, [[candidateContract.address, contractPolicy.address, poolOwner, Util.ZERO_ADDRESS],
         [maxPayoutQspWei, minStakeQspWei, defaultMaxTotalStake, bonusExpertFactor, bonusFirstExpertFactor,
-        payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, zero, zero, zero,
-        new BigNumber(PoolState.Initialized)].map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
+          payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, zero, zero, zero,
+          new BigNumber(PoolState.Initialized)].map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
       // balance should be increased
       assert.equal(depositQspWei.toNumber(), (await qspb.balanceQspWei.call()).toNumber());
     });
@@ -315,9 +315,9 @@ contract('QuantstampStaking', function(accounts) {
       poolParams[1] = poolParams[1].map(function(el){ return el.toNumber(); });
       assert.deepEqual(poolParams, [[candidateContract.address, policy.address, poolOwner, Util.ZERO_ADDRESS],
         [maxPayableQspWei, minStakeQspWei, defaultMaxTotalStake, bonusExpertFactor, bonusFirstExpertFactor,
-        payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, minStakeQspWei,
-        minStakeQspWei, minStakeQspWei, new BigNumber(PoolState.ViolatedFunded)].
-        map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
+          payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, minStakeQspWei,
+          minStakeQspWei, minStakeQspWei, new BigNumber(PoolState.ViolatedFunded)].
+          map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
     });
 
     it("should not allow claim withdraw when pool is not funded", async function() {
