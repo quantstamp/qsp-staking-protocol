@@ -681,7 +681,7 @@ contract QuantstampStaking is Ownable {
         return (poolToStakers[index], poolToStakersExpertStatus[index]);
     }
 
-    /** Returns all the parameters of the pool that do not change during the entire life-cycle of the pool.
+    /** Returns all the parameters of the pool.
      * @param index - the pool index for which the list of stakers is required
      * @return - a 3-tuple containing the following entries:
      *   0. a list of addresses containing the following entries:
