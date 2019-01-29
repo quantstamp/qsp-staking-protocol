@@ -15,10 +15,12 @@ contract QuantstampAssurancePolicy is IPolicy {
     // The instance of Quantstamp Assurance
     address assuranceContractAddress;
     QuantstampStaking staking;
+    uint assurancePoolId;
 
     constructor (address contractAddress) public {
         assuranceContractAddress = contractAddress;
         staking = QuantstampStaking(contractAddress);
+        assurancePoolId = 0;
     }
 
     // Note: only checks NotViolatedFunded pools
@@ -32,13 +34,24 @@ contract QuantstampAssurancePolicy is IPolicy {
             totalStaked = totalStaked.add(staking.getPoolSizeQspWei(i));
             totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
           }
+          // Note: we do this here to avoid iterating over the pools twice
+          if (staking.getPoolCandidateContract(i) == assuranceContractAddress &&
+              staking.getPoolContractPolicy(i) == address(this)) {
+            assurancePoolId = i;
+          }
         }
         return staking.balanceQspWei() >= totalStaked.add(totalDeposited);
     }
 
+    function assuranceIsNeverViolated() internal view returns(bool){
+      // Better not be ViolatedUnderfunded (3) or ViolatedFunded (5)
+      return staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(3) &&
+        staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(5);
+    }
+
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == assuranceContractAddress);
-        return !(balanceCoversStakesAndDeposits());
+        return !(balanceCoversStakesAndDeposits() && assuranceIsNeverViolated());
     }
 
 }
