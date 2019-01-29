@@ -21,22 +21,24 @@ contract QuantstampAssurancePolicy is IPolicy {
         staking = QuantstampStaking(contractAddress);
     }
 
+    // Note: only checks NotViolatedFunded pools
     // Note: may require too much gas eventually
-    function balanceCoversStakes() internal view returns(bool){
+    function balanceCoversStakesAndDeposits() internal view returns(bool){
         uint currentPoolNumber = staking.getPoolsLength();
+        uint totalDeposited = 0;
         uint totalStaked = 0;
         for (uint i=0; i < currentPoolNumber; i++) {
           if (staking.getPoolState(i) == QuantstampStaking.PoolState(4)) {
             totalStaked = totalStaked.add(staking.getPoolSizeQspWei(i));
+            totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
           }
         }
-        return staking.balanceQspWei() >= totalStaked;
+        return staking.balanceQspWei() >= totalStaked.add(totalDeposited);
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == assuranceContractAddress);
-        bool violated = !balanceCoversStakes();
-        return violated;
+        return !(balanceCoversStakesAndDeposits());
     }
 
 }
