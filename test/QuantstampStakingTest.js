@@ -35,14 +35,14 @@ contract('QuantstampStaking', function(accounts) {
   });
 
   // vars needed for creating pool
-  const maxPayoutQspWei = Util.toQsp(100);
+  const maxPayoutQspWei = new BigNumber(Util.toQsp(100));
   const minStakeQspWei = new BigNumber(Util.toQsp(10));
   const depositQspWei = new BigNumber(Util.toQsp(10));
-  const bonusExpertFactor = 3;
-  const bonusFirstExpertFactor = 5;
-  const payPeriodInBlocks = 5;
+  const bonusExpertFactor = new BigNumber(3);
+  const bonusFirstExpertFactor = new BigNumber(5);
+  const payPeriodInBlocks = new BigNumber(5);
   const minStakeTimeInBlocks = new BigNumber(10);
-  const timeoutInBlocks = 5;
+  const timeoutInBlocks = new BigNumber(5);
   const urlOfAuditReport = "URL";
   const poolName = "myPool";
   const limitedPoolName = "limtedPool";
@@ -103,25 +103,33 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+      const timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
+      const zero = new BigNumber(0);
       // check all pool properties
       assert.equal(await qspb.getPoolsLength.call(), 1);
       assert.equal(await qspb.getPoolCandidateContract(0), candidateContract.address);
       assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy.address);
       assert.equal(await qspb.getPoolOwner(0), poolOwner);
-      assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei);
+      assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei.toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolMinStakeQspWei(0)).toNumber());
       assert.equal(depositQspWei.toNumber(), (await qspb.getPoolDepositQspWei(0)).toNumber());
-      assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor);
-      assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor);
-      assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks);
+      assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor.toNumber());
+      assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor.toNumber());
+      assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks.toNumber());
       assert.equal(minStakeTimeInBlocks.toNumber(), (await qspb.getPoolMinStakeTimeInBlocks(0)).toNumber());
-      assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks);
-      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), (await web3.eth.getBlock("latest")).number);
+      assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks.toNumber());
+      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), timeOfStateInBlocks.toNumber());
       assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
       assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
       assert.equal(await qspb.getPoolName(0), poolName);
       assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), 0);
       assert.equal((await qspb.getPoolMaxTotalStakeQspWei(0)).toNumber(), defaultMaxTotalStake.toNumber());
+      const poolParams = await qspb.getPoolParams(0);
+      poolParams[1] = poolParams[1].map(function(el){ return el.toNumber(); });
+      assert.deepEqual(poolParams, [[candidateContract.address, contractPolicy.address, poolOwner, Util.ZERO_ADDRESS],
+        [maxPayoutQspWei, minStakeQspWei, defaultMaxTotalStake, bonusExpertFactor, bonusFirstExpertFactor,
+          payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, zero, zero, zero,
+          new BigNumber(PoolState.Initialized)].map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
       // balance should be increased
       assert.equal(depositQspWei.toNumber(), (await qspb.balanceQspWei.call()).toNumber());
     });
@@ -211,14 +219,14 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await qspb.getPoolCandidateContract(1), candidateContract.address);
       assert.equal(await qspb.getPoolContractPolicy(1), contractPolicy.address);
       assert.equal(await qspb.getPoolOwner(1), poolOwner);
-      assert.equal(await qspb.getPoolMaxPayoutQspWei(1), maxPayoutQspWei);
+      assert.equal(await qspb.getPoolMaxPayoutQspWei(1), maxPayoutQspWei.toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolMinStakeQspWei(1)).toNumber());
       assert.equal(depositQspWei.toNumber(), (await qspb.getPoolDepositQspWei(1)).toNumber());
-      assert.equal(await qspb.getPoolBonusExpertFactor(1), bonusExpertFactor);
-      assert.equal(await qspb.getPoolBonusFirstExpertFactor(1), bonusFirstExpertFactor);
-      assert.equal(await qspb.getPoolPayPeriodInBlocks(1), payPeriodInBlocks);
-      assert.equal(minStakeTimeInBlocks.toNumber(), (await qspb.getPoolMinStakeTimeInBlocks(0)).toNumber());
-      assert.equal(await qspb.getPoolTimeoutInBlocks(1), timeoutInBlocks);
+      assert.equal(await qspb.getPoolBonusExpertFactor(1), bonusExpertFactor.toNumber());
+      assert.equal(await qspb.getPoolBonusFirstExpertFactor(1), bonusFirstExpertFactor.toNumber());
+      assert.equal(await qspb.getPoolPayPeriodInBlocks(1), payPeriodInBlocks.toNumber());
+      assert.equal(minStakeTimeInBlocks.toNumber(), (await qspb.getPoolMinStakeTimeInBlocks(1)).toNumber());
+      assert.equal(await qspb.getPoolTimeoutInBlocks(1), timeoutInBlocks.toNumber());
       assert.equal(await qspb.getPoolTimeOfStateInBlocks(1), (await web3.eth.getBlock("latest")).number);
       assert.equal(await qspb.getPoolUrlOfAuditReport(1), urlOfAuditReport);
       assert.equal(await qspb.getPoolState(1), PoolState.Initialized);
@@ -233,19 +241,20 @@ contract('QuantstampStaking', function(accounts) {
     let qspb;
     let policy;
     let candidateContract;
+    let timeOfStateInBlocks;
     const staker = accounts[4];
     const poolId = 0;
     const stakerBudget = new BigNumber(Util.toQsp(1000));
 
     // vars needed for creating pool
     const depositQspWei = new BigNumber(Util.toQsp(100));
-    const maxPayableQspWei = 10;
+    const maxPayableQspWei = new BigNumber(10);
     const minStakeQspWei = new BigNumber(1);
-    const bonusExpertFactor = 3;
-    const bonusFirstExpertFactor = 5;
-    const payPeriodInBlocks = 15;
-    const minStakeTimeInBlocks = 10000;
-    const timeoutInBlocks = 100;
+    const bonusExpertFactor = new BigNumber(3);
+    const bonusFirstExpertFactor = new BigNumber(5);
+    const payPeriodInBlocks = new BigNumber(15);
+    const minStakeTimeInBlocks = new BigNumber(10000);
+    const timeoutInBlocks = new BigNumber(100);
     const urlOfAuditReport = "URL";
     const policyBalance = 1;
     const poolName2 = "2ndPool";
@@ -301,6 +310,14 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.checkPolicy(poolId);
       assert.equal(await qspb.getPoolState(poolId), PoolState.ViolatedFunded);
       Util.assertTxFail(qspb.withdrawClaim(poolId, {from: staker}));
+      timeOfStateInBlocks = await qspb.getPoolTimeOfStateInBlocks(poolId);
+      const poolParams = await qspb.getPoolParams(0);
+      poolParams[1] = poolParams[1].map(function(el){ return el.toNumber(); });
+      assert.deepEqual(poolParams, [[candidateContract.address, policy.address, poolOwner, Util.ZERO_ADDRESS],
+        [maxPayableQspWei, minStakeQspWei, defaultMaxTotalStake, bonusExpertFactor, bonusFirstExpertFactor,
+          payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, minStakeQspWei,
+          minStakeQspWei, minStakeQspWei, new BigNumber(PoolState.ViolatedFunded)].
+          map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
     });
 
     it("should not allow claim withdraw when pool is not funded", async function() {
@@ -552,7 +569,7 @@ contract('QuantstampStaking', function(accounts) {
       // the first expert staker is staker2
       assert.equal(await qspb.getPoolFirstExpertStaker(currentPoolIndex), staker2);
       assert.equal(await qspb.getPoolStakeCount(currentPoolIndex), 4);
-      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [staker, staker2, staker3]);
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [[staker, staker2, staker3], [false, true, true]]);
       // compute what the pool size should be according to the bonuses and stakes in the pool
       const bonusExpert = new BigNumber(bonusExpertFactor);
       const bonusFirstExpert = new BigNumber(bonusFirstExpertFactor);
@@ -651,7 +668,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
       poolState = await qspb.getPoolState(currentPoolIndex);
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
-      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [Util.ZERO_ADDRESS, staker2]);
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [[Util.ZERO_ADDRESS, staker2], [false, false]]);
       assert.equal(parseInt(await qspb.getPoolState(currentPoolIndex)), parseInt(poolState));
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolSizeQspWei(currentPoolIndex)).toNumber());
@@ -737,7 +754,7 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       await Util.mineNBlocks(minStakeTimeInBlocks.dividedBy(2));
       await qspb.withdrawStake(currentPoolIndex, {from: staker});
-      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [Util.ZERO_ADDRESS]);
+      assert.deepEqual(await qspb.getPoolStakersList(currentPoolIndex), [[Util.ZERO_ADDRESS], [false]]);
       assert.equal(await qspb.isStaker(currentPoolIndex, staker), false);
     });
   });
