@@ -23,6 +23,7 @@ contract QuantstampAssurancePolicy is IPolicy {
 
     constructor (address contractAddress, address qspTokenAddress) public {
         staking = QuantstampStaking(contractAddress);
+        require(qspTokenAddress == address(staking.token()));
         token = QuantstampToken(qspTokenAddress);
         assurancePoolId = 0;
         idSet = false;

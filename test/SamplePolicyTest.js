@@ -63,7 +63,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('QuantstampAssurancePolicy', () => {
     it("should fail when attempted to be initialized with a non-assurance address", async function() {
-      Util.assertTxFail(await QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS, Util.ZERO_ADDRESS));
+      Util.assertTxFail(QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS, Util.ZERO_ADDRESS));
     });
 
 
