@@ -9,6 +9,7 @@ module.exports = {
   },
   deploy: {
     Registry: false,
+    WhitelistExpertRegistry: false,
     QuantstampStaking: false
   },
   networks: {
