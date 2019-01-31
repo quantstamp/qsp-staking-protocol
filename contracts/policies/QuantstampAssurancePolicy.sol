@@ -15,6 +15,9 @@ contract QuantstampAssurancePolicy is IPolicy {
     // The instance of Quantstamp Assurance
     QuantstampStaking staking;
     uint assurancePoolId;
+    uint constant ViolatedUnderfunded = 3;
+    uint constant NotViolatedFunded = 4;
+    uint constant ViolatedFunded = 5;
 
     constructor (address contractAddress) public {
         staking = QuantstampStaking(contractAddress);
@@ -28,8 +31,8 @@ contract QuantstampAssurancePolicy is IPolicy {
         uint totalDeposited = 0;
         uint totalStaked = 0;
         for (uint i=0; i < currentPoolNumber; i++) {
-          if (staking.getPoolState(i) == QuantstampStaking.PoolState(4)) {
-            totalStaked = totalStaked.add(staking.getPoolSizeQspWei(i));
+          if (staking.getPoolState(i) == QuantstampStaking.PoolState(NotViolatedFunded)) {
+            totalStaked = totalStaked.add(staking.getPoolTotalStakeQspWei(i));
             totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
           }
           // Note: we do this here to avoid iterating over the pools twice
@@ -43,8 +46,8 @@ contract QuantstampAssurancePolicy is IPolicy {
 
     function assuranceIsNeverViolated() internal view returns(bool){
       // Better not be ViolatedUnderfunded (3) or ViolatedFunded (5)
-      return staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(3) &&
-        staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(5);
+      return staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(ViolatedUnderfunded) &&
+        staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(ViolatedFunded);
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
