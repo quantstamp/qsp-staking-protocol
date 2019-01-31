@@ -2,6 +2,7 @@ pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
 import "../QuantstampStaking.sol";
+import "../test/QuantstampToken.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -14,32 +15,23 @@ contract QuantstampAssurancePolicy is IPolicy {
 
     // The instance of Quantstamp Assurance
     QuantstampStaking staking;
+    QuantstampToken token;
     uint assurancePoolId;
+    bool idSet;
     uint constant ViolatedUnderfunded = 3;
     uint constant ViolatedFunded = 5;
 
-    constructor (address contractAddress) public {
+    constructor (address contractAddress, address qspTokenAddress) public {
         staking = QuantstampStaking(contractAddress);
+        token = QuantstampToken(qspTokenAddress);
         assurancePoolId = 0;
+        idSet = false;
     }
 
     // Ensures that the balance of the contract contains at least as much
     // as the staked values so far, as well as all current stakeholder deposits
-    // Note: may require too much gas eventually
     function balanceCoversStakesAndDeposits() internal view returns(bool){
-        uint currentPoolNumber = staking.getPoolsLength();
-        uint totalDeposited = 0;
-        uint totalStaked = 0;
-        for (uint i=0; i < currentPoolNumber; i++) {
-          totalStaked = totalStaked.add(staking.getPoolTotalStakeQspWei(i));
-          totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
-          // Note: we do this here to avoid iterating over the pools twice
-          if (staking.getPoolCandidateContract(i) == address(staking) &&
-              staking.getPoolContractPolicy(i) == address(this)) {
-            assurancePoolId = i;
-          }
-        }
-        return staking.balanceQspWei() >= totalStaked.add(totalDeposited);
+        return staking.balanceQspWei() >= token.balanceOf(address(staking));
     }
 
     function assuranceIsNeverViolated() internal view returns(bool){
@@ -48,9 +40,17 @@ contract QuantstampAssurancePolicy is IPolicy {
         staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(ViolatedFunded);
     }
 
+    function setAssurancePoolId(uint256 newId) external {
+      require(staking.getPoolContractPolicy(newId) == address(this));
+      require(staking.getPoolCandidateContract(newId) == address(staking));
+      assurancePoolId = newId;
+      idSet = true;
+    }
+
     function isViolated(address contractAddress) external view returns(bool) {
         require(contractAddress == address(staking));
-        return !(balanceCoversStakesAndDeposits() && assuranceIsNeverViolated());
+        return !(idSet && balanceCoversStakesAndDeposits()
+          && assuranceIsNeverViolated());
     }
 
 }

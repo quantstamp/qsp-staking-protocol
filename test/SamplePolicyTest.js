@@ -63,7 +63,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('QuantstampAssurancePolicy', () => {
     it("should fail when attempted to be initialized with a non-assurance address", async function() {
-      Util.assertTxFail(await QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS));
+      Util.assertTxFail(await QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS, Util.ZERO_ADDRESS));
     });
 
 
@@ -71,8 +71,8 @@ contract('CandidateContract', function(accounts) {
       Util.assertTxFail(qaPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
-    it("should not initially be violated", async function() {
-      assert.isFalse(await qaPolicy.isViolated(qspb.address));
+    it("should initially be violated", async function() {
+      assert.isTrue(await qaPolicy.isViolated(qspb.address)); // true because we didn't set the poolId
     });
 
     it("should not be violated when a pool is funded", async function() {
@@ -116,6 +116,12 @@ contract('CandidateContract', function(accounts) {
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+
+      // update the pool id in the policy contract
+      assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), 0);
+      await qaPolicy.setAssurancePoolId(0);
+
+      // stake
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       let currentPool = 0;
       await qspb.stakeFunds(currentPool, minStakeQspWei, {from: staker});
