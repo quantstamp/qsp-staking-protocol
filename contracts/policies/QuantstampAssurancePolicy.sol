@@ -13,12 +13,10 @@ contract QuantstampAssurancePolicy is IPolicy {
     using Math for uint256;
 
     // The instance of Quantstamp Assurance
-    address assuranceContractAddress;
     QuantstampStaking staking;
     uint assurancePoolId;
 
     constructor (address contractAddress) public {
-        assuranceContractAddress = contractAddress;
         staking = QuantstampStaking(contractAddress);
         assurancePoolId = 0;
     }
@@ -35,7 +33,7 @@ contract QuantstampAssurancePolicy is IPolicy {
             totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
           }
           // Note: we do this here to avoid iterating over the pools twice
-          if (staking.getPoolCandidateContract(i) == assuranceContractAddress &&
+          if (staking.getPoolCandidateContract(i) == address(staking) &&
               staking.getPoolContractPolicy(i) == address(this)) {
             assurancePoolId = i;
           }
@@ -50,7 +48,7 @@ contract QuantstampAssurancePolicy is IPolicy {
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
-        require(contractAddress == assuranceContractAddress);
+        require(contractAddress == address(staking));
         return !(balanceCoversStakesAndDeposits() && assuranceIsNeverViolated());
     }
 
