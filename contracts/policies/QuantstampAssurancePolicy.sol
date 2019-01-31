@@ -16,7 +16,6 @@ contract QuantstampAssurancePolicy is IPolicy {
     QuantstampStaking staking;
     uint assurancePoolId;
     uint constant ViolatedUnderfunded = 3;
-    uint constant NotViolatedFunded = 4;
     uint constant ViolatedFunded = 5;
 
     constructor (address contractAddress) public {
@@ -24,17 +23,16 @@ contract QuantstampAssurancePolicy is IPolicy {
         assurancePoolId = 0;
     }
 
-    // Note: only checks NotViolatedFunded pools
+    // Ensures that the balance of the contract contains at least as much
+    // as the staked values so far, as well as all current stakeholder deposits
     // Note: may require too much gas eventually
     function balanceCoversStakesAndDeposits() internal view returns(bool){
         uint currentPoolNumber = staking.getPoolsLength();
         uint totalDeposited = 0;
         uint totalStaked = 0;
         for (uint i=0; i < currentPoolNumber; i++) {
-          if (staking.getPoolState(i) == QuantstampStaking.PoolState(NotViolatedFunded)) {
-            totalStaked = totalStaked.add(staking.getPoolTotalStakeQspWei(i));
-            totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
-          }
+          totalStaked = totalStaked.add(staking.getPoolTotalStakeQspWei(i));
+          totalDeposited = totalDeposited.add(staking.getPoolDepositQspWei(i));
           // Note: we do this here to avoid iterating over the pools twice
           if (staking.getPoolCandidateContract(i) == address(staking) &&
               staking.getPoolContractPolicy(i) == address(this)) {
