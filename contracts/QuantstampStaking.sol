@@ -255,7 +255,7 @@ contract QuantstampStaking is Ownable {
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             // update the pool state if necessary
-            if (state != PoolState.PolicyExpired &&
+            if (state == PoolState.PolicyExpired &&
                 getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
                 setState(poolIndex, PoolState.Cancelled);
             }
@@ -300,7 +300,7 @@ contract QuantstampStaking is Ownable {
             require(token.transfer(msg.sender, payout),
                 "Could not transfer the payout to the staker.");
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
-        } else if (state != PoolState.PolicyExpired) { // place the pool in a Cancelled state
+        } else if (state == PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, PoolState.Cancelled);
         }
     }
