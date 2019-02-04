@@ -562,10 +562,11 @@ contract QuantstampStaking is Ownable {
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
         powersOf100[currentPoolNumber].push(1);
+        emit StateChanged(currentPoolNumber, PoolState.Initialized);
         currentPoolNumber = currentPoolNumber.add(1);
+        // the following is expected to be initialized to poolId + 1
         poolNameToPoolIndex[poolName] = currentPoolNumber;
         balanceQspWei = balanceQspWei.add(depositQspWei);
-        emit StateChanged(currentPoolNumber, PoolState.Initialized);
     }
 
     /** Finds the pool index if a pool with the given name exists
