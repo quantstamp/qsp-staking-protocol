@@ -111,7 +111,7 @@ contract('CandidateContract', function(accounts) {
       // allow the qspb contract use QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(100000), {from : poolOwner});
       // balance should be 0 in the beginning
-      assert.equal(await qspb.balanceQspWei.call(), 0);
+      assert.equal((await qspb.balanceQspWei.call()).toNumber(), 0);
       // create pool
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
