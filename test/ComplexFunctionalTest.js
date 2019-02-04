@@ -552,7 +552,9 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
     // check that the 2nd pay period has not passed
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
-    assert(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)) > currentBlock, "Already passed second pay period of orange pool");
+	  console.log(currentBlock.toNumber());
+	  console.log(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)).toNumber());
+    assert(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)).gt(currentBlock), "Already passed second pay period of orange pool");
     // fast-forward to block where the second pay period ends
     const blocksUntilSecondPayout = orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilSecondPayout);
@@ -834,7 +836,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.NotViolatedFunded);
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // staker 5 should not receive a payout before the pay period has passed
-    assert.isTrue(staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks) > currentBlock);
+    assert.isTrue(staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks).gt(currentBlock));
     await qspb.withdrawInterest(grayPoolParams.index, {from : staker5});
     assert.equal(balanceOfQspb.toNumber(), (await qspb.balanceQspWei.call()));
     // check that the 1st pay period has not passed for staker5
