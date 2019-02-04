@@ -111,7 +111,7 @@ contract('CandidateContract', function(accounts) {
       // allow the qspb contract use QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(100000), {from : poolOwner});
       // balance should be 0 in the beginning
-      assert.equal(await qspb.balanceQspWei.call(), 0);
+      assert.equal((await qspb.balanceQspWei.call()).toNumber(), 0);
       // create pool
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
@@ -188,10 +188,10 @@ contract('CandidateContract', function(accounts) {
 
     it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
       const voting = await Voting.deployed();
-      await voting.init(QuantstampToken.address);
+      await voting.init(quantstampToken.address);
       const quantstampParameterizer = await QuantstampParameterizer.deployed();
-      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-      await tcr.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+      await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
+      await tcr.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       const applicant = listing;
       const minDeposit = TCRUtil.minDep;
       await quantstampToken.enableTransfer({from : owner});
@@ -321,13 +321,13 @@ contract('CandidateToken', function(accounts) {
     let minDeposit;
 
     before(async function () {
-      voting = await Voting.deployed();
-      await voting.init(QuantstampToken.address);
-      expertTCR = await Registry.deployed();
       quantstampToken = await QuantstampToken.deployed();
-      quantstampParameterizer = await QuantstampParameterizer.deployed();
-      await quantstampParameterizer.init(QuantstampToken.address, voting.address, TCRUtil.parameters);
-      await expertTCR.init(QuantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
+      voting = await Voting.new();
+      await voting.init(quantstampToken.address);
+      expertTCR = await Registry.new();
+      quantstampParameterizer = await QuantstampParameterizer.new();
+      await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
+      await expertTCR.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       tcrOpinionPolicy = await TCROpinionPolicy.new(2, candidateToken.address, expertTCR.address);
 
       applicantA = accounts[9];
