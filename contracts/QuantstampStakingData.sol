@@ -7,6 +7,7 @@ import "openzeppelin-solidity/contracts/ownership/Whitelist.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 
+
 contract QuantstampStakingData is Whitelist {
     using SafeMath for uint256;
     using Math for uint256;
@@ -156,26 +157,24 @@ contract QuantstampStakingData is Whitelist {
         address staker,
         uint amountQspWei
     ) public onlyWhitelisted returns (bool) {
-      uint totalQspWeiTransfer = totalStakes[poolIndex][staker];
+        uint totalQspWeiTransfer = totalStakes[poolIndex][staker];
       
-      if (totalQspWeiTransfer == 0) {
-        return true;
-      }
+        if (totalQspWeiTransfer == 0) {
+            return true;
+        }
 
-      if (totalQspWeiTransfer > 0) { // transfer the stake back
-          balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
-          totalStakes[poolIndex][staker] = 0;
-          pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
-          // this loop is needed, because the computePayout function uses the stakes array
-          for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
-              pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
-                  calculateStakeAmountWithBonuses(poolIndex, staker, i));
-              stakes[poolIndex][staker][i].amountQspWei = 0;
-          }
-          // remove this staker from the list of stakers of this pool
-          delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][staker]];
-          delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][staker]];
-      }
+        if (totalQspWeiTransfer > 0) { // transfer the stake back
+            balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
+            totalStakes[poolIndex][staker] = 0;
+            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+            // this loop is needed, because the computePayout function uses the stakes array
+            for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
+                stakes[poolIndex][staker][i].amountQspWei = 0;
+            }
+            // remove this staker from the list of stakers of this pool
+            delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][staker]];
+            delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][staker]];
+        }
     }
 
     /** Creates a new staking pool.
@@ -449,7 +448,7 @@ contract QuantstampStakingData is Whitelist {
         pools[poolIndex].depositQspWei = depositQspWei;
     }
     
-    function getDepositQspWei() public returns uint {
+    function getDepositQspWei() public returns (uint) {
         return pools[poolIndex].depositQspWei;
     }
     
@@ -457,7 +456,21 @@ contract QuantstampStakingData is Whitelist {
         balanceQspWei = newBalanceQspWei;
     }
     
-    function getBalanceQspWei() public returns uint {
+    function getBalanceQspWei() public returns (uint) {
         return balanceQspWei;
+    }
+    
+    function getStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex) public returns (uint) {
+        return stakes[poolIndex][staker][stakeIndex].blockPlaced;
+    }
+    
+    function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,
+        uint blockNumber) public onlyWhitelisted {
+        stakes[poolIndex][staker][stakeIndex].blockPlaced = blockNumber;
+    }
+    
+    function setStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
+        uint blockNumber) public onlyWhitelisted {
+        stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
     }
 }
