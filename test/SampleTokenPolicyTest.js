@@ -125,7 +125,6 @@ contract('CandidateToken', function(accounts) {
     });
 
     it("should be violated by the TCR policy after 2 experts vote in favor (and the second changes their vote)", async function() {
-      // ApplicantA votes in the previous test.
       await tcrOpinionPolicy.vote(true, {from: applicantA});
       await tcrOpinionPolicy.vote(false, {from: applicantB});
       await tcrOpinionPolicy.vote(true, {from: applicantB});
