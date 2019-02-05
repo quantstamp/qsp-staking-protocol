@@ -10,92 +10,13 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "./IPolicy.sol";
 import "./IRegistry.sol";
-
+import "./QuantstampStakingData.sol";
 
 contract QuantstampStaking is Ownable {
     using SafeMath for uint256;
     using Math for uint256;
 
     uint constant internal MAX_UINT = ~uint(0);
-
-    // state of the pool's lifecycle
-    enum PoolState {
-        None,
-        Initialized, // insuffucient stakes
-        NotViolatedUnderfunded, // sufficient stakes, insufficient deposit
-        ViolatedUnderfunded, // sufficient stakes, insufficient deposit, violated
-        NotViolatedFunded,  // sufficient stakes, sufficient deposit
-        ViolatedFunded, // sufficient stakes, sufficient deposit, violated
-        Cancelled,
-        PolicyExpired // similar to Cancelled, but in this state stakers can request and receive payouts which are due
-    }
-
-    struct Pool {
-        address candidateContract; // the contract that must be protected
-        address contractPolicy; // the policy that must be respected by the candidate contract
-        address owner; // the owner of the pool (the stakeholder), not the owner of the contract
-        uint maxPayoutQspWei; // the maximum payout that will be awarded to all stakers per payout period
-        uint minStakeQspWei; // the minimum value that needs to be raised from all stakers together
-        uint depositQspWei; // the current value deposited by the owner/stakeholder
-        uint bonusExpertFactor; // the factor by which the payout of an expert is multiplied
-        uint bonusFirstExpertFactor; // the factor by which the payout of the first expert is multiplied
-        address firstExpertStaker; // the address of the first expert in the pool
-        uint payPeriodInBlocks; // the number of blocks after which stakers are payed incentives, in case of no breach
-        uint minStakeTimeInBlocks; // the minimum number of blocks that funds need to be staked for
-        uint timeoutInBlocks; // the number of blocks after which a pool is canceled if there are not enough stakes
-        uint timeOfStateInBlocks; // the block number when the pool was set in its current state
-        string urlOfAuditReport; // a URL to some audit report (could also be a white-glove audit)
-        PoolState state; // the current state of the pool
-        uint totalStakeQspWei; // total amount of stake contributed so far
-        uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
-        uint stakeCount; // the total number of stakes in the pool
-        string poolName; // an alphanumeric string defined by the pool owner
-        uint maxTotalStakeQspWei; // The maximum amount that can be staked in this pool
-    }
-
-    struct Stake {
-        address staker; // the address of the staker
-        uint amountQspWei; // the amount staked by the staker
-        uint blockPlaced; // the Block number when this stake was made
-        uint lastPayoutBlock; // the Block number where the last payout was made to this staker
-        uint contributionIndex; // the absolute index of the stake in the pool (numbering starts with 1)
-        bool expertStake; // true iff the staker was on the TCR when the stake was placed
-    }
-
-    // A mapping from pool hash onto the inner mapping that defines individual stakes contributed by each staker
-    // address (the inner mapping's key) into the pool
-    mapping (uint => mapping(address => Stake[])) public stakes;
-
-    // A mapping from pool hash onto a list of stakers in that pool in the order in which the have placed their stakes
-    mapping (uint => address[]) public poolToStakers;
-
-    // A maping from pool hash onto a list of booleans indicating if that poolToStakers entry is an expert or not
-    mapping (uint => bool[]) public poolToStakersExpertStatus;
-
-    // A mapping from pool hash onto a reverse index for the list of stakers in that given pool
-    mapping (uint => mapping (address => uint)) public poolToStakerIndex;
-
-    // Total stakes contributed by each staker address into the pool defined by a pool hash (the mapping's key)
-    mapping (uint => mapping(address => uint)) public totalStakes;
-
-    // Holds the expert bonus corresponding to the i-th staker of the pool given by the key of the mapping
-    mapping (uint => uint[]) public bonusExpertAtPower;
-
-    // Holds the powers of 100 corresponding to the i-th staker of
-    // the pool given by the key of the mapping. This will be used as the divisor when computing payouts
-    mapping (uint => uint[]) public powersOf100;
-
-    // All pools including active and canceled pools
-    mapping (uint => Pool) internal pools;
-
-    // Mapps pool names to n iff that pool was the n-th pool created (n > 0)
-    mapping (string => uint) internal poolNameToPoolIndex;
-
-    // The total balance of the contract including all stakes and deposits
-    uint public balanceQspWei;
-
-    // Current number of pools
-    uint internal currentPoolNumber;
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
@@ -133,13 +54,15 @@ contract QuantstampStaking is Ownable {
 
     // Indicates registry update
     event RegistryUpdated(address newRegistry);
+    
+    QuantstampStakingData internal data;
 
     /** Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
     modifier whenNotViolated(uint poolIndex) {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
+        address poolPolicy = data.getPoolContractPolicy(poolIndex);
+        address candidateContract = data.getPoolCandidateContract(poolIndex);
         require(!IPolicy(poolPolicy).isViolated(candidateContract) &&
             getPoolState(poolIndex) != PoolState.ViolatedFunded &&
             getPoolState(poolIndex) != PoolState.ViolatedUnderfunded,
@@ -151,7 +74,7 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - index of the pool
     */
     modifier onlyPoolOwner(uint poolIndex) {
-        address poolOwner = getPoolOwner(poolIndex);
+        address poolOwner = data.getPoolOwner(poolIndex);
         require(poolOwner == msg.sender, "Msg.sender is not pool owner.");
         _;
     }
@@ -160,13 +83,15 @@ contract QuantstampStaking is Ownable {
     * @param tokenAddress - the address of the QSP Token contract
     * @param tcrAddress - the address of the security expert token curated registry
     */
-    constructor(address tokenAddress, address tcrAddress) public {
+    constructor(address tokenAddress, address tcrAddress, address dataContractAddress) public {
         balanceQspWei = 0;
         currentPoolNumber = 0;
         require(tokenAddress != address(0), "Token address is 0.");
         token = ERC20(tokenAddress);
         require(tcrAddress != address(0), "TCR address is 0.");
         stakingRegistry = IRegistry(tcrAddress);
+        require(dataContractAddress != address(0), "Data contract address is 0.");
+        data = QuantstampStakingData(dataContractAddress);
     }
 
     /** Allows the stakeholder to make an additional deposit to the contract
@@ -177,7 +102,7 @@ contract QuantstampStaking is Ownable {
         uint poolIndex,
         uint depositQspWei
     ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
-        address poolOwner = getPoolOwner(poolIndex);
+        address poolOwner = data.getPoolOwner(poolIndex);
         PoolState state = updatePoolState(poolIndex);
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
@@ -185,12 +110,12 @@ contract QuantstampStaking is Ownable {
             state == PoolState.PolicyExpired);
         require(token.transferFrom(poolOwner, address(this), depositQspWei),
             "Token deposit transfer did not succeed");
-        pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.add(depositQspWei);
-        balanceQspWei = balanceQspWei.add(depositQspWei);
+        data.setDepositQspWei(data.getDepositQspWei(poolIndex).add(depositQspWei));
+        data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
 
         if (state == PoolState.NotViolatedUnderfunded
-                && pools[poolIndex].depositQspWei >= getPoolMaxPayoutQspWei(poolIndex)) {
-            setState(poolIndex, PoolState.NotViolatedFunded);
+                && data.getDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
+            data.setState(poolIndex, PoolState.NotViolatedFunded);
         }
 
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
@@ -205,23 +130,24 @@ contract QuantstampStaking is Ownable {
         /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out or
         * if the minimum time for staking has passed twice since the pool transitioned into the NotViolated funded state
         */
-        if (state == PoolState.PolicyExpired && getPoolTotalStakeQspWei(poolIndex) > 0 &&
-            getPoolTimeOfStateInBlocks(poolIndex).add(getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
+        if (state == PoolState.PolicyExpired && data.getPoolTotalStakeQspWei(poolIndex) > 0 &&
+            data.getPoolTimeOfStateInBlocks(poolIndex).add(
+              data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
             return;
         }
-        address poolOwner = getPoolOwner(poolIndex);
+        address poolOwner = data.getPoolOwner(poolIndex);
         require(state == PoolState.Initialized || // always allow to withdraw in these states
             state == PoolState.NotViolatedUnderfunded ||
             state == PoolState.PolicyExpired ||
             state == PoolState.NotViolatedFunded ||
             state == PoolState.Cancelled,
             "Pool is not in the right state when withdrawing deposit.");
-        uint withdrawalAmountQspWei = pools[poolIndex].depositQspWei;
+        uint withdrawalAmountQspWei = data.getPoolDepositQspWei(poolIndex);
         require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
-        pools[poolIndex].depositQspWei = 0;
-        balanceQspWei = balanceQspWei.sub(withdrawalAmountQspWei);
+        data.setPoolDepositQspWei(poolIndex, 0);
+        data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
         require(token.transfer(poolOwner, withdrawalAmountQspWei), "Token withdrawal transfer did not succeed");
-        setState(poolIndex, PoolState.Cancelled);
+        data.setState(poolIndex, PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 
@@ -311,7 +237,7 @@ contract QuantstampStaking is Ownable {
     * @return - true if the staker has a stake in the pool, false otherwise
     */
     function isStaker(uint poolIndex, address staker) external view returns(bool) {
-        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
+        return data.isStaker(poolIndex, staker);
     }
 
     /** Gives all the staked funds to the stakeholder provided that the policy was violated and the
@@ -407,19 +333,22 @@ contract QuantstampStaking is Ownable {
         address staker,
         uint stakeIndex
     ) public view returns(uint) {
-        Stake memory stake = stakes[poolIndex][staker][stakeIndex];
-        if (stake.amountQspWei == 0) {
+        uint stakeAmount, blockPlaced, lastPayoutBlock, contributionIndex;
+        bool expertStake;
+        (stakeAmount, blockPlaced, lastPayoutBlock, contributionIndex, expertStake) = data.getStake(
+          poolIndex, staker, stakeIndex);
+
+        if (stakeAmount == 0) {
             return 0;
         }
-        uint stakeAmount = stake.amountQspWei;
         // check if the staker is an expert
-        if (stake.expertStake) {
+        if (expertStake) {
             stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
-                add(powersOf100[poolIndex][stake.contributionIndex])).
+                add(data.getpowersOf100[poolIndex][stake.contributionIndex])).
                 div(powersOf100[poolIndex][stake.contributionIndex]);
             /* Check if it is the first stake of the first expert */
-            if (getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
-                stakeAmount = stakeAmount.mul(getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
+            if (data.getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
+                stakeAmount = stakeAmount.mul(data.getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
             }
         }
         return stakeAmount;
@@ -439,26 +368,33 @@ contract QuantstampStaking is Ownable {
     function computePayout(uint poolIndex, address staker) public view returns(uint) {
         uint numerator = 0; // indicates the unnormalized total payout for the staker
 
-        if (totalStakes[poolIndex][staker] == 0) { // no stakes have been placed by this staker yet
+        if (data.getTotalStakes(poolIndex, staker) == 0) { // no stakes have been placed by this staker yet
             return 0;
         }
 
-        if (getPoolSizeQspWei(poolIndex) == 0) { // all stakes have been withdrawn
+        if (data.getPoolSizeQspWei(poolIndex) == 0) { // all stakes have been withdrawn
             return 0;
         }
+        
+        uint stakeCount = data.getStakeCount(poolIndex, staker);
 
         // compute the numerator by adding the staker's stakes together
-        for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
+        for (uint i = 0; i < stakeCount; i++) {
+            uint a, b;
+            bool c;
+            uint blockPlaced;
+            (a, blockPlaced, b, c) = data.getStake(poolIndex, staker, i);
+
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
-            uint startBlockNumber = Math.max(stakes[poolIndex][staker][i].blockPlaced,
-                getPoolTimeOfStateInBlocks(poolIndex));
+            uint startBlockNumber = Math.max(blockPlaced,
+                data.getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
         }
 
-        return numerator.mul(getPoolMaxPayoutQspWei(poolIndex)).div(getPoolSizeQspWei(poolIndex));
+        return numerator.mul(data.getPoolMaxPayoutQspWei(poolIndex)).div(data.getPoolSizeQspWei(poolIndex));
     }
 
     /** Replaces the TCR with a new one. This function can be called only by the owner and
@@ -510,6 +446,7 @@ contract QuantstampStaking is Ownable {
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
     * @param maxTotalStakeQspWei - the maximum QSP that can be staked; 0 if there is no maximum
+    * @returns the pool index
     */
     function createPool(
         address candidateContract,
@@ -525,7 +462,7 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport,
         string poolName,
         uint maxTotalStakeQspWei
-    ) public {
+    ) returns (uint) public {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
@@ -537,7 +474,7 @@ contract QuantstampStaking is Ownable {
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
         require(maxTotalStakeQspWei == 0 || maxTotalStakeQspWei > minStakeQspWei,
             "Max total stake cannot be less than min total stake.");
-        Pool memory p = Pool(
+        uint poolIndex = data.createPool(
             candidateContract,
             contractPolicy,
             msg.sender,
@@ -559,14 +496,7 @@ contract QuantstampStaking is Ownable {
             poolName,
             maxTotalStakeQspWei
         );
-        pools[currentPoolNumber] = p;
-        bonusExpertAtPower[currentPoolNumber].push(1);
-        powersOf100[currentPoolNumber].push(1);
-        emit StateChanged(currentPoolNumber, PoolState.Initialized);
-        currentPoolNumber = currentPoolNumber.add(1);
-        // the following is expected to be initialized to poolId + 1
-        poolNameToPoolIndex[poolName] = currentPoolNumber;
-        balanceQspWei = balanceQspWei.add(depositQspWei);
+        emit StateChanged(poolIndex, PoolState.Initialized);
     }
 
     /** Finds the pool index if a pool with the given name exists
@@ -585,92 +515,8 @@ contract QuantstampStaking is Ownable {
         return address(token);
     }
 
-    function getPoolsLength() public view returns (uint) {
-        return currentPoolNumber;
-    }
-
-    function getPoolCandidateContract(uint index) public view returns(address) {
-        return pools[index].candidateContract;
-    }
-
-    function getPoolContractPolicy(uint index) public view returns(address) {
-        return pools[index].contractPolicy;
-    }
-
-    function getPoolOwner(uint index) public view returns(address) {
-        return pools[index].owner;
-    }
-
-    function getPoolMaxPayoutQspWei(uint index) public view returns(uint) {
-        return pools[index].maxPayoutQspWei;
-    }
-
-    function getPoolMinStakeQspWei(uint index) public view returns(uint) {
-        return pools[index].minStakeQspWei;
-    }
-
-    function getPoolDepositQspWei(uint index) public view returns(uint) {
-        return pools[index].depositQspWei;
-    }
-
-    function getPoolBonusExpertFactor(uint index) public view returns(uint) {
-        return pools[index].bonusExpertFactor;
-    }
-
-    function getPoolBonusFirstExpertFactor(uint index) public view returns(uint) {
-        return pools[index].bonusFirstExpertFactor;
-    }
-
-    function getPoolFirstExpertStaker(uint index) public view returns(address) {
-        return pools[index].firstExpertStaker;
-    }
-
-    function getPoolPayPeriodInBlocks(uint index) public view returns(uint) {
-        return pools[index].payPeriodInBlocks;
-    }
-
-    function getPoolMinStakeTimeInBlocks(uint index) public view returns(uint) {
-        return pools[index].minStakeTimeInBlocks;
-    }
-
-    function getPoolTimeoutInBlocks(uint index) public view returns(uint) {
-        return pools[index].timeoutInBlocks;
-    }
-
-    function getPoolTimeOfStateInBlocks(uint index) public view returns(uint) {
-        return pools[index].timeOfStateInBlocks;
-    }
-
-    function getPoolSizeQspWei(uint index) public view returns(uint) {
-        return pools[index].poolSizeQspWei;
-    }
-
-    function getPoolUrlOfAuditReport(uint index) public view returns(string) {
-        return pools[index].urlOfAuditReport;
-    }
-
     function getStakingRegistry() public view returns (address) {
         return address(stakingRegistry);
-    }
-
-    function getPoolState(uint index) public view returns(PoolState) {
-        return pools[index].state;
-    }
-
-    function getPoolTotalStakeQspWei(uint index) public view returns(uint) {
-        return pools[index].totalStakeQspWei;
-    }
-
-    function getPoolStakeCount(uint index) public view returns(uint) {
-        return pools[index].stakeCount;
-    }
-
-    function getPoolName(uint index) public view returns(string) {
-        return pools[index].poolName;
-    }
-
-    function getPoolMaxTotalStakeQspWei(uint index) public view returns(uint) {
-        return pools[index].maxTotalStakeQspWei;
     }
 
     /** Returns the list of staker addresses that placed stakes in this pool in chronological order
@@ -679,7 +525,7 @@ contract QuantstampStaking is Ownable {
      * @return - a pair of staker addresses and staker expert flags. 
      */
     function getPoolStakersList(uint index) public view returns(address[], bool[]) {
-        return (poolToStakers[index], poolToStakersExpertStatus[index]);
+        return data.getPoolStakersList(index);
     }
 
     /** Returns all the parameters of the pool.
@@ -709,35 +555,15 @@ contract QuantstampStaking is Ownable {
      *   3. the alphanumeric string indicating the name of the pool, defined by the pool owner
      */
     function getPoolParams(uint index) public view returns(address[], uint[], string, string) {
-        address[] memory addresses = new address[](4);
-        addresses[0] = pools[index].candidateContract;
-        addresses[1] = pools[index].contractPolicy;
-        addresses[2] = pools[index].owner;
-        addresses[3] = pools[index].firstExpertStaker;
-        uint[] memory numbers = new uint[](14);
-        numbers[0] = pools[index].maxPayoutQspWei;
-        numbers[1] = pools[index].minStakeQspWei;
-        numbers[2] = pools[index].maxTotalStakeQspWei;
-        numbers[3] = pools[index].bonusExpertFactor;
-        numbers[4] = pools[index].bonusFirstExpertFactor;
-        numbers[5] = pools[index].payPeriodInBlocks;
-        numbers[6] = pools[index].minStakeTimeInBlocks;
-        numbers[7] = pools[index].timeoutInBlocks;
-        numbers[8] = pools[index].depositQspWei;
-        numbers[9] = pools[index].timeOfStateInBlocks;
-        numbers[10] = pools[index].totalStakeQspWei;
-        numbers[11] = pools[index].poolSizeQspWei;
-        numbers[12] = pools[index].stakeCount;
-        numbers[13] = uint(pools[index].state);
-        return (addresses, numbers, pools[index].urlOfAuditReport, pools[index].poolName);
+        return data.getPoolParams(index);
     }
 
     /** Returns true if and only if the contract policy for the pool poolIndex is violated
     * @param poolIndex - index of the pool where the policy is checked
     */
     function isViolated(uint poolIndex) internal view returns (bool) {
-        address poolPolicy = getPoolContractPolicy(poolIndex);
-        address candidateContract = getPoolCandidateContract(poolIndex);
+        address poolPolicy = data.getPoolContractPolicy(poolIndex);
+        address candidateContract = data.getPoolCandidateContract(poolIndex);
         return IPolicy(poolPolicy).isViolated(candidateContract);
     }
 
