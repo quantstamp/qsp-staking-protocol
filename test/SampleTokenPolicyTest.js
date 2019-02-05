@@ -109,7 +109,7 @@ contract('CandidateToken', function(accounts) {
     });
 
     it("should fail  when the TCR policy is checked with a non-TCR address as an argument for the policy", async function() {
-      Util.assertTxFail(await tcrOpinionPolicy.isViolated(owner));
+      Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
     });
 
 
