@@ -255,7 +255,7 @@ contract QuantstampStaking is Ownable {
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             // update the pool state if necessary
-            if (state != PoolState.PolicyExpired &&
+            if (state == PoolState.PolicyExpired &&
                 getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
                 setState(poolIndex, PoolState.Cancelled);
             }
