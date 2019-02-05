@@ -64,8 +64,8 @@ contract QuantstampStaking is Ownable {
         address poolPolicy = data.getPoolContractPolicy(poolIndex);
         address candidateContract = data.getPoolCandidateContract(poolIndex);
         require(!IPolicy(poolPolicy).isViolated(candidateContract) &&
-            getPoolState(poolIndex) != PoolState.ViolatedFunded &&
-            getPoolState(poolIndex) != PoolState.ViolatedUnderfunded,
+            data.getPoolState(poolIndex) != PoolState.ViolatedFunded &&
+            data.getPoolState(poolIndex) != PoolState.ViolatedUnderfunded,
             "Contract policy is violated.");
         _;
     }
@@ -162,27 +162,27 @@ contract QuantstampStaking is Ownable {
             state == PoolState.PolicyExpired,
             "Pool is not in the right state when withdrawing stake.");
 
-        uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
+        bool success;
+        uint total;
+        
+        data.removeStake(poolIndex, msg.sender);
+        uint totalQspWeiTransfer = data.getTotalStakes(poolIndex, msg.sender);
 
         if (totalQspWeiTransfer > 0) { // transfer the stake back
-            balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
-            totalStakes[poolIndex][msg.sender] = 0;
-            pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
-            // this loop is needed, because the computePayout function uses the stakes array
-            for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
-                pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
-                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
-                stakes[poolIndex][msg.sender][i].amountQspWei = 0;
+            uint stakeCount = data.getStakeCount(poolIndex, msg.sender);
+            uint totalSizeChangeQspWei = 0;
+            for (uint i = 0; i < stakeCount; i++) {
+                totalSizeChangeQspWei += calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
             }
-            // remove this staker from the list of stakers of this pool
-            delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
-            delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
+            data.removeStake(poolIndex, msg.sender);
+            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).sub(totalSizeChangeQspWei));
+
             // actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             // update the pool state if necessary
             if (state != PoolState.PolicyExpired &&
-                getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+                data.getPoolMinStakeQspWei(poolIndex) > data.getPoolTotalStakeQspWei(poolIndex)) {
                 setState(poolIndex, PoolState.Cancelled);
             }
         }
@@ -202,14 +202,14 @@ contract QuantstampStaking is Ownable {
             "The state of the pool is not as expected.");
         // check that enough time (blocks) has passed since the pool has collected stakes totaling
         // at least minStakeQspWei
-        require(block.number > (getPoolPayPeriodInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))),
+        require(block.number > (data.getPoolPayPeriodInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))),
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, msg.sender);
         if (payout == 0) // no need to transfer anything
             return;
         // check if the are enough funds in the pool deposit
-        if (getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
+        if (data.getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
             pools[poolIndex].depositQspWei = pools[poolIndex].depositQspWei.sub(payout);
             balanceQspWei = balanceQspWei.sub(payout);
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
@@ -254,13 +254,16 @@ contract QuantstampStaking is Ownable {
         );
 
         // claim all stakes
-        uint total = getPoolDepositQspWei(poolIndex).add(pools[poolIndex].totalStakeQspWei);
-        balanceQspWei = balanceQspWei.sub(total);
-        pools[poolIndex].depositQspWei = 0;
-        pools[poolIndex].totalStakeQspWei = 0;
-        pools[poolIndex].poolSizeQspWei = 0;
+        uint total = data.getPoolDepositQspWei(poolIndex)
+          .add(data.getPoolTotalStakeQspWei(poolIndex));
+        data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
+        
+        data.setPoolDepositQspWei(poolIndex, data.getPoolDepositQspWei(poolIndex).sub(total));
+        data.setPoolTotalStakeQspWei(poolIndex, 0);
+        data.setPoolSizeQspWei(poolIndex, 0);
+
         setState(poolIndex, PoolState.ViolatedFunded);
-        require(token.transfer(getPoolOwner(poolIndex), total),
+        require(token.transfer(data.getPoolOwner(poolIndex), total),
             "Token transfer failed during withdrawClaim");
         emit ClaimWithdrawn(poolIndex, total);
     }
@@ -276,7 +279,7 @@ contract QuantstampStaking is Ownable {
             (state == PoolState.NotViolatedFunded), "Pool is not in the right state when staking funds.");
         // Check if pool can be switched from the initialized state to another state
         if ((state == PoolState.Initialized) && // then timeout has occured and stakes are not allowed
-            (getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(getPoolTimeOfStateInBlocks(poolIndex)))) {
+            (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)))) {
             setState(poolIndex, PoolState.Cancelled);
             return;
         }
@@ -284,34 +287,17 @@ contract QuantstampStaking is Ownable {
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
             "Token transfer failed when staking funds.");
-        pools[poolIndex].stakeCount += 1;
-        uint currentStakeIndex = pools[poolIndex].stakeCount;
-        // Create new Stake struct. The value of the last parameter indicates that a payout has not be made yet.
-        Stake memory stake = Stake(msg.sender, adjustedAmountQspWei, block.number, block.number,
-            currentStakeIndex, isExpert(msg.sender));
-        stakes[poolIndex][msg.sender].push(stake);
-        if (stakes[poolIndex][msg.sender].length == 1) { // then this is the first stake placed by this staker
-            poolToStakers[poolIndex].push(msg.sender);
-            poolToStakersExpertStatus[poolIndex].push(isExpert(msg.sender));
-            poolToStakerIndex[poolIndex][msg.sender] = poolToStakers[poolIndex].length - 1;
-        }
-        totalStakes[poolIndex][msg.sender] = totalStakes[poolIndex][msg.sender].add(adjustedAmountQspWei);
-        balanceQspWei = balanceQspWei.add(adjustedAmountQspWei);
-        pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.add(adjustedAmountQspWei);
-        // Set first expert if it is not set and the staker is an expert on the TCR
-        if (getPoolFirstExpertStaker(poolIndex) == address(0) && isExpert(msg.sender)) {
-            pools[poolIndex].firstExpertStaker = msg.sender;
-        }
-        // Update pool size
-        bonusExpertAtPower[poolIndex].push(
-            bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
-        powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
-        pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.add(
-            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakes[poolIndex][msg.sender].length - 1));
+            
+        uint stakeIndex = data.createStake(poolIndex, msg.sender,
+            adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
+
+        data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
+            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
+
         // Check if there are enough stakes in the pool
-        if (getPoolTotalStakeQspWei(poolIndex) >= getPoolMinStakeQspWei(poolIndex)) {
+        if (data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex)) {
             // Minimum staking value was reached
-            if (getPoolDepositQspWei(poolIndex) >= getPoolMaxPayoutQspWei(poolIndex)) {
+            if (data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
                 setState(poolIndex, PoolState.NotViolatedFunded);
             } else {
@@ -343,9 +329,10 @@ contract QuantstampStaking is Ownable {
         }
         // check if the staker is an expert
         if (expertStake) {
-            stakeAmount = stakeAmount.mul(bonusExpertAtPower[poolIndex][stake.contributionIndex].
-                add(data.getpowersOf100[poolIndex][stake.contributionIndex])).
-                div(powersOf100[poolIndex][stake.contributionIndex]);
+            stakeAmount = stakeAmount.mul(
+                data.getBonusExpertAtPower(poolIndex, contributionIndex).
+                    add(data.getPowersOf100(poolIndex, contributionIndex))).
+                    div(data.getPowersOf100(poolIndex, contributionIndex));
             /* Check if it is the first stake of the first expert */
             if (data.getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
                 stakeAmount = stakeAmount.mul(data.getPoolBonusFirstExpertFactor(poolIndex).add(100)).div(100);
@@ -422,7 +409,7 @@ contract QuantstampStaking is Ownable {
         // fail loud if the policy has not been violated
         require(isViolated(poolIndex));
 
-        PoolState state = getPoolState(poolIndex);
+        PoolState state = data.getPoolState(poolIndex);
         if (state == PoolState.Initialized) {
             setState(poolIndex, PoolState.Cancelled);
         } else if (state == PoolState.NotViolatedUnderfunded) {
@@ -504,11 +491,7 @@ contract QuantstampStaking is Ownable {
     * @return - the index of the pool if a pool with that name exists, otherwise the max value of uint
     */
     function getPoolIndex(string poolName) public view returns(uint) {
-        if (poolNameToPoolIndex[poolName] > 0) {
-            return poolNameToPoolIndex[poolName].sub(1);
-        } else {
-            return MAX_UINT;
-        }
+        return data.getPoolIndex(poolName);
     }
 
     function getToken() public view returns (address) {
@@ -581,16 +564,22 @@ contract QuantstampStaking is Ownable {
         uint startBlockNumber
     ) internal view returns(uint) {
         // compute the total number of pay periods for this pool and this staker
-        uint currentPayPeriods = block.number.sub(startBlockNumber).div(getPoolPayPeriodInBlocks(poolIndex));
+        uint currentPayPeriods = block.number.sub(startBlockNumber).div(
+          data.getPoolPayPeriodInBlocks(poolIndex));
         // compute the last period this staker asked for a payout
         uint lastPayPeriods;
-        if (startBlockNumber >= stakes[poolIndex][staker][i].lastPayoutBlock) {
+        uint stakeAmount, blockPlaced, lastPayoutBlock, contributionIndex;
+        bool expertStake;
+        (stakeAmount, blockPlaced, lastPayoutBlock, contributionIndex, expertStake) = data.getStake(
+          poolIndex, staker, i);
+
+        if (startBlockNumber >= lastPayoutBlock) {
             // then avoid integer underflow
             lastPayPeriods = 0;
         } else {
-            lastPayPeriods = stakes[poolIndex][staker][i].lastPayoutBlock
+            lastPayPeriods = lastPayoutBlock
                     .sub(startBlockNumber)
-                    .div(getPoolPayPeriodInBlocks(poolIndex));
+                    .div(data.getPoolPayPeriodInBlocks(poolIndex));
         }
         return currentPayPeriods.sub(lastPayPeriods);
     }
@@ -601,13 +590,13 @@ contract QuantstampStaking is Ownable {
     * @param newState - the new state to which the pool will change
     */
     function setState(uint poolIndex, PoolState newState) internal {
-        PoolState poolState = getPoolState(poolIndex);
+        PoolState poolState = data.getPoolState(poolIndex);
         if (poolState != newState) {
-            pools[poolIndex].state = newState; // set the state
+            data.setPoolState(poolIndex, newState); // set the state
             /* Don't update the time of the stake if the policy expired because payouts still need to be awarded
                accoring to the time of the NonViolatedFunded state */
             if (newState != PoolState.PolicyExpired) {
-                pools[poolIndex].timeOfStateInBlocks = block.number; // set the time when the state changed
+                data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
             }
             emit StateChanged(poolIndex, newState); // emit an event that the state has changed
         }
@@ -618,10 +607,11 @@ contract QuantstampStaking is Ownable {
      * @return the current state of the pool
      */
     function updatePoolState(uint poolIndex) internal returns(PoolState) {
-        PoolState state = getPoolState(poolIndex);
+        PoolState state = data.getPoolState(poolIndex);
         if (state == PoolState.NotViolatedFunded &&
-            block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex))) {
-            setState(poolIndex, PoolState.PolicyExpired);
+            block.number >= data.getPoolMinStakeTimeInBlocks(poolIndex).add(
+              data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            data.setState(poolIndex, PoolState.PolicyExpired);
             state = PoolState.PolicyExpired;
         }
         return state;
@@ -634,10 +624,12 @@ contract QuantstampStaking is Ownable {
      */
     function updateStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint adjustedAmountQspWei = amountQspWei;
-        if (pools[poolIndex].maxTotalStakeQspWei != 0) {
-            require(pools[poolIndex].totalStakeQspWei < pools[poolIndex].maxTotalStakeQspWei);
-            if (pools[poolIndex].totalStakeQspWei.add(amountQspWei) > pools[poolIndex].maxTotalStakeQspWei) {
-                adjustedAmountQspWei = pools[poolIndex].maxTotalStakeQspWei.sub(pools[poolIndex].totalStakeQspWei);
+        uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
+        uint current = data.getPoolTotalStakeQspWei(poolIndex);
+        if (max != 0) {
+            require(current < max);
+            if (current.add(amountQspWei) > max) {
+                adjustedAmountQspWei = max.sub(current);
             }
         }
         return adjustedAmountQspWei;

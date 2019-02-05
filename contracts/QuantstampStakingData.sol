@@ -114,12 +114,13 @@ contract QuantstampStakingData is Whitelist {
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
     function createStake(
+        uint poolIndex,
         address staker,
         uint amountQspWei,
         uint blockPlaced,
         uint lastPayoutBlock,
         bool isExpert
-    ) public onlyWhitelisted {
+    ) public onlyWhitelisted returns (uint) {
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         Stake memory stake = Stake(staker, amountQspWei, blockPlaced, lastPayoutBlock,
             currentStakeIndex, isExpert);
@@ -143,6 +144,38 @@ contract QuantstampStakingData is Whitelist {
         bonusExpertAtPower[poolIndex].push(
             bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
         powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
+        return currentStakeIndex;
+    }
+    
+    /** Transfers an amount of QSP from the staker to the pool
+    * @param poolIndex - the index of the pool where the funds are transferred to
+    * @param amountQspWei - the amount of QSP Wei that is transferred
+    */
+    function removeStake(
+        uint poolIndex,
+        address staker,
+        uint amountQspWei
+    ) public onlyWhitelisted returns (bool) {
+      uint totalQspWeiTransfer = totalStakes[poolIndex][staker];
+      
+      if (totalQspWeiTransfer == 0) {
+        return true;
+      }
+
+      if (totalQspWeiTransfer > 0) { // transfer the stake back
+          balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
+          totalStakes[poolIndex][staker] = 0;
+          pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+          // this loop is needed, because the computePayout function uses the stakes array
+          for (uint i = 0; i < stakes[poolIndex][staker].length; i++) {
+              pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
+                  calculateStakeAmountWithBonuses(poolIndex, staker, i));
+              stakes[poolIndex][staker][i].amountQspWei = 0;
+          }
+          // remove this staker from the list of stakers of this pool
+          delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][staker]];
+          delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][staker]];
+      }
     }
 
     /** Creates a new staking pool.
@@ -280,9 +313,17 @@ contract QuantstampStakingData is Whitelist {
     function getPoolTimeOfStateInBlocks(uint index) public view returns(uint) {
         return pools[index].timeOfStateInBlocks;
     }
+    
+    function setPoolTimeOfStateInBlocks(uint index, uint timeOfStateInBlocks) public onlyWhitelisted {
+        pools[index].timeOfStateInBlocks = timeOfStateInBlocks;
+    }
 
     function getPoolSizeQspWei(uint index) public view returns(uint) {
         return pools[index].poolSizeQspWei;
+    }
+    
+    function setPoolSizeQspWei(uint index, amountQspWei) public onlyWhitelisted {
+        pools[index].poolSizeQspWei = amountQspWei;
     }
 
     function getPoolUrlOfAuditReport(uint index) public view returns(string) {
@@ -295,6 +336,10 @@ contract QuantstampStakingData is Whitelist {
 
     function getPoolTotalStakeQspWei(uint index) public view returns(uint) {
         return pools[index].totalStakeQspWei;
+    }
+    
+    function setPoolTotalStakeQspWei(uint index, uint amountQspWei) public onlyWhitelisted {
+        pools[index].totalStakeQspWei = amountQspWei;
     }
 
     function getPoolStakeCount(uint index) public view returns(uint) {
