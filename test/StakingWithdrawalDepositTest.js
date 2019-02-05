@@ -6,17 +6,7 @@ const Util = require("./util.js");
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const BigNumber = require('bignumber.js');
-
-contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
-  const owner = accounts[0];
-  const qspAdmin = accounts[1];
-  const poolOwner = accounts[3];
-  const adversary = accounts[4];
-  const staker = accounts[5];
-  const poolOwnerBudget = Util.toQsp(100);
-  const candidateContractBalance = Util.toEther(100);
-
-  const PoolState = Object.freeze({
+const PoolState = Object.freeze({
     None : 0,
     Initialized : 1,
     NotViolatedUnderfunded : 2,
@@ -26,6 +16,84 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     Cancelled: 6,
     PolicyExpired: 7
   });
+
+contract('QuantstampStaking: pool does not get cancelled with withdrawal of stake', function(accounts) {
+  /* todo(mderka): adding this test to unblock the alpha test. It should be unified with the tests
+   * below within SP-240. */
+  const owner = accounts[0];
+  const qspAdmin = accounts[1];
+  const poolOwner = accounts[3];
+  const adversary = accounts[4];
+  const staker = accounts[5];
+  const poolOwnerBudget = Util.toQsp(100);
+  const candidateContractBalance = Util.toEther(100);
+  let qspb;
+  let quantstampToken;
+  let candidateContract;
+  let contractPolicy;
+  let quantstampRegistry;
+  let wrapper;
+  const initialDepositQspWei = poolOwnerBudget;
+  const minStakeQspWei = Util.toQsp(10);
+  const maxPayableQspWei = Util.toQsp(200);
+  const bonusExpertFactor = 3;
+  const bonusFirstExpertFactor = 5;
+  const payPeriodInBlocks = 15;
+  const minStakeTimeInBlocks = new BigNumber(20);
+  const timeoutInBlocks = 100;
+  const urlOfAuditReport = "URL";
+  const poolName = "myPool";
+  const defaultMaxTotalStake = new BigNumber(Util.toQsp(10000));
+
+  beforeEach(async function() {
+    quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
+    quantstampRegistry = await QuantstampStakingRegistry.new();
+    wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+    candidateContract = await CandidateContract.new(candidateContractBalance);
+    contractPolicy = await ZeroBalancePolicy.new();
+
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
+    // enable transfers before any payments are allowed
+    await quantstampToken.enableTransfer({from : owner});
+    await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+    await quantstampToken.approve(qspb.address, poolOwnerBudget, {from : poolOwner});
+
+    await quantstampToken.transfer(staker, minStakeQspWei, {from : owner});
+    await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
+
+    assert.equal(await qspb.balanceQspWei.call(), 0);
+
+    // create pool
+    await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayableQspWei, minStakeQspWei,
+      initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+      minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+  });
+
+  describe("withdrawStake", async function() {
+    it("should not cancel the pool if staker deposits and withdraws stake", async function() {
+      /* The test starts with clean state. The staker resets allowance to 0. Then they set
+       * allowance to 7 tokens and stake 7 tokens in an empty pool. This is too little to
+       * get the pool funded. Then the staker withdraws their stake back. The expected status
+       * of the pool is NotViolatedUnderfunded because the policy is not violated. */
+      const poolId = 0;
+      await quantstampToken.approve(qspb.address, poolId, {from: staker});
+      await quantstampToken.approve(qspb.address, 7, {from: staker});
+      await qspb.stakeFunds(poolId, 7, {from: staker});
+      await qspb.withdrawStake(poolId, {from: staker});
+      assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.NotViolatedUnderfunded);
+    });
+  });
+
+});
+
+contract('QuantstampStaking: stakeholder deposits and withdrawals', function(accounts) {
+  const owner = accounts[0];
+  const qspAdmin = accounts[1];
+  const poolOwner = accounts[3];
+  const adversary = accounts[4];
+  const staker = accounts[5];
+  const poolOwnerBudget = Util.toQsp(100);
+  const candidateContractBalance = Util.toEther(100);
 
   let qspb;
   let quantstampToken;
