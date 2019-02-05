@@ -7,15 +7,15 @@ const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const BigNumber = require('bignumber.js');
 const PoolState = Object.freeze({
-    None : 0,
-    Initialized : 1,
-    NotViolatedUnderfunded : 2,
-    ViolatedUnderfunded : 3,
-    NotViolatedFunded : 4,
-    ViolatedFunded : 5,
-    Cancelled: 6,
-    PolicyExpired: 7
-  });
+  None : 0,
+  Initialized : 1,
+  NotViolatedUnderfunded : 2,
+  ViolatedUnderfunded : 3,
+  NotViolatedFunded : 4,
+  ViolatedFunded : 5,
+  Cancelled: 6,
+  PolicyExpired: 7
+});
 
 contract('QuantstampStaking: pool does not get cancelled with withdrawal of stake', function(accounts) {
   /* todo(mderka): adding this test to unblock the alpha test. It should be unified with the tests
