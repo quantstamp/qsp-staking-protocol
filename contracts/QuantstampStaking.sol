@@ -212,6 +212,7 @@ contract QuantstampStaking is Ownable {
         address poolOwner = getPoolOwner(poolIndex);
         require(state == PoolState.Initialized || // always allow to withdraw in these states
             state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.ViolatedUnderfunded ||
             state == PoolState.PolicyExpired ||
             state == PoolState.NotViolatedFunded ||
             state == PoolState.Cancelled,
@@ -232,6 +233,7 @@ contract QuantstampStaking is Ownable {
         PoolState state = updatePoolState(poolIndex);
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.ViolatedUnderfunded ||
             state == PoolState.Cancelled ||
             state == PoolState.PolicyExpired,
             "Pool is not in the right state when withdrawing stake.");
