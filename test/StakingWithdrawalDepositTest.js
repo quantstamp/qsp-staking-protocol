@@ -23,7 +23,6 @@ contract('QuantstampStaking: pool does not get cancelled with withdrawal of stak
   const owner = accounts[0];
   const qspAdmin = accounts[1];
   const poolOwner = accounts[3];
-  const adversary = accounts[4];
   const staker = accounts[5];
   const poolOwnerBudget = Util.toQsp(100);
   const candidateContractBalance = Util.toEther(100);
