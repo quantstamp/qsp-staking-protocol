@@ -3,16 +3,23 @@ pragma solidity 0.4.24;
 /// @title QuantstampStakingData - is the smart contract storing persistent data of the Staking Protocol
 /// @author Quantstamp
 
-import "openzeppelin-solidity/contracts/ownership/Whitelist.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 
 
-contract QuantstampStakingData is Whitelist {
+contract QuantstampStakingData is Ownable {
     using SafeMath for uint256;
     using Math for uint256;
 
     uint constant internal MAX_UINT = ~uint(0);
+    
+    mapping(address => bool) public whitelist;
+
+    modifier onlyWhitelisted() {
+        require(whitelist[msg.sender] == true);
+        _;
+    }
 
     // state of the pool's lifecycle
     enum PoolState {
@@ -93,9 +100,7 @@ contract QuantstampStakingData is Whitelist {
     // Current number of pools
     uint internal currentPoolNumber;
 
-    /** Initializes the Quality Assurance Protocol
-    * @param tokenAddress - the address of the QSP Token contract
-    * @param tcrAddress - the address of the security expert token curated registry
+    /** Initializes the Assurance Data Contract
     */
     constructor() public {
         currentPoolNumber = 0;
@@ -150,19 +155,14 @@ contract QuantstampStakingData is Whitelist {
     
     /** Transfers an amount of QSP from the staker to the pool
     * @param poolIndex - the index of the pool where the funds are transferred to
-    * @param amountQspWei - the amount of QSP Wei that is transferred
+    * @param staker - the staker
     */
     function removeStake(
         uint poolIndex,
-        address staker,
-        uint amountQspWei
-    ) public onlyWhitelisted returns (bool) {
+        address staker
+    ) public onlyWhitelisted {
         uint totalQspWeiTransfer = totalStakes[poolIndex][staker];
       
-        if (totalQspWeiTransfer == 0) {
-            return true;
-        }
-
         if (totalQspWeiTransfer > 0) { // transfer the stake back
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][staker] = 0;
@@ -191,7 +191,6 @@ contract QuantstampStakingData is Whitelist {
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
     * @param maxTotalStakeQspWei - the maximum QSP that can be staked; 0 if there is no maximum
-    * @returns pool index
     */
     function createPool(
         address candidateContract,
@@ -321,7 +320,7 @@ contract QuantstampStakingData is Whitelist {
         return pools[index].poolSizeQspWei;
     }
     
-    function setPoolSizeQspWei(uint index, amountQspWei) public onlyWhitelisted {
+    function setPoolSizeQspWei(uint index, uint amountQspWei) public onlyWhitelisted {
         pools[index].poolSizeQspWei = amountQspWei;
     }
 
@@ -421,7 +420,7 @@ contract QuantstampStakingData is Whitelist {
         pools[poolIndex].state = newState; // set the state
     }
 
-    function getTotalStakes(uint poolIndex, address staker) public {
+    function getTotalStakes(uint poolIndex, address staker) public returns (uint) {
         return totalStakes[poolIndex][staker]; 
     }
 
@@ -429,7 +428,7 @@ contract QuantstampStakingData is Whitelist {
         totalStakes[poolIndex][staker] = amountQspWei; 
     }
 
-    function getStakeCount(uint poolIndex, address staker) public {
+    function getStakeCount(uint poolIndex, address staker) public returns (uint) {
         return stakes[poolIndex][staker].length;
     }
 
@@ -441,14 +440,15 @@ contract QuantstampStakingData is Whitelist {
         bool expertStake // true iff the staker was on the TCR when the stake was placed
     ) {
         Stake memory stake = stakes[poolIndex][staker][i];
-        return (stake.amountQspWei, stake.blockPlaced, stake.lastPayoutBlock, stake.expertStake);
+        return (stake.amountQspWei, stake.blockPlaced,
+            stake.lastPayoutBlock, stake.contributionIndex, stake.expertStake);
     }
-    
-    function setDepositQspWei(uint depositQspWei) public onlyWhitelisted {
+
+    function setDepositQspWei(uint poolIndex, uint depositQspWei) public onlyWhitelisted {
         pools[poolIndex].depositQspWei = depositQspWei;
     }
     
-    function getDepositQspWei() public returns (uint) {
+    function getDepositQspWei(uint poolIndex) public returns (uint) {
         return pools[poolIndex].depositQspWei;
     }
     
@@ -472,5 +472,21 @@ contract QuantstampStakingData is Whitelist {
     function setStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
         uint blockNumber) public onlyWhitelisted {
         stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
+    }
+    
+    function getPowersOf100(uint poolIndex, uint powerIndex) public view returns (uint) {
+        return powersOf100[poolIndex][powerIndex];
+    }
+
+    function getBonusExpertAtPower(uint poolIndex, uint powerIndex) public view returns (uint) {
+        return bonusExpertAtPower[poolIndex][powerIndex];
+    }
+
+    function addWhitelistAddress(address _address) public onlyOwner {
+        whitelist[_address] = true;
+    }
+
+    function removeWhitelistAddress(address _address) public onlyOwner {
+        whitelist[_address] = false;
     }
 }

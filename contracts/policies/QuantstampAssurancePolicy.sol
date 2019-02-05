@@ -2,6 +2,7 @@ pragma solidity 0.4.24;
 
 import "../IPolicy.sol";
 import "../QuantstampStaking.sol";
+import "../QuantstampStakingData.sol";
 import "../test/QuantstampToken.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -32,13 +33,13 @@ contract QuantstampAssurancePolicy is IPolicy {
     // Ensures that the balance of the contract contains at least as much
     // as the staked values so far, as well as all current stakeholder deposits
     function balanceCoversStakesAndDeposits() internal view returns(bool){
-        return staking.balanceQspWei() >= token.balanceOf(address(staking));
+        return staking.getBalanceQspWei() >= token.balanceOf(address(staking));
     }
 
     function assuranceIsNeverViolated() internal view returns(bool){
       // Better not be ViolatedUnderfunded (3) or ViolatedFunded (5)
-      return staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(ViolatedUnderfunded) &&
-        staking.getPoolState(assurancePoolId) != QuantstampStaking.PoolState(ViolatedFunded);
+      return staking.getPoolState(assurancePoolId) != QuantstampStakingData.PoolState.ViolatedUnderfunded &&
+        staking.getPoolState(assurancePoolId) != QuantstampStakingData.PoolState.ViolatedFunded;
     }
 
     function setAssurancePoolId(uint256 newId) external {

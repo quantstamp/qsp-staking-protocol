@@ -1,4 +1,5 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('test/Registry');
 const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
@@ -51,6 +52,7 @@ contract('QuantstampStaking', function(accounts) {
   const maxStakeQspWei = minStakeQspWei.mul(2);
   const defaultMaxTotalStake = new BigNumber(Util.toQsp(100000));
 
+  let quantstampStakingData;
   let qspb;
   let quantstampToken;
   let quantstampRegistry;
@@ -74,9 +76,11 @@ contract('QuantstampStaking', function(accounts) {
     });
   });
 
-  describe("createPool", async function() {
+  describe.only("createPool", async function() {
     it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
+      quantstampStakingData = await QuantstampStakingData.deployed();
       qspb = await QuantstampStaking.deployed();
+      await quantstampStakingData.addAddressToWhitelist(qspb.address);
       quantstampToken = await QuantstampToken.deployed();
       candidateContract = await CandidateContract.deployed();
       contractPolicy = await ZeroBalancePolicy.deployed();
