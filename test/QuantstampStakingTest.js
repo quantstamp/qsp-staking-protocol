@@ -80,7 +80,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
       quantstampStakingData = await QuantstampStakingData.deployed();
       qspb = await QuantstampStaking.deployed();
-      await quantstampStakingData.addAddressToWhitelist(qspb.address);
+      await quantstampStakingData.addWhitelistAddress(qspb.address);
       quantstampToken = await QuantstampToken.deployed();
       candidateContract = await CandidateContract.deployed();
       contractPolicy = await ZeroBalancePolicy.deployed();
@@ -102,7 +102,7 @@ contract('QuantstampStaking', function(accounts) {
       // allow the qspb contract use up to 1000QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
       // balance should be 0 in the beginning
-      assert.equal(await qspb.balanceQspWei.call(), 0);
+      assert.equal(await quantstampStakingData.balanceQspWei.call(), 0);
       // create pool
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
@@ -110,32 +110,32 @@ contract('QuantstampStaking', function(accounts) {
       const timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
       const zero = new BigNumber(0);
       // check all pool properties
-      assert.equal(await qspb.getPoolsLength.call(), 1);
-      assert.equal(await qspb.getPoolCandidateContract(0), candidateContract.address);
-      assert.equal(await qspb.getPoolContractPolicy(0), contractPolicy.address);
-      assert.equal(await qspb.getPoolOwner(0), poolOwner);
-      assert.equal(await qspb.getPoolMaxPayoutQspWei(0), maxPayoutQspWei.toNumber());
-      assert.equal(minStakeQspWei.toNumber(), (await qspb.getPoolMinStakeQspWei(0)).toNumber());
-      assert.equal(depositQspWei.toNumber(), (await qspb.getPoolDepositQspWei(0)).toNumber());
-      assert.equal(await qspb.getPoolBonusExpertFactor(0), bonusExpertFactor.toNumber());
-      assert.equal(await qspb.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor.toNumber());
-      assert.equal(await qspb.getPoolPayPeriodInBlocks(0), payPeriodInBlocks.toNumber());
-      assert.equal(minStakeTimeInBlocks.toNumber(), (await qspb.getPoolMinStakeTimeInBlocks(0)).toNumber());
-      assert.equal(await qspb.getPoolTimeoutInBlocks(0), timeoutInBlocks.toNumber());
-      assert.equal(await qspb.getPoolTimeOfStateInBlocks(0), timeOfStateInBlocks.toNumber());
-      assert.equal(await qspb.getPoolUrlOfAuditReport(0), urlOfAuditReport);
-      assert.equal(await qspb.getPoolState(0), PoolState.Initialized);
-      assert.equal(await qspb.getPoolName(0), poolName);
-      assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), 0);
-      assert.equal((await qspb.getPoolMaxTotalStakeQspWei(0)).toNumber(), defaultMaxTotalStake.toNumber());
-      const poolParams = await qspb.getPoolParams(0);
+      assert.equal(await quantstampStakingData.getPoolsLength.call(), 1);
+      assert.equal(await quantstampStakingData.getPoolCandidateContract(0), candidateContract.address);
+      assert.equal(await quantstampStakingData.getPoolContractPolicy(0), contractPolicy.address);
+      assert.equal(await quantstampStakingData.getPoolOwner(0), poolOwner);
+      assert.equal(await quantstampStakingData.getPoolMaxPayoutQspWei(0), maxPayoutQspWei.toNumber());
+      assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolMinStakeQspWei(0)).toNumber());
+      assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.getPoolDepositQspWei(0)).toNumber());
+      assert.equal(await quantstampStakingData.getPoolBonusExpertFactor(0), bonusExpertFactor.toNumber());
+      assert.equal(await quantstampStakingData.getPoolBonusFirstExpertFactor(0), bonusFirstExpertFactor.toNumber());
+      assert.equal(await quantstampStakingData.getPoolPayPeriodInBlocks(0), payPeriodInBlocks.toNumber());
+      assert.equal(minStakeTimeInBlocks.toNumber(), (await quantstampStakingData.getPoolMinStakeTimeInBlocks(0)).toNumber());
+      assert.equal(await quantstampStakingData.getPoolTimeoutInBlocks(0), timeoutInBlocks.toNumber());
+      assert.equal(await quantstampStakingData.getPoolTimeOfStateInBlocks(0), timeOfStateInBlocks.toNumber());
+      assert.equal(await quantstampStakingData.getPoolUrlOfAuditReport(0), urlOfAuditReport);
+      assert.equal(await quantstampStakingData.getPoolState(0), PoolState.Initialized);
+      assert.equal(await quantstampStakingData.getPoolName(0), poolName);
+      assert.equal((await quantstampStakingData.getPoolIndex(poolName)).toNumber(), 0);
+      assert.equal((await quantstampStakingData.getPoolMaxTotalStakeQspWei(0)).toNumber(), defaultMaxTotalStake.toNumber());
+      const poolParams = await quantstampStakingData.getPoolParams(0);
       poolParams[1] = poolParams[1].map(function(el){ return el.toNumber(); });
       assert.deepEqual(poolParams, [[candidateContract.address, contractPolicy.address, poolOwner, Util.ZERO_ADDRESS],
         [maxPayoutQspWei, minStakeQspWei, defaultMaxTotalStake, bonusExpertFactor, bonusFirstExpertFactor,
           payPeriodInBlocks, minStakeTimeInBlocks, timeoutInBlocks, depositQspWei, timeOfStateInBlocks, zero, zero, zero,
           new BigNumber(PoolState.Initialized)].map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
       // balance should be increased
-      assert.equal(depositQspWei.toNumber(), (await qspb.balanceQspWei.call()).toNumber());
+      assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.balanceQspWei.call()).toNumber());
     });
 
     it("should not create a pool with the same name of a pool that already exists", async function() {
@@ -202,7 +202,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should create a pool with a zero maximum", async function() {
-      assert.equal((await qspb.getPoolMaxTotalStakeQspWei(0)).toNumber(), defaultMaxTotalStake.toNumber());
+      assert.equal((await quantstampStakingData.getPoolMaxTotalStakeQspWei(0)).toNumber(), defaultMaxTotalStake.toNumber());
     });
   });
 

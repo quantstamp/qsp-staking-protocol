@@ -442,9 +442,9 @@ contract QuantstampStakingData is Ownable {
         return balanceQspWei;
     }
     
-    function getStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex)
-        public view returns (uint) {
-            return stakes[poolIndex][staker][stakeIndex].blockPlaced;
+    function getStakeBlockPlaced(uint poolIndex, address staker,
+        uint stakeIndex) public view returns (uint) {
+        return stakes[poolIndex][staker][stakeIndex].blockPlaced;
     }
     
     function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,
@@ -457,9 +457,9 @@ contract QuantstampStakingData is Ownable {
         stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
     }
     
-    function getStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex)
-        public view returns(uint) {
-          return stakes[poolIndex][staker][stakeIndex].lastPayoutBlock;
+    function getStakeLastPayoutBlock(uint poolIndex, address staker,
+        uint stakeIndex) public view returns(uint) {
+        return stakes[poolIndex][staker][stakeIndex].lastPayoutBlock;
     }
     
     function getPowersOf100(uint poolIndex, uint powerIndex) public view returns (uint) {
