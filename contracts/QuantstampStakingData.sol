@@ -178,48 +178,30 @@ contract QuantstampStakingData is Ownable {
     }
 
     /** Creates a new staking pool.
-    * @param candidateContract - the contract that must be protected
-    * @param contractPolicy - the policy that must be respected by the candidate contract
-    * @param maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
-    * @param minStakeQspWei - the minimum value that needs to be raised from all stakers together
-    * @param depositQspWei - the current value deposited by the owner/stakeholder
-    * @param bonusExpertFactor - the factor by which the payout of an expert is multiplied
-    * @param bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
-    * @param payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
-    * @param minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
-    * @param timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
+    * @param addresses - address parameters
+    * @param intParams - integer parameters
     * @param urlOfAuditReport - a URL to some audit report (could also be a white-glove audit)
     * @param poolName - an alphanumeric string defined by the pool owner
-    * @param maxTotalStakeQspWei - the maximum QSP that can be staked; 0 if there is no maximum
     */
     function createPool(
-        address candidateContract,
-        address contractPolicy,
-        uint maxPayoutQspWei,
-        uint minStakeQspWei,
-        uint depositQspWei,
-        uint bonusExpertFactor,
-        uint bonusFirstExpertFactor,
-        uint payPeriodInBlocks,
-        uint minStakeTimeInBlocks,
-        uint timeoutInBlocks,
+        address[] addresses,
+        uint[] intParams,
         string urlOfAuditReport,
-        string poolName,
-        uint maxTotalStakeQspWei
+        string poolName
     ) public onlyWhitelisted returns (uint) {
         Pool memory p = Pool(
-            candidateContract,
-            contractPolicy,
-            msg.sender,
-            maxPayoutQspWei,
-            minStakeQspWei,
-            depositQspWei,
-            bonusExpertFactor,
-            bonusFirstExpertFactor,
+            addresses[0],
+            addresses[1],
+            addresses[2],
+            intParams[0],
+            intParams[1],
+            intParams[2],
+            intParams[3],
+            intParams[4],
             address(0), // no expert staker
-            payPeriodInBlocks,
-            minStakeTimeInBlocks,
-            timeoutInBlocks,
+            intParams[5],
+            intParams[6],
+            intParams[7],
             block.number,
             urlOfAuditReport,
             PoolState.Initialized,
@@ -227,7 +209,7 @@ contract QuantstampStakingData is Ownable {
             0, // the pool size is initially 0
             0, // total stakes in this pool
             poolName,
-            maxTotalStakeQspWei
+            intParams[8]
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
@@ -236,7 +218,7 @@ contract QuantstampStakingData is Ownable {
         currentPoolNumber = currentPoolNumber.add(1);
         // the following is expected to be initialized to poolId + 1
         poolNameToPoolIndex[poolName] = currentPoolNumber;
-        balanceQspWei = balanceQspWei.add(depositQspWei);
+        balanceQspWei = balanceQspWei.add(intParams[2]);
         return result;
     }
 
@@ -420,7 +402,7 @@ contract QuantstampStakingData is Ownable {
         pools[poolIndex].state = newState; // set the state
     }
 
-    function getTotalStakes(uint poolIndex, address staker) public returns (uint) {
+    function getTotalStakes(uint poolIndex, address staker) public view returns (uint) {
         return totalStakes[poolIndex][staker]; 
     }
 
@@ -428,11 +410,11 @@ contract QuantstampStakingData is Ownable {
         totalStakes[poolIndex][staker] = amountQspWei; 
     }
 
-    function getStakeCount(uint poolIndex, address staker) public returns (uint) {
+    function getStakeCount(uint poolIndex, address staker) public view returns (uint) {
         return stakes[poolIndex][staker].length;
     }
 
-    function getStake(uint poolIndex, address staker, uint i) public returns (
+    function getStake(uint poolIndex, address staker, uint i) public view returns (
         uint amountQspWei, // the amount staked by the staker
         uint blockPlaced, // the Block number when this stake was made
         uint lastPayoutBlock, // the Block number where the last payout was made to this staker
@@ -448,7 +430,7 @@ contract QuantstampStakingData is Ownable {
         pools[poolIndex].depositQspWei = depositQspWei;
     }
     
-    function getDepositQspWei(uint poolIndex) public returns (uint) {
+    function getDepositQspWei(uint poolIndex) public view returns (uint) {
         return pools[poolIndex].depositQspWei;
     }
     
@@ -456,12 +438,13 @@ contract QuantstampStakingData is Ownable {
         balanceQspWei = newBalanceQspWei;
     }
     
-    function getBalanceQspWei() public returns (uint) {
+    function getBalanceQspWei() public view returns (uint) {
         return balanceQspWei;
     }
     
-    function getStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex) public returns (uint) {
-        return stakes[poolIndex][staker][stakeIndex].blockPlaced;
+    function getStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex)
+        public view returns (uint) {
+            return stakes[poolIndex][staker][stakeIndex].blockPlaced;
     }
     
     function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,

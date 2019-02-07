@@ -208,14 +208,15 @@ contract QuantstampStaking is Ownable {
         if (data.getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
             data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).sub(payout));
             data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
-            uint stakeCount = data.getStakeCount(poolIndex, msg.sender);
-            for (uint i = 0; i < stakeCount; i++) {
-                data.setStakeBlockPlaced(poolIndex, msg.sender, i, Math.max(
-                    data.getStakeBlockPlaced(poolIndex, msg.sender, i), data.getPoolTimeOfStateInBlocks(poolIndex)
-                ));
+            for (uint i = 0; i < data.getStakeCount(poolIndex, msg.sender); i++) {
+                uint m = Math.max(
+                    data.getStakeBlockPlaced(poolIndex, msg.sender, i),
+                    data.getPoolTimeOfStateInBlocks(poolIndex)
+                );
+                data.setStakeBlockPlaced(poolIndex, msg.sender, i, m);
 
                 uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender,
-                        data.getStakeBlockPlaced(poolIndex, msg.sender, i));
+                    data.getStakeBlockPlaced(poolIndex, msg.sender, i));
 
                 if (numberOfPayouts > 0) {
                     data.setStakeLastPayoutBlock(poolIndex, msg.sender, i, block.number);
@@ -460,22 +461,28 @@ contract QuantstampStaking is Ownable {
         require(timeoutInBlocks > 0, "Timeout period cannot be zero.");
         require(maxTotalStakeQspWei == 0 || maxTotalStakeQspWei > minStakeQspWei,
             "Max total stake cannot be less than min total stake.");
-        uint poolIndex = data.createPool(
-            candidateContract,
-            contractPolicy,
-            maxPayoutQspWei,
-            minStakeQspWei,
-            depositQspWei,
-            bonusExpertFactor,
-            bonusFirstExpertFactor,
-            payPeriodInBlocks,
-            minStakeTimeInBlocks,
-            timeoutInBlocks,
+        uint[] memory intParams = new uint[](9);
+        intParams[0] = maxPayoutQspWei;
+        intParams[1] = minStakeQspWei;
+        intParams[2] = depositQspWei;
+        intParams[3] = bonusExpertFactor;
+        intParams[4] = bonusFirstExpertFactor;
+        intParams[5] = payPeriodInBlocks;
+        intParams[6] = minStakeTimeInBlocks;
+        intParams[7] = timeoutInBlocks;
+        intParams[8] = maxTotalStakeQspWei;
+
+        address[] memory addresses = new address[](3);
+        addresses[0] = candidateContract;
+        addresses[1] = contractPolicy;
+        addresses[2] = msg.sender;
+
+        emit StateChanged(data.createPool(
+            addresses,
+            intParams,
             urlOfAuditReport,
-            poolName,
-            maxTotalStakeQspWei
-        );
-        emit StateChanged(poolIndex, QuantstampStakingData.PoolState.Initialized);
+            poolName
+        ), QuantstampStakingData.PoolState.Initialized);
     }
 
     /** Finds the pool index if a pool with the given name exists
