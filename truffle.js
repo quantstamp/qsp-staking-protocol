@@ -18,7 +18,7 @@ module.exports = {
       host: "127.0.0.1",
       port: 7545,
       network_id: "*", // Match any network id
-      gas: 6712388
+      gas: 80000001
     },
     dev: { // deploys to Ropsten (Dev stage)
       provider: function() {
