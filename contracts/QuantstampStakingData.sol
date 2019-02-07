@@ -457,6 +457,11 @@ contract QuantstampStakingData is Ownable {
         stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
     }
     
+    function getStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex)
+        public view returns(uint) {
+          return stakes[poolIndex][staker][stakeIndex].lastPayoutBlock;
+    }
+    
     function getPowersOf100(uint poolIndex, uint powerIndex) public view returns (uint) {
         return powersOf100[poolIndex][powerIndex];
     }

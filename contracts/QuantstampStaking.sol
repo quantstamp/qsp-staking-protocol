@@ -320,11 +320,8 @@ contract QuantstampStaking is Ownable {
         uint poolIndex, address staker, uint stakeIndex) public view returns(uint) 
     {
         uint stakeAmount;
-        uint blockPlaced;
-        uint lastPayoutBlock;
-        uint contributionIndex;
         bool expertStake;
-        (stakeAmount, blockPlaced, lastPayoutBlock, contributionIndex, expertStake) = data.getStake(
+        (stakeAmount, , , , expertStake) = data.getStake(
             poolIndex, staker, stakeIndex);
 
         if (stakeAmount == 0) {
@@ -332,9 +329,9 @@ contract QuantstampStaking is Ownable {
         }
         // check if the staker is an expert
         if (expertStake) {
-            stakeAmount = stakeAmount.mul(data.getBonusExpertAtPower(poolIndex, contributionIndex).
-                add(data.getPowersOf100(poolIndex, contributionIndex))).
-                div(data.getPowersOf100(poolIndex, contributionIndex));
+            stakeAmount = stakeAmount.mul(data.getBonusExpertAtPower(poolIndex, stakeIndex).
+                add(data.getPowersOf100(poolIndex, stakeIndex))).
+                div(data.getPowersOf100(poolIndex, stakeIndex));
 
             /* Check if it is the first stake of the first expert */
             if (data.getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
@@ -370,9 +367,7 @@ contract QuantstampStaking is Ownable {
 
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakeCount; i++) {
-            uint blockPlaced;
-            (, blockPlaced, , ,) = data.getStake(poolIndex, staker, i);
-
+            uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
             uint startBlockNumber = Math.max(blockPlaced,
@@ -501,59 +496,20 @@ contract QuantstampStaking is Ownable {
         return address(stakingRegistry);
     }
 
-    /** Returns the list of staker addresses that placed stakes in this pool in chronological order
-     * along with a list of booleans indicating if the corresponding staker in the address list is an expert or not.  
-     * @param index - the pool index for which the list of stakers is required
-     * @return - a pair of staker addresses and staker expert flags. 
-     */
-    function getPoolStakersList(uint index) public view returns(address[], bool[]) {
-        return data.getPoolStakersList(index);
-    }
-
-    /** Returns all the parameters of the pool.
-     * @param index - the pool index for which the list of stakers is required
-     * @return - a 3-tuple containing the following entries:
-     *   0. a list of addresses containing the following entries:
-     *        0. the address of the contract that must be protected
-     *        1. the address of the policy that must be respected by the candidate contract
-     *        2. the address of the owner of the pool (the stakeholder), not the owner of the contract
-     *        3. the address of the first expert to stake in this pool
-     *   1. a list of natural numbers containing the folowing entries:
-     *        0. maxPayoutQspWei - the maximum payout that will be awarded to all stakers per payout period
-     *        1. minStakeQspWei - the minimum value that needs to be raised from all stakers together
-     *        2. maxTotalStakeQspWei - the maximum amount that can be staked in this pool
-     *        3. bonusExpertFactor - the factor by which the payout of an expert is multiplied
-     *        4. bonusFirstExpertFactor - the factor by which the payout of the first expert is multiplied
-     *        5. payPeriodInBlocks - the number of blocks after which stakers are payed incentives, in case of no breach
-     *        6. minStakeTimeInBlocks - the minimum number of blocks that funds need to be staked for
-     *        7. timeoutInBlocks - the number of blocks after which a pool is canceled if there are not enough stakes
-     *        8. depositQspWei - the current value deposited by the owner/stakeholder
-     *        9. timeOfStateQspWei - the block number when the pool was set in its current state
-     *        10. totalStakeQspWei - total amount of stake contributed so far
-     *        11. poolSizeQspWei - the size of all stakes in this pool together with the bonuses awarded for experts
-     *        12. stakeCount - the total number of stakes in the pool
-     *        13. state - the current state of the pool
-     *   2. the URL to the audit report (could also be a white-glove audit) of the pool
-     *   3. the alphanumeric string indicating the name of the pool, defined by the pool owner
-     */
-    function getPoolParams(uint index) public view returns(address[], uint[], string, string) {
-        return data.getPoolParams(index);
-    }
-
     function getPoolState(uint poolIndex) public view returns (
         QuantstampStakingData.PoolState
     ) {
         return data.getPoolState(poolIndex);
     }
-    
+
     function getBalanceQspWei() public view returns (uint) {
         return data.getBalanceQspWei();
     }
-    
+
     function getPoolContractPolicy(uint poolIndex) public view returns (address) {
         return data.getPoolContractPolicy(poolIndex);
     }
-    
+
     function getPoolCandidateContract(uint poolIndex) public view returns (address) {
         return data.getPoolCandidateContract(poolIndex);
     }
@@ -586,9 +542,7 @@ contract QuantstampStaking is Ownable {
         // compute the last period this staker asked for a payout
 
         uint lastPayPeriods;
-        uint lastPayoutBlock;
-        (, , lastPayoutBlock, , ) = data.getStake(
-            poolIndex, staker, i);
+        uint lastPayoutBlock = data.getStakeLastPayoutBlock(poolIndex, staker, i);
 
         if (startBlockNumber >= lastPayoutBlock) {
             // then avoid integer underflow
