@@ -127,11 +127,11 @@ contract QuantstampStakingData is Ownable {
         uint lastPayoutBlock,
         bool isExpert
     ) public onlyWhitelisted returns (uint) {
+        pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         Stake memory stake = Stake(staker, amountQspWei, blockPlaced, lastPayoutBlock,
             currentStakeIndex, isExpert);
         stakes[poolIndex][staker].push(stake);
-        pools[poolIndex].stakeCount += 1;
 
         if (stakes[poolIndex][staker].length == 1) { // then this is the first stake placed by this staker
             poolToStakers[poolIndex].push(staker);
@@ -150,7 +150,7 @@ contract QuantstampStakingData is Ownable {
         bonusExpertAtPower[poolIndex].push(
             bonusExpertAtPower[poolIndex][currentStakeIndex - 1].mul(getPoolBonusExpertFactor(poolIndex)));
         powersOf100[poolIndex].push(powersOf100[poolIndex][currentStakeIndex - 1].mul(100));
-        return currentStakeIndex;
+        return stakes[poolIndex][staker].length - 1;
     }
     
     /** Transfers an amount of QSP from the staker to the pool

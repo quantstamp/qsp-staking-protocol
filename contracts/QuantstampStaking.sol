@@ -64,6 +64,7 @@ contract QuantstampStaking is Ownable {
     modifier whenNotViolated(uint poolIndex) {
         address poolPolicy = data.getPoolContractPolicy(poolIndex);
         address candidateContract = data.getPoolCandidateContract(poolIndex);
+        
         require(!IPolicy(poolPolicy).isViolated(candidateContract) &&
             data.getPoolState(poolIndex) != QuantstampStakingData.PoolState.ViolatedFunded &&
             data.getPoolState(poolIndex) != QuantstampStakingData.PoolState.ViolatedUnderfunded,
@@ -253,12 +254,12 @@ contract QuantstampStaking is Ownable {
             (state == QuantstampStakingData.PoolState.ViolatedFunded) ||
             (state == QuantstampStakingData.PoolState.NotViolatedFunded && isViolated(poolIndex))
         );
-
+        
         // claim all stakes
         uint total = data.getPoolDepositQspWei(poolIndex).add(data.getPoolTotalStakeQspWei(poolIndex));
         data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
         
-        data.setPoolDepositQspWei(poolIndex, data.getPoolDepositQspWei(poolIndex).sub(total));
+        data.setPoolDepositQspWei(poolIndex, 0);
         data.setPoolTotalStakeQspWei(poolIndex, 0);
         data.setPoolSizeQspWei(poolIndex, 0);
 
@@ -289,13 +290,13 @@ contract QuantstampStaking is Ownable {
         // If policy is not violated then transfer the stake
         require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
             "Token transfer failed when staking funds.");
-            
+        
         uint stakeIndex = data.createStake(poolIndex, msg.sender,
             adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
 
         data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
             calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
-
+            
         // Check if there are enough stakes in the pool
         if (data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex)) {
             // Minimum staking value was reached
@@ -321,7 +322,8 @@ contract QuantstampStaking is Ownable {
     {
         uint stakeAmount;
         bool expertStake;
-        (stakeAmount, , , , expertStake) = data.getStake(
+        uint contributionIndex;
+        (stakeAmount, , , contributionIndex, expertStake) = data.getStake(
             poolIndex, staker, stakeIndex);
 
         if (stakeAmount == 0) {
@@ -329,9 +331,9 @@ contract QuantstampStaking is Ownable {
         }
         // check if the staker is an expert
         if (expertStake) {
-            stakeAmount = stakeAmount.mul(data.getBonusExpertAtPower(poolIndex, stakeIndex).
-                add(data.getPowersOf100(poolIndex, stakeIndex))).
-                div(data.getPowersOf100(poolIndex, stakeIndex));
+            stakeAmount = stakeAmount.mul(data.getBonusExpertAtPower(poolIndex, contributionIndex).
+                add(data.getPowersOf100(poolIndex, contributionIndex))).
+                div(data.getPowersOf100(poolIndex, contributionIndex));
 
             /* Check if it is the first stake of the first expert */
             if (data.getPoolFirstExpertStaker(poolIndex) == staker && stakeIndex == 0) {
