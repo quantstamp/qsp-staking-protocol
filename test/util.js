@@ -40,6 +40,10 @@ async function balanceOf (token, user) {
   return (await token.balanceOf(user)).toNumber();
 }
 
+async function getState (qspb, poolId) {
+  return (await qspb.getPoolState(poolId)).toNumber();
+}
+
 async function balanceOfRaw (token, user) {
   return await token.balanceOf(user);
 }
@@ -49,6 +53,7 @@ module.exports = {
   toQsp : toEther,
   daysToSeconds: daysToSeconds,
   assertTxFail : assertTxFail,
+  getState: getState,
   mineOneBlock: mineOneBlock,
   mineNBlocks: mineNBlocks,
   balanceOf: balanceOf,
