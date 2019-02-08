@@ -15,7 +15,7 @@ const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
-contract.only('QuantstampStaking: complex functional test', function(accounts) {
+contract('QuantstampStaking: complex functional test', function(accounts) {
   const PoolState = Object.freeze({
     None : 0,
     Initialized : 1,

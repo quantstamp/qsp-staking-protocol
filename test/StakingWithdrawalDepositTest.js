@@ -1,4 +1,5 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
 const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
@@ -28,6 +29,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
   });
 
   let qspb;
+  let quantstampStakingData;
   let quantstampToken;
   let candidateContract;
   let contractPolicy;
@@ -52,7 +54,11 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
 
-    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
+    quantstampStakingData = await QuantstampStakingData.new();
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
+      quantstampStakingData.address, {from: owner});
+    await quantstampStakingData.addWhitelistAddress(qspb.address);
+
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -61,7 +67,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     await quantstampToken.transfer(staker, minStakeQspWei, {from : owner});
     await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
 
-    assert.equal(await qspb.balanceQspWei.call(), 0);
+    assert.equal(await quantstampStakingData.balanceQspWei.call(), 0);
 
     // create pool
     await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayableQspWei, minStakeQspWei,
@@ -76,12 +82,12 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
 
     it("should succeed for the owner", async function() {
       assert.equal(await quantstampToken.balanceOf(poolOwner), Util.toQsp(0));
-      assert.equal(await qspb.balanceQspWei(), initialDepositQspWei);
-      assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
+      assert.equal(await quantstampStakingData.balanceQspWei(), initialDepositQspWei);
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), initialDepositQspWei);
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), Util.toQsp(0));
       assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
-      assert.equal(await qspb.balanceQspWei(), Util.toQsp(0));
+      assert.equal(await quantstampStakingData.balanceQspWei(), Util.toQsp(0));
     });
 
     it("should fail if balance is already 0", async function() {
@@ -93,9 +99,9 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.Initialized);
       await candidateContract.withdraw(await candidateContract.balance.call());
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), Util.toQsp(0));
       assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
-      assert.equal(await qspb.balanceQspWei(), Util.toQsp(0));
+      assert.equal(await quantstampStakingData.balanceQspWei(), Util.toQsp(0));
     });
 
     it("should succeed if the policy is violated but the pool is in the NotViolatedUnderfunded state", async function() {
@@ -103,9 +109,9 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.NotViolatedUnderfunded);
       await candidateContract.withdraw(await candidateContract.balance.call());
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      assert.equal(await qspb.getPoolDepositQspWei(0), Util.toQsp(0));
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), Util.toQsp(0));
       assert.equal(await quantstampToken.balanceOf(poolOwner), initialDepositQspWei);
-      assert.equal(await qspb.balanceQspWei(), minStakeQspWei);
+      assert.equal(await quantstampStakingData.balanceQspWei(), minStakeQspWei);
     });
 
     it("should not allow the stakeholder to withdraw their deposit when the policy expired, before all stakers withdraw their payouts and stakes", async function() {
@@ -127,8 +133,8 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       await qspb.withdrawStake(0, {from: staker});
       assert.equal(balanceOfStaker.plus(minStakeQspWei).toNumber(), (await quantstampToken.balanceOf(staker)).toNumber());
       // afterwards the stakholder can withdraw his funds
-      assert.equal(await qspb.getPoolTotalStakeQspWei(0), 0);
-      const poolDeposit = await qspb.getPoolDepositQspWei(0);
+      assert.equal(await quantstampStakingData.getPoolTotalStakeQspWei(0), 0);
+      const poolDeposit = await quantstampStakingData.getPoolDepositQspWei(0);
       await qspb.withdrawDeposit(0, {from: poolOwner});
       assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
       // it should fail if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
@@ -145,7 +151,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       // wait until the policy expires twice
       await Util.mineNBlocks(minStakeTimeInBlocks.times(2));
       // the stakholder can withdraw his funds
-      const poolDeposit = await qspb.getPoolDepositQspWei(0);
+      const poolDeposit = await quantstampStakingData.getPoolDepositQspWei(0);
       const balanceOfPoolOwner = await quantstampToken.balanceOf(poolOwner);
       await qspb.withdrawDeposit(0, {from: poolOwner});
       assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
@@ -163,21 +169,21 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     it("should succeed for the owner", async function() {
       await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
-      assert.equal(await qspb.balanceQspWei(), initialDepositQspWei);
-      assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
+      assert.equal(await quantstampStakingData.balanceQspWei(), initialDepositQspWei);
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), initialDepositQspWei);
       await quantstampToken.increaseAllowance(qspb.address, addedDepositAmount, {from : poolOwner});
 
       await qspb.depositFunds(0, addedDepositAmount, {from: poolOwner});
 
-      assert.equal(await qspb.getPoolDepositQspWei(0), totalExpectedDepositAmount);
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), totalExpectedDepositAmount);
       assert.equal(await quantstampToken.balanceOf(poolOwner), Util.toQsp(0));
-      assert.equal(await qspb.balanceQspWei(), totalExpectedDepositAmount);
+      assert.equal(await quantstampStakingData.balanceQspWei(), totalExpectedDepositAmount);
     });
 
     it("should fail if there is no token approval", async function() {
       await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
-      assert.equal(await qspb.getPoolDepositQspWei(0), initialDepositQspWei);
+      assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), initialDepositQspWei);
 
       Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });

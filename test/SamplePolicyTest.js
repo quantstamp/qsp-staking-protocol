@@ -3,6 +3,7 @@ const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
 const CandidateContract = artifacts.require('test/CandidateContract');
 const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
@@ -43,6 +44,7 @@ contract('CandidateContract', function(accounts) {
   let upgradeablePolicy;
   let qaPolicy;
   let qspb;
+  let quantstampStakingData;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
@@ -57,6 +59,7 @@ contract('CandidateContract', function(accounts) {
     alwaysViolatedPolicy = await AlwaysViolatedPolicy.deployed();
     neverViolatedPolicy = await NeverViolatedPolicy.deployed();
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
+    quantstampStakingData = await QuantstampStakingData.deployed();
     qspb = await QuantstampStaking.deployed();
     qaPolicy = await QuantstampAssurancePolicy.deployed();
   });
@@ -111,14 +114,14 @@ contract('CandidateContract', function(accounts) {
       // allow the qspb contract use QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(100000), {from : poolOwner});
       // balance should be 0 in the beginning
-      assert.equal((await qspb.balanceQspWei.call()).toNumber(), 0);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), 0);
       // create pool
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
 
       // update the pool id in the policy contract
-      assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), 0);
+      assert.equal((await quantstampStakingData.getPoolIndex(poolName)).toNumber(), 0);
       await qaPolicy.setAssurancePoolId(0);
 
       // stake

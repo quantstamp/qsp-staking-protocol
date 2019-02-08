@@ -369,8 +369,8 @@ contract QuantstampStaking is Ownable {
 
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < stakeCount; i++) {
-            uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
+            uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
             uint startBlockNumber = Math.max(blockPlaced,
                 data.getPoolTimeOfStateInBlocks(poolIndex));

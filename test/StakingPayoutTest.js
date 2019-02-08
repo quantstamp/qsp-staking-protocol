@@ -1,4 +1,5 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const QuantstampToken = artifacts.require('QuantstampToken');
@@ -47,6 +48,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const defaultMaxTotalStake = new BigNumber(Util.toQsp(10000));
 
   let qspb;
+  let quantstampStakingData;
   let quantstampToken;
   let candidateContract;
   let contractPolicy;
@@ -67,9 +69,14 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
-    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
+
+    quantstampStakingData = await QuantstampStakingData.new();
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
+      quantstampStakingData.address, {from: owner});
+    await quantstampStakingData.addWhitelistAddress(qspb.address);
+
     // quick check that balance is zero
-    assert.equal(await qspb.balanceQspWei.call(), 0);
+    assert.equal(await qspb.getBalanceQspWei(), 0);
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -96,7 +103,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
 
-    currentPoolNumber = await qspb.getPoolsLength();
+    currentPoolNumber = await quantstampStakingData.getPoolsLength();
     currentPoolIndex = currentPoolNumber - 1;
   });
 
