@@ -168,7 +168,8 @@ contract QuantstampStaking is Ownable {
             uint stakeCount = data.getStakeCount(poolIndex, msg.sender);
             uint totalSizeChangeQspWei = 0;
             for (uint i = 0; i < stakeCount; i++) {
-                totalSizeChangeQspWei += calculateStakeAmountWithBonuses(poolIndex, msg.sender, i);
+                totalSizeChangeQspWei = totalSizeChangeQspWei.add(
+                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
             }
             data.removeStake(poolIndex, msg.sender);
             data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).sub(totalSizeChangeQspWei));
