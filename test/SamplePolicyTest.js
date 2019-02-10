@@ -3,6 +3,7 @@ const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const WhitelistExpertRegistry = artifacts.require('WhitelistExpertRegistry');
 const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
 const CandidateContract = artifacts.require('test/CandidateContract');
@@ -48,21 +49,22 @@ contract('CandidateContract', function(accounts) {
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
-    candidateContract = await CandidateContract.deployed();
-    zeroBalancePolicy = await ZeroBalancePolicy.deployed();
-    trivialBackdoorPolicy = await TrivialBackdoorPolicy.deployed();
-    tcr = await Registry.deployed();
+    candidateContract = await CandidateContract.new(100);
+    zeroBalancePolicy = await ZeroBalancePolicy.new(candidateContract.address);
+    trivialBackdoorPolicy = await TrivialBackdoorPolicy.new(candidateContract.address);
+    tcr = await Registry.new();
     tcrContainsEntryPolicy = await TCRContainsEntryPolicy.new(listing);
-    democraticPolicy = await DemocraticViolationPolicy.deployed();
+    democraticPolicy = await DemocraticViolationPolicy.new(2, candidateContract.address);
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
-    stateNoteChangedPolicy = await StateNotChangedPolicy.deployed();
-    alwaysViolatedPolicy = await AlwaysViolatedPolicy.deployed();
-    neverViolatedPolicy = await NeverViolatedPolicy.deployed();
+    stateNoteChangedPolicy = await StateNotChangedPolicy.new(0);
+    alwaysViolatedPolicy = await AlwaysViolatedPolicy.new(candidateContract.address);
+    neverViolatedPolicy = await NeverViolatedPolicy.new(candidateContract.address);
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
-    quantstampStakingData = await QuantstampStakingData.deployed();
-    qspb = await QuantstampStaking.deployed();
+    quantstampStakingData = await QuantstampStakingData.new();
+    const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
+    qspb = await QuantstampStaking.new(quantstampToken.address, whitelistExpertRegistry.address, quantstampStakingData.address);
     await quantstampStakingData.addWhitelistAddress(qspb.address);
-    qaPolicy = await QuantstampAssurancePolicy.deployed();
+    qaPolicy = await QuantstampAssurancePolicy.new(qspb.address, quantstampToken.address);
   });
 
   describe('QuantstampAssurancePolicy', () => {
@@ -192,9 +194,9 @@ contract('CandidateContract', function(accounts) {
     });
 
     it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
-      const voting = await Voting.deployed();
+      const voting = await Voting.new();
       await voting.init(quantstampToken.address);
-      const quantstampParameterizer = await QuantstampParameterizer.deployed();
+      const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       await tcr.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       const applicant = listing;
