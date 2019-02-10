@@ -256,7 +256,7 @@ contract QuantstampStaking is Ownable {
             (state == QuantstampStakingData.PoolState.ViolatedFunded) ||
             (state == QuantstampStakingData.PoolState.NotViolatedFunded && isViolated(poolIndex))
         );
-        
+
         // claim all stakes
         uint total = data.getPoolDepositQspWei(poolIndex).add(data.getPoolTotalStakeQspWei(poolIndex));
         data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
