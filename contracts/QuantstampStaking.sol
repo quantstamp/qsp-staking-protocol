@@ -84,6 +84,7 @@ contract QuantstampStaking is Ownable {
     /** Initializes the Quality Assurance Protocol
     * @param tokenAddress - the address of the QSP Token contract
     * @param tcrAddress - the address of the security expert token curated registry
+    * @param dataContractAddress - the address of the data contract for the current logic contract
     */
     constructor(address tokenAddress, address tcrAddress, address dataContractAddress) public {
         require(tokenAddress != address(0), "Token address is 0.");

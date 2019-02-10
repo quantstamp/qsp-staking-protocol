@@ -116,9 +116,14 @@ contract QuantstampStakingData is Ownable {
         return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
     }
 
-    /** Transfers an amount of QSP from the staker to the pool
-    * @param poolIndex - the index of the pool where the funds are transferred to
-    * @param amountQspWei - the amount of QSP Wei that is transferred
+    /** Creates a new stake in the data contract
+    * @param poolIndex - the index of the pool where to stake
+    * @param staker - the address of the staker
+    * @param amountQspWei - the stake amount
+    * @param blockPlaced - the block at which the stake is placed
+    * @param lastPayoutBlock - initial value of lastPayoutBlock
+    * @param isExpert - whether this stake is an expert's stake
+    * @return - index of the stake in the user's stakes array
     */
     function createStake(
         uint poolIndex,
@@ -154,7 +159,7 @@ contract QuantstampStakingData is Ownable {
         return stakes[poolIndex][staker].length - 1;
     }
     
-    /** Transfers an amount of QSP from the staker to the pool
+    /** Removes the staker's stake
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param staker - the staker
     */
