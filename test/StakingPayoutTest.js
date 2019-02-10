@@ -237,15 +237,23 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
 
     it("should only payout those stakes of the same staker which have been placed for a sufficient amount of time", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
-      Util.mineOneBlock();
+      await Util.mineOneBlock();
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
-      Util.mineOneBlock();
+      await Util.mineOneBlock();
       // the 2nd stake made by staker3
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
       await Util.mineNBlocks(payPeriodInBlocks-2);
       // at this point staker3 can get a payout only for his first stake
       var balanceOfStaker3 = new BigNumber(await Util.balanceOf(quantstampToken, staker3));
       var payoutStakerOneStake = await qspb.computePayout(currentPoolIndex, staker3);
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
+      // after waiting a full payPeriod, staker3 must receive a higher payout for both stakes
+      await Util.mineNBlocks(payPeriodInBlocks);
+      var payoutStakerTwoStakes = await qspb.computePayout(currentPoolIndex, staker3);
+      assert(payoutStakerTwoStakes > payoutStakerOneStake, "Payout is not higher for 2 stakes than 1");
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker3});
+      assert.equal(balanceOfStaker3.plus(payoutStakerOneStake).plus(payoutStakerTwoStakes).toNumber(),
+        await Util.balanceOf(quantstampToken, staker3), "Staker balance not right");
     });
 
     it("should transition into the PolicyExpired state if the policy has expired", async function() {
