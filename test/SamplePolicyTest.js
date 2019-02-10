@@ -61,6 +61,7 @@ contract('CandidateContract', function(accounts) {
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
     quantstampStakingData = await QuantstampStakingData.deployed();
     qspb = await QuantstampStaking.deployed();
+    await quantstampStakingData.addWhitelistAddress(qspb.address);
     qaPolicy = await QuantstampAssurancePolicy.deployed();
   });
 
@@ -119,6 +120,7 @@ contract('CandidateContract', function(accounts) {
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+
 
       // update the pool id in the policy contract
       assert.equal((await quantstampStakingData.getPoolIndex(poolName)).toNumber(), 0);

@@ -115,7 +115,7 @@ contract QuantstampStaking is Ownable {
 
         if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded
                 && data.getDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
-            data.setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
         }
 
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
@@ -147,7 +147,7 @@ contract QuantstampStaking is Ownable {
         data.setPoolDepositQspWei(poolIndex, 0);
         data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
         require(token.transfer(poolOwner, withdrawalAmountQspWei), "Token withdrawal transfer did not succeed");
-        data.setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 
@@ -447,7 +447,7 @@ contract QuantstampStaking is Ownable {
         string urlOfAuditReport,
         string poolName,
         uint maxTotalStakeQspWei
-    ) public returns (uint) {
+    ) public {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
@@ -585,7 +585,7 @@ contract QuantstampStaking is Ownable {
         if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
             block.number >= data.getPoolMinStakeTimeInBlocks(poolIndex).add(
                 data.getPoolTimeOfStateInBlocks(poolIndex))) {
-            data.setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
             state = QuantstampStakingData.PoolState.PolicyExpired;
         }
         return state;

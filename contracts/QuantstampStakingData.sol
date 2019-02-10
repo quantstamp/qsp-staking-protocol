@@ -104,6 +104,7 @@ contract QuantstampStakingData is Ownable {
     */
     constructor() public {
         currentPoolNumber = 0;
+        balanceQspWei = 0;
     }
 
     /** Checks if the given address is a staker of the given pool index
