@@ -60,7 +60,7 @@ contract('CandidateContract', function(accounts) {
     alwaysViolatedPolicy = await AlwaysViolatedPolicy.new(candidateContract.address);
     neverViolatedPolicy = await NeverViolatedPolicy.new(candidateContract.address);
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
-    quantstampStakingData = await QuantstampStakingData.new();
+    quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
     qspb = await QuantstampStaking.new(quantstampToken.address, whitelistExpertRegistry.address, quantstampStakingData.address);
     await quantstampStakingData.addWhitelistAddress(qspb.address);

@@ -269,7 +269,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await quantstampToken.approve(quantstampRegistry.address, minDeposit, {from : staker1});
     await TCRUtil.addToWhitelist(staker1, TCRUtil.minDep, staker1, quantstampRegistry);
     // instantiate Assurance Protocol Data contract
-    quantstampStakingData = await QuantstampStakingData.new();
+    quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     // instantiate Assurance Protocol contract
     qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
       quantstampStakingData.address, {from: owner});

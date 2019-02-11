@@ -4,6 +4,7 @@ pragma solidity 0.4.24;
 /// @author Quantstamp
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 
@@ -100,11 +101,14 @@ contract QuantstampStakingData is Ownable {
     // Current number of pools
     uint internal currentPoolNumber;
 
+    ERC20 public token;
+
     /** Initializes the Assurance Data Contract
     */
-    constructor() public {
+    constructor(address tokenAddress) public {
         currentPoolNumber = 0;
         balanceQspWei = 0;
+        token = ERC20(tokenAddress);
     }
 
     /** Checks if the given address is a staker of the given pool index
@@ -474,6 +478,10 @@ contract QuantstampStakingData is Ownable {
 
     function getBonusExpertAtPower(uint poolIndex, uint powerIndex) public view returns (uint) {
         return bonusExpertAtPower[poolIndex][powerIndex];
+    }
+
+    function approveWhitelisted(uint256 amountQspWei) public onlyWhitelisted {
+        token.approve(msg.sender, amountQspWei);
     }
 
     function addWhitelistAddress(address _address) public onlyOwner {

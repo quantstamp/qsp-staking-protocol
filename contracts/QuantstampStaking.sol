@@ -109,8 +109,7 @@ contract QuantstampStaking is Ownable {
             state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
             state == QuantstampStakingData.PoolState.NotViolatedFunded ||
             state == QuantstampStakingData.PoolState.PolicyExpired);
-        require(token.transferFrom(poolOwner, address(this), depositQspWei),
-            "Token deposit transfer did not succeed");
+        safeTransferToDataContract(poolOwner, depositQspWei);
         data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
         data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
 
@@ -147,7 +146,7 @@ contract QuantstampStaking is Ownable {
         require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
         data.setPoolDepositQspWei(poolIndex, 0);
         data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
-        require(token.transfer(poolOwner, withdrawalAmountQspWei), "Token withdrawal transfer did not succeed");
+        safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
         setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
@@ -176,7 +175,7 @@ contract QuantstampStaking is Ownable {
             data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).sub(totalSizeChangeQspWei));
 
             // actual transfer
-            require(token.transfer(msg.sender, totalQspWeiTransfer));
+            safeTransferFromDataContract(msg.sender, totalQspWeiTransfer);
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
             // update the pool state if necessary
             if (state != QuantstampStakingData.PoolState.PolicyExpired &&
@@ -227,8 +226,7 @@ contract QuantstampStaking is Ownable {
                 }
             }
 
-            require(token.transfer(msg.sender, payout),
-                "Could not transfer the payout to the staker.");
+            safeTransferFromDataContract(msg.sender, payout);
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
@@ -266,8 +264,7 @@ contract QuantstampStaking is Ownable {
         data.setPoolSizeQspWei(poolIndex, 0);
 
         setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        require(token.transfer(data.getPoolOwner(poolIndex), total),
-            "Token transfer failed during withdrawClaim");
+        safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
         emit ClaimWithdrawn(poolIndex, total);
     }
 
@@ -290,9 +287,8 @@ contract QuantstampStaking is Ownable {
         }
         uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
         // If policy is not violated then transfer the stake
-        require(token.transferFrom(msg.sender, address(this), adjustedAmountQspWei),
-            "Token transfer failed when staking funds.");
-        
+        safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
+
         uint stakeIndex = data.createStake(poolIndex, msg.sender,
             adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
 
@@ -452,7 +448,7 @@ contract QuantstampStaking is Ownable {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
         require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
         // transfer tokens to this contract
-        require(token.transferFrom(msg.sender, address(this), depositQspWei));
+        safeTransferToDataContract(msg.sender, depositQspWei);
         require(maxPayoutQspWei > 0, "Maximum payout cannot be zero.");
         require(minStakeQspWei > 0, "Minimum stake cannot be zero.");
         require(payPeriodInBlocks > 0, "Pay period cannot be zero.");
@@ -608,5 +604,26 @@ contract QuantstampStaking is Ownable {
             }
         }
         return adjustedAmountQspWei;
+    }
+    
+    /**
+    * @dev Used to transfer funds stored in the data contract to a given address.
+    * @param _to The address to transfer funds.
+    * @param amountQspWei The amount of wei-QSP to be transferred.
+    */
+    function safeTransferFromDataContract(address _to, uint256 amountQspWei) internal {
+        data.approveWhitelisted(amountQspWei);
+        require(token.transferFrom(address(data), _to, amountQspWei),
+            "Token transfer from data contract did not succeed");
+    }
+
+    /**
+    * @dev Used to transfer funds from a given address to the data contract.
+    * @param _from The address to transfer funds from.
+    * @param amountQspWei The amount of wei-QSP to be transferred.
+    */
+    function safeTransferToDataContract(address _from, uint256 amountQspWei) internal {
+        require(token.transferFrom(_from, address(data), amountQspWei),
+            "Token transfer to data contract did not succeed");
     }
 }

@@ -66,15 +66,16 @@ contract('QuantstampStaking', function(accounts) {
   describe("constructor", async function() {
     it("should not be able to construct the QuantstampAssurance contract if the token address is 0", async function() {
       quantstampRegistry = await QuantstampStakingRegistry.new();
-      quantstampStakingData = await QuantstampStakingData.new();
+      quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       wrapper = await RegistryWrapper.new(quantstampRegistry.address);
       Util.assertTxFail(QuantstampStaking.new(Util.ZERO_ADDRESS, wrapper.address,
         quantstampStakingData.address, {from: owner}));
     });
 
     it("should fail if a TCR with address zero is passed into the constructor", async function () {
-      quantstampStakingData = await QuantstampStakingData.new();
       quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       Util.assertTxFail(QuantstampStaking.new(quantstampToken.address, Util.ZERO_ADDRESS,
         quantstampStakingData.address, {from: owner}));
     });
@@ -272,7 +273,7 @@ contract('QuantstampStaking', function(accounts) {
       candidateContract = await CandidateContract.new(policyBalance);
       quantstampRegistry = await QuantstampStakingRegistry.deployed();
       wrapper = await RegistryWrapper.new(quantstampRegistry.address);
-      quantstampStakingData = await QuantstampStakingData.new();
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address);
       await quantstampStakingData.addWhitelistAddress(qspb.address);
@@ -504,7 +505,7 @@ contract('QuantstampStaking', function(accounts) {
       const quantstampRegistry = await QuantstampStakingRegistry.new();
       await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       const wrapper = await RegistryWrapper.new(quantstampRegistry.address);
-      quantstampStakingData = await QuantstampStakingData.new();
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
       await quantstampStakingData.addWhitelistAddress(qspb.address);
@@ -639,7 +640,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
       wrapper = await RegistryWrapper.new(quantstampRegistry.address);
-      quantstampStakingData = await QuantstampStakingData.new();
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
       await quantstampStakingData.addWhitelistAddress(qspb.address);
@@ -737,7 +738,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
       quantstampRegistry = await QuantstampStakingRegistry.new();
       wrapper = await RegistryWrapper.new(quantstampRegistry.address);
-      quantstampStakingData = await QuantstampStakingData.new();
+      quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
       await quantstampStakingData.addWhitelistAddress(qspb.address);

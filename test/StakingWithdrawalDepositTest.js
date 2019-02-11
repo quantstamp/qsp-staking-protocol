@@ -54,7 +54,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
 
-    quantstampStakingData = await QuantstampStakingData.new();
+    quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
       quantstampStakingData.address, {from: owner});
     await quantstampStakingData.addWhitelistAddress(qspb.address);
