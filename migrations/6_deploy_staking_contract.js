@@ -3,6 +3,7 @@ const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('test/QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('WhitelistExpertRegistry');
 const utils = require('./utils');
+const truffle = require('../truffle.js');
 
 module.exports = function(deployer, network) {
   if (!utils.canDeploy(network, 'QuantstampStaking')) {
@@ -17,5 +18,18 @@ module.exports = function(deployer, network) {
       network,
       'QuantstampStaking',
       QuantstampStaking.address
-    ));
+    ))
+    .then(async() => await utils.callMethod({
+      network, // whitelisting logic contract in data contract
+      contractName: 'QuantstampStakingData',
+      methodName: 'addWhitelistAddress',
+      methodArgsFn: () => ([
+        QuantstampStaking.address
+      ]),
+      sendArgs: {
+        from: truffle.networks[network].account,
+        gasPrice: truffle.networks[network].gasPrice,
+        gas: truffle.networks[network].gas
+      }
+    }));
 };
