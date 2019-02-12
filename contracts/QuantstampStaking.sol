@@ -231,7 +231,7 @@ contract QuantstampStaking is Ownable {
     function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
         // State check
-        bool expired = \
+        bool expired = 
             block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
