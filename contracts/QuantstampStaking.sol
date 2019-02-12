@@ -231,7 +231,8 @@ contract QuantstampStaking is Ownable {
     function withdrawStake(uint poolIndex) external {
         PoolState state = getPoolState(poolIndex);
         // State check
-        bool expired = block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
+        bool expired = \
+            block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
             state == PoolState.NotViolatedFunded && expired ||
@@ -262,8 +263,16 @@ contract QuantstampStaking is Ownable {
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
         }
-
+        
         // State transition
+        updateStateWithdrawStake(poolIndex);
+    }
+
+    /** Updates state after calling funtion withdrawStake 
+    * @param poolIndex - the index of the pool from which the stake is withdrawn
+    */
+    function updateStateWithdrawStake(uint poolIndex) internal {
+        PoolState state = getPoolState(poolIndex);
         uint timeoutBlock = getPoolTimeoutInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
         if (state == PoolState.Initialized) {
             if (isViolated(poolIndex) || block.number >= timeoutBlock) {
