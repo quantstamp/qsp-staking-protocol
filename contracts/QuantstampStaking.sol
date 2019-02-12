@@ -229,12 +229,12 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
     function withdrawStake(uint poolIndex) external {
-        //PoolState state = updatePoolState(poolIndex);
         PoolState state = getPoolState(poolIndex);
         // State check
+        bool expired = block.number >= getPoolMinStakeTimeInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
-            state == PoolState.NotViolatedFunded ||
+            state == PoolState.NotViolatedFunded && expired ||
             state == PoolState.Cancelled ||
             state == PoolState.PolicyExpired,
             "Pool is not in the right state when withdrawing stake.");
@@ -269,6 +269,10 @@ contract QuantstampStaking is Ownable {
             if (isViolated(poolIndex) || block.number >= timeoutBlock) {
                 setState(poolIndex, PoolState.Cancelled);
             }
+        } else if (state == PoolState.NotViolatedFunded) {
+            // todo(mderka): this may not capture all the states changes and require checking
+            // the function call has no effect outside this state
+            updatePoolState(poolIndex);
         } else if (state != PoolState.PolicyExpired) {
             if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
                 // todo(mderka): this may not capture all the states changes and require checking
