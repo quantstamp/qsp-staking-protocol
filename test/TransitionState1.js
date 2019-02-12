@@ -101,7 +101,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function depositFunds.
    */
-  describe("depositFunds in state Initialized", async function() {
+  describe("depositFunds", async function() {
 
     /* 
      * Waits for the timeout and makes a deposit while policy is not violated. 
@@ -209,7 +209,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function withdrawDepost
    */
-  describe("withdrawDeposit in state Initialized", async function() {
+  describe("withdrawDeposit", async function() {
 
     /* 
      * Makes a deposit and then withdraws it. Then verifies that the pool was cancelled.
@@ -225,11 +225,13 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Makes no deposit, violates the policy, and tries to withdraw. Then verifies that the 
      * pool was cancelled.
      */
-    it("switch to Cancelled even if the policy is violated", async function() {
+    it("switch to Cancelled even if the policy is violated", 
+      async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
         assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
-    });
+      }
+    );
 
     /* 
      * Makes no deposit, waits for a timeout, and tries to withdraw. Then verifies that the 
@@ -247,7 +249,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function withdrawStake
    */
-  describe("withdrawStake in state Initialized", async function() {
+  describe("withdrawStake", async function() {
 
     /* 
      * Violates the policy, stakes a few tokens and attempts to withdraw stake. Then verifies
@@ -335,7 +337,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function withdrawInterest
    */
-  describe("withdrawInterest in state Initialized", async function() {
+  describe("withdrawInterest", async function() {
 
     /*
      * Tests that the call to the function is not allowed
@@ -351,7 +353,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function withdrawClaim
    */
-  describe("withdrawClaim in state Initialized", async function() {
+  describe("withdrawClaim", async function() {
 
     /*
      * Tests that the call to the function is not allowed
@@ -367,7 +369,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function checkPolicy
    */
-  describe("checkPolicy in state Initialized", async function() {
+  describe("checkPolicy", async function() {
 
     /*
      * Violates the policy and checks that the pool gets cancelled.
@@ -394,7 +396,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /*
    * Tests for function stakeFunds
    */
-  describe("stakeFunds in state Initialized", async function() {
+  describe("stakeFunds", async function() {
 
     /*
      * Waits for the timeout and then attempts to stake a few tokens.
