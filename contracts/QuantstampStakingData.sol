@@ -11,7 +11,6 @@ import "openzeppelin-solidity/contracts/math/Math.sol";
 
 contract QuantstampStakingData is Ownable {
     using SafeMath for uint256;
-    using Math for uint256;
 
     uint constant internal MAX_UINT = ~uint(0);
     
@@ -111,15 +110,6 @@ contract QuantstampStakingData is Ownable {
         token = ERC20(tokenAddress);
     }
 
-    /** Checks if the given address is a staker of the given pool index
-    * @param poolIndex - the index of the pool where to check for stakers
-    * @param staker - the address of the staker to check for
-    * @return - true if the staker has a stake in the pool, false otherwise
-    */
-    function isStaker(uint poolIndex, address staker) external view returns(bool) {
-        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
-    }
-
     /** Creates a new stake in the data contract
     * @param poolIndex - the index of the pool where to stake
     * @param staker - the address of the staker
@@ -136,7 +126,7 @@ contract QuantstampStakingData is Ownable {
         uint blockPlaced,
         uint lastPayoutBlock,
         bool isExpert
-    ) public onlyWhitelisted returns (uint) {
+    ) external onlyWhitelisted returns (uint) {
         pools[poolIndex].stakeCount += 1;
         uint currentStakeIndex = pools[poolIndex].stakeCount;
         Stake memory stake = Stake(staker, amountQspWei, blockPlaced, lastPayoutBlock,
@@ -170,7 +160,7 @@ contract QuantstampStakingData is Ownable {
     function removeStake(
         uint poolIndex,
         address staker
-    ) public onlyWhitelisted {
+    ) external onlyWhitelisted {
         uint totalQspWeiTransfer = totalStakes[poolIndex][staker];
       
         if (totalQspWeiTransfer > 0) { // transfer the stake back
@@ -198,7 +188,7 @@ contract QuantstampStakingData is Ownable {
         uint[] intParams,
         string urlOfAuditReport,
         string poolName
-    ) public onlyWhitelisted returns (uint) {
+    ) external onlyWhitelisted returns (uint) {
         Pool memory p = Pool(
             addresses[0],
             addresses[1],
@@ -231,17 +221,85 @@ contract QuantstampStakingData is Ownable {
         balanceQspWei = balanceQspWei.add(intParams[2]);
         return result;
     }
+    
+    function setPoolDepositQspWei(uint index, uint depositQspWei) external onlyWhitelisted {
+        pools[index].depositQspWei = depositQspWei;
+    }
+
+    /** Sets the state of the pool to a given state, while also marking the block at
+    * which this occured and emitting an event corresponding to the new state.
+    * @param poolIndex - the index of the pool for which the state is changed
+    * @param newState - the new state to which the pool will change
+    */
+    function setState(uint poolIndex, PoolState newState) external onlyWhitelisted {
+        pools[poolIndex].state = newState; // set the state
+    }
+
+    function setPoolTimeOfStateInBlocks(uint index, uint timeOfStateInBlocks) external onlyWhitelisted {
+        pools[index].timeOfStateInBlocks = timeOfStateInBlocks;
+    }
+
+    function setPoolSizeQspWei(uint index, uint amountQspWei) external onlyWhitelisted {
+        pools[index].poolSizeQspWei = amountQspWei;
+    }
+
+    function setPoolTotalStakeQspWei(uint index, uint amountQspWei) external onlyWhitelisted {
+        pools[index].totalStakeQspWei = amountQspWei;
+    }
+
+    function setTotalStakes(uint poolIndex, address staker, uint amountQspWei) external onlyWhitelisted {
+        totalStakes[poolIndex][staker] = amountQspWei; 
+    }
+
+    function setDepositQspWei(uint poolIndex, uint depositQspWei) external onlyWhitelisted {
+        pools[poolIndex].depositQspWei = depositQspWei;
+    }
+
+    function setBalanceQspWei(uint newBalanceQspWei) external onlyWhitelisted {
+        balanceQspWei = newBalanceQspWei;
+    }
+
+    function approveWhitelisted(uint256 amountQspWei) external onlyWhitelisted {
+        token.approve(msg.sender, amountQspWei);
+    }
+
+    function addWhitelistAddress(address _address) external onlyOwner {
+        whitelist[_address] = true;
+    }
+
+    function removeWhitelistAddress(address _address) external onlyOwner {
+        whitelist[_address] = false;
+    }
+
+    function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,
+        uint blockNumber) external onlyWhitelisted {
+        stakes[poolIndex][staker][stakeIndex].blockPlaced = blockNumber;
+    }
+    
+    function setStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
+        uint blockNumber) external onlyWhitelisted {
+        stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
+    }
 
     /** Finds the pool index if a pool with the given name exists
     * @param poolName - an alphanumeric string indicating a pool name
     * @return - the index of the pool if a pool with that name exists, otherwise the max value of uint
     */
-    function getPoolIndex(string poolName) public view returns(uint) {
+    function getPoolIndex(string poolName) external view returns(uint) {
         if (poolNameToPoolIndex[poolName] > 0) {
             return poolNameToPoolIndex[poolName].sub(1);
         } else {
             return MAX_UINT;
         }
+    }
+
+    /** Checks if the given address is a staker of the given pool index
+    * @param poolIndex - the index of the pool where to check for stakers
+    * @param staker - the address of the staker to check for
+    * @return - true if the staker has a stake in the pool, false otherwise
+    */
+    function isStaker(uint poolIndex, address staker) external view returns(bool) {
+        return (stakes[poolIndex][staker].length > 0) && (totalStakes[poolIndex][staker] > 0);
     }
 
     function getPoolsLength() public view returns (uint) {
@@ -271,10 +329,6 @@ contract QuantstampStakingData is Ownable {
     function getPoolDepositQspWei(uint index) public view returns(uint) {
         return pools[index].depositQspWei;
     }
-    
-    function setPoolDepositQspWei(uint index, uint depositQspWei) public onlyWhitelisted {
-        pools[index].depositQspWei = depositQspWei;
-    }
 
     function getPoolBonusExpertFactor(uint index) public view returns(uint) {
         return pools[index].bonusExpertFactor;
@@ -303,17 +357,9 @@ contract QuantstampStakingData is Ownable {
     function getPoolTimeOfStateInBlocks(uint index) public view returns(uint) {
         return pools[index].timeOfStateInBlocks;
     }
-    
-    function setPoolTimeOfStateInBlocks(uint index, uint timeOfStateInBlocks) public onlyWhitelisted {
-        pools[index].timeOfStateInBlocks = timeOfStateInBlocks;
-    }
 
     function getPoolSizeQspWei(uint index) public view returns(uint) {
         return pools[index].poolSizeQspWei;
-    }
-    
-    function setPoolSizeQspWei(uint index, uint amountQspWei) public onlyWhitelisted {
-        pools[index].poolSizeQspWei = amountQspWei;
     }
 
     function getPoolUrlOfAuditReport(uint index) public view returns(string) {
@@ -326,10 +372,6 @@ contract QuantstampStakingData is Ownable {
 
     function getPoolTotalStakeQspWei(uint index) public view returns(uint) {
         return pools[index].totalStakeQspWei;
-    }
-    
-    function setPoolTotalStakeQspWei(uint index, uint amountQspWei) public onlyWhitelisted {
-        pools[index].totalStakeQspWei = amountQspWei;
     }
 
     function getPoolStakeCount(uint index) public view returns(uint) {
@@ -403,21 +445,8 @@ contract QuantstampStakingData is Ownable {
         return (addresses, numbers, pools[index].urlOfAuditReport, pools[index].poolName);
     }
 
-    /** Sets the state of the pool to a given state, while also marking the block at
-    * which this occured and emitting an event corresponding to the new state.
-    * @param poolIndex - the index of the pool for which the state is changed
-    * @param newState - the new state to which the pool will change
-    */
-    function setState(uint poolIndex, PoolState newState) public onlyWhitelisted {
-        pools[poolIndex].state = newState; // set the state
-    }
-
     function getTotalStakes(uint poolIndex, address staker) public view returns (uint) {
         return totalStakes[poolIndex][staker]; 
-    }
-
-    function setTotalStakes(uint poolIndex, address staker, uint amountQspWei) public onlyWhitelisted {
-        totalStakes[poolIndex][staker] = amountQspWei; 
     }
 
     function getStakeCount(uint poolIndex, address staker) public view returns (uint) {
@@ -436,59 +465,29 @@ contract QuantstampStakingData is Ownable {
             stake.lastPayoutBlock, stake.contributionIndex, stake.expertStake);
     }
 
-    function setDepositQspWei(uint poolIndex, uint depositQspWei) public onlyWhitelisted {
-        pools[poolIndex].depositQspWei = depositQspWei;
-    }
-    
     function getDepositQspWei(uint poolIndex) public view returns (uint) {
         return pools[poolIndex].depositQspWei;
     }
-    
-    function setBalanceQspWei(uint newBalanceQspWei) public onlyWhitelisted {
-        balanceQspWei = newBalanceQspWei;
-    }
-    
+
     function getBalanceQspWei() public view returns (uint) {
         return balanceQspWei;
     }
-    
+
     function getStakeBlockPlaced(uint poolIndex, address staker,
         uint stakeIndex) public view returns (uint) {
         return stakes[poolIndex][staker][stakeIndex].blockPlaced;
     }
-    
-    function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,
-        uint blockNumber) public onlyWhitelisted {
-        stakes[poolIndex][staker][stakeIndex].blockPlaced = blockNumber;
-    }
-    
-    function setStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
-        uint blockNumber) public onlyWhitelisted {
-        stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
-    }
-    
+
     function getStakeLastPayoutBlock(uint poolIndex, address staker,
         uint stakeIndex) public view returns(uint) {
         return stakes[poolIndex][staker][stakeIndex].lastPayoutBlock;
     }
-    
+
     function getPowersOf100(uint poolIndex, uint powerIndex) public view returns (uint) {
         return powersOf100[poolIndex][powerIndex];
     }
 
     function getBonusExpertAtPower(uint poolIndex, uint powerIndex) public view returns (uint) {
         return bonusExpertAtPower[poolIndex][powerIndex];
-    }
-
-    function approveWhitelisted(uint256 amountQspWei) public onlyWhitelisted {
-        token.approve(msg.sender, amountQspWei);
-    }
-
-    function addWhitelistAddress(address _address) public onlyOwner {
-        whitelist[_address] = true;
-    }
-
-    function removeWhitelistAddress(address _address) public onlyOwner {
-        whitelist[_address] = false;
     }
 }
