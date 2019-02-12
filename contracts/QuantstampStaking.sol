@@ -271,8 +271,8 @@ contract QuantstampStaking is Ownable {
             }
         } else if (state != PoolState.PolicyExpired) {
             if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
-              // todo(mderka): this may not capture all the states changes and require checking
-              setState(poolIndex, PoolState.Cancelled);
+                // todo(mderka): this may not capture all the states changes and require checking
+                setState(poolIndex, PoolState.Cancelled);
             }
         }
     }
