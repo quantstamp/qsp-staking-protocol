@@ -268,28 +268,6 @@ contract QuantstampStaking is Ownable {
         updateStateWithdrawStake(poolIndex);
     }
 
-    /** Updates state after calling funtion withdrawStake 
-    * @param poolIndex - the index of the pool from which the stake is withdrawn
-    */
-    function updateStateWithdrawStake(uint poolIndex) internal {
-        PoolState state = getPoolState(poolIndex);
-        uint timeoutBlock = getPoolTimeoutInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
-        if (state == PoolState.Initialized) {
-            if (isViolated(poolIndex) || block.number >= timeoutBlock) {
-                setState(poolIndex, PoolState.Cancelled);
-            }
-        } else if (state == PoolState.NotViolatedFunded) {
-            // todo(mderka): this may not capture all the states changes and require checking
-            // the function call has no effect outside this state
-            updatePoolState(poolIndex);
-        } else if (state != PoolState.PolicyExpired) {
-            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
-                // todo(mderka): this may not capture all the states changes and require checking
-                setState(poolIndex, PoolState.Cancelled);
-            }
-        }
-    }
-
     /** In case the pool is not violated and the payPeriod duration has passed, it computes the payout of the staker
     * (defined by msg.sender),
     * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
@@ -827,6 +805,28 @@ contract QuantstampStaking is Ownable {
             state = PoolState.PolicyExpired;
         }
         return state;
+    }
+
+    /** Updates state after calling funtion withdrawStake
+    * @param poolIndex - the index of the pool from which the stake is withdrawn
+    */
+    function updateStateWithdrawStake(uint poolIndex) internal {
+        PoolState state = getPoolState(poolIndex);
+        uint timeoutBlock = getPoolTimeoutInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
+        if (state == PoolState.Initialized) {
+            if (isViolated(poolIndex) || block.number >= timeoutBlock) {
+                setState(poolIndex, PoolState.Cancelled);
+            }
+        } else if (state == PoolState.NotViolatedFunded) {
+            // todo(mderka): this may not capture all the states changes and require checking
+            // the function call has no effect outside this state
+            updatePoolState(poolIndex);
+        } else if (state != PoolState.PolicyExpired) {
+            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+                // todo(mderka): this may not capture all the states changes and require checking
+                setState(poolIndex, PoolState.Cancelled);
+            }
+        }
     }
 
     /** Checks if the entire stake can be placed in a pool
