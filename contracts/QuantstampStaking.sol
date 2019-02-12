@@ -229,35 +229,50 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
     function withdrawStake(uint poolIndex) external {
-        PoolState state = updatePoolState(poolIndex);
+        //PoolState state = updatePoolState(poolIndex);
+        PoolState state = getPoolState(poolIndex);
+        // State check
         require(state == PoolState.Initialized ||
             state == PoolState.NotViolatedUnderfunded ||
+            state == PoolState.NotViolatedFunded ||
             state == PoolState.Cancelled ||
             state == PoolState.PolicyExpired,
             "Pool is not in the right state when withdrawing stake.");
 
+        // Effect
         uint totalQspWeiTransfer = totalStakes[poolIndex][msg.sender];
-
-        if (totalQspWeiTransfer > 0) { // transfer the stake back
+        if (totalQspWeiTransfer > 0) { 
+            // transfer the stake back
             balanceQspWei = balanceQspWei.sub(totalQspWeiTransfer);
             totalStakes[poolIndex][msg.sender] = 0;
             pools[poolIndex].totalStakeQspWei = pools[poolIndex].totalStakeQspWei.sub(totalQspWeiTransfer);
+            
             // this loop is needed, because the computePayout function uses the stakes array
             for (uint i = 0; i < stakes[poolIndex][msg.sender].length; i++) {
                 pools[poolIndex].poolSizeQspWei = pools[poolIndex].poolSizeQspWei.sub(
                     calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
                 stakes[poolIndex][msg.sender][i].amountQspWei = 0;
             }
+            
             // remove this staker from the list of stakers of this pool
             delete poolToStakers[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
             delete poolToStakersExpertStatus[poolIndex][poolToStakerIndex[poolIndex][msg.sender]];
-            // actual transfer
+            
+            // the actual transfer
             require(token.transfer(msg.sender, totalQspWeiTransfer));
             emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
-            // update the pool state if necessary
-            if (state != PoolState.PolicyExpired &&
-                getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+        }
+
+        // State transition
+        uint timeoutBlock = getPoolTimeoutInBlocks(poolIndex).add(getPoolTimeOfStateInBlocks(poolIndex));
+        if (state == PoolState.Initialized) {
+            if (isViolated(poolIndex) || block.number >= timeoutBlock) {
                 setState(poolIndex, PoolState.Cancelled);
+            }
+        } else if (state != PoolState.PolicyExpired) {
+            if (getPoolMinStakeQspWei(poolIndex) > getPoolTotalStakeQspWei(poolIndex)) {
+              // todo(mderka): this may not capture all the states changes and require checking
+              setState(poolIndex, PoolState.Cancelled);
             }
         }
     }

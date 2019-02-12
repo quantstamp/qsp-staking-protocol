@@ -290,8 +290,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(poolId, 7, {from : staker});
         await qspb.withdrawStake(poolId, {from : staker});
-        // todo(mderka): uncomment when the bug is removed, SP-227
-        //assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
       }
     );
     
@@ -303,8 +302,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawStake(poolId, {from : staker});
-        // todo(mderka): uncomment when transition is implemented for 0 stake
-        // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
       }
     );
 
@@ -316,8 +314,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks);
         await qspb.withdrawStake(poolId, {from : staker});
-        // todo(mderka): uncomment when transition is implemented for 0 stake
-        // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
       }
     );
 
