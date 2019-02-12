@@ -125,10 +125,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
 
         // issue three approvals at once
-        let leftToDeposit = pool.maxPayoutQspWei - pool.depositQspWei;
+        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, 3 * leftToDeposit, {from : stakeholder});
 
-        await qspb.depositFunds(poolId + 1, leftToDeposit - 1, {from : stakeholder});
+        await qspb.depositFunds(poolId + 1, leftToDeposit.sub(1), {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
         // assert.equal(await Util.getState(qspb, poolId + 1), PoolState.Cancelled);
 
@@ -136,7 +136,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         // todo(mderka): functionality not implemented, uncomment when it is
         // assert.equal(await Util.getState(qspb, poolId + 2), PoolState.Cancelled);
 
-        await qspb.depositFunds(poolId + 3, leftToDeposit + 1, {from : stakeholder});
+        await qspb.depositFunds(poolId + 3, leftToDeposit.add(1), {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
         // assert.equal(await Util.getState(qspb, poolId + 3), PoolState.Cancelled);
       }
@@ -149,7 +149,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("edge case for switching the pool to cancelled state",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks - 1);
+        await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
         assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
 
@@ -270,7 +270,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("if timeout happened, switch to cancelled",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks - 2);
+        await Util.mineNBlocks(pool.timeoutInBlocks.sub(2));
         // mine 2 more blocks
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(poolId, 7, {from : staker});
@@ -402,7 +402,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("cancel if timeout happened", 
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks - 1);
+        await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
         // mines 1 extra blocks causing the timeout
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(poolId, 7, {from : staker});
@@ -443,7 +443,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("stakeFunds: if the sum of stakes is >= minStake and deposit is large enough, transition to ViolatedFunded.", 
       async function() {
         // fund pool
-        let leftToDeposit = pool.maxPayoutQspWei - pool.depositQspWei;
+        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
 
