@@ -70,8 +70,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   let qspb = null;
   let policy = null;
   
-  /* Make a new instance of QuantstampStaking, QSP Token, and create a pool
-   * that will be in the initialized state. */
+  /* 
+   * Make a new instance of QuantstampStaking, QSP Token, and create a pool
+   * that will be in the initialized state. 
+   */
   beforeEach(async function() {
 
     // create QSP token
@@ -96,10 +98,15 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   });
 
   
+  /*
+   * Tests for function depositFunds.
+   */
   describe("depositFunds in state Initialized", async function() {
 
-    /* Waits for the timeout and makes a deposit while policy is not violated. 
-     * Then verifies that the pool was cancelled regardless of the deposit amount. */
+    /* 
+     * Waits for the timeout and makes a deposit while policy is not violated. 
+     * Then verifies that the pool was cancelled regardless of the deposit amount. 
+     */
     it("if deposit >=< maxPayout and timeout happened, switch to Cancelled", 
       async function() {
         await token.approve(qspb.address, pool.depositQspWei.times(3), {from : stakeholder});
@@ -135,10 +142,12 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    /* Waits for the timeout - 1  block and makes a deposit while policy is not violated.
+    /* 
+     * Waits for the timeout - 1  block and makes a deposit while policy is not violated.
      * Then verifies that the pool was not cancelled. Then repeats (mining one extra block)
-     * and verifies that the pool was cancelled. */
-    it("Edge case for switching the pool to cancelled state",
+     * and verifies that the pool was cancelled. 
+     */
+    it("edge case for switching the pool to cancelled state",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks - 1);
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
@@ -151,9 +160,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    /* Works without timeout and with policy that is not violated. It deposits
+    /* 
+     * Works without timeout and with policy that is not violated. It deposits
      * funds that insufficitient to cover the payout, then adds more and in each
-     * step verifies that the state remained Initialized. */
+     * step verifies that the state remained Initialized. 
+     */
     it("both deposit >=< maxPayout stay in this state if timeout did not happen",
       async function() {
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
@@ -176,7 +187,9 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    /* Violates the policy, calls the function and checks that the transaction failed. */
+    /* 
+     * Violates the policy, calls the function and checks that the transaction failed. 
+     */
     it("deposit >=< maxPayout revert when the policy is violated",
       async function() {
         // approve all the possible transfers at once
@@ -192,9 +205,15 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
   });
 
+
+  /*
+   * Tests for function withdrawDepost
+   */
   describe("withdrawDeposit in state Initialized", async function() {
 
-    /* Makes a deposit and then withdraws it. Then verifies that the pool was cancelled.*/
+    /* 
+     * Makes a deposit and then withdraws it. Then verifies that the pool was cancelled.
+     */
     it("always switch to Cancelled", 
       async function() {
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
@@ -202,13 +221,20 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
     
-    /* Makes no deposit and then withdraws it. Then verifies that the pool was cancelled.*/
+    /* 
+     * Makes no deposit, violates the policy, and tries to withdraw. Then verifies that the 
+     * pool was cancelled.
+     */
     it("switch to Cancelled even if the policy is violated", async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
         assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
     });
 
+    /* 
+     * Makes no deposit, waits for a timeout, and tries to withdraw. Then verifies that the 
+     * pool was cancelled.
+     */
     it("in case for timeout, should also swith into Cancelled",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks.add(5));
@@ -218,9 +244,16 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
   });
   
+  /*
+   * Tests for function withdrawStake
+   */
   describe("withdrawStake in state Initialized", async function() {
 
-  it("withdrawStake: if the policy is violated, switch to cancelled",
+    /* 
+     * Violates the policy, stakes a few tokens and attempts to withdraw stake. Then verifies
+     * the the pool was cancelled.
+     */
+    it("if the policy is violated, switch to cancelled",
       async function() {
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(poolId, 7, {from : staker});
@@ -231,7 +264,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    it("withdrawStake: if timeout happened, switch to cancelled",
+    /*
+     * Waits for the timeout, stakes a few tokens and attempts to withdraw stake. Then verifies
+     * the the pool was cancelled.
+     */
+    it("if timeout happened, switch to cancelled",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks - 2);
         // mine 2 more blocks
@@ -242,7 +279,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    it("withdrawStake: if timeout did not happen and policy is not violated, remain in this state",
+    /*
+     * Stakes a few tokens and attempts to withdraw stake. Then verifies
+     * the the pool remained in the current state.
+     */
+    it("if timeout did not happen and policy is not violated, remain in this state",
       async function() {
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(poolId, 7, {from : staker});
@@ -252,7 +293,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
     
-    it("withdrawStake: 0 stake, if the policy is violated, switch to cancelled", 
+    /*
+     * Stakes 0 tokens, violates the policy and attempts to withdraw stake. Then verifies
+     * the the pool remained in the current state.
+     */
+    it("0 stake, if the policy is violated, switch to cancelled", 
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawStake(poolId, {from : staker});
@@ -261,7 +306,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    it("withdrawStake: 0 stake, if timeout happened, switch to cancelled", 
+    /*
+     * Waits for the timeout, stakes 0 tokens and attempts to withdraw stake. Then verifies
+     * the the pool was cancelled.
+     */
+    it("0 stake, if timeout happened, switch to cancelled", 
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks);
         await qspb.withdrawStake(poolId, {from : staker});
@@ -270,15 +319,27 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    it("withdrawStake: 0 stake,if timeout did not happen and policy is not violated, remain in this state", 
+    /*
+     * Stakes 0 tokens and attempts to withdraw stake. Then verifies
+     * the the pool remained in the current state.
+     */
+    it("0 stake, if timeout did not happen and policy is not violated, remain in this state", 
       async function() {
         await qspb.withdrawStake(poolId, {from : staker});
         assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
       }
     );
   });
-    
+  
+
+  /*
+   * Tests for function withdrawInterest
+   */
   describe("withdrawInterest in state Initialized", async function() {
+
+    /*
+     * Tests that the call to the function is not allowed
+     */
     it("withdrawInterest: call is not allowed", 
       async function() {
         Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
@@ -286,16 +347,32 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
   });
   
+
+  /*
+   * Tests for function withdrawClaim
+   */
   describe("withdrawClaim in state Initialized", async function() {
+
+    /*
+     * Tests that the call to the function is not allowed
+     */
     it("withdrawClaim: call is not allowed", 
       async function() {
         Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
-    
+  
+
+  /*
+   * Tests for function checkPolicy
+   */
   describe("checkPolicy in state Initialized", async function() {
-    it("checkPolicy: If policy is violated switch state to cancelled", 
+
+    /*
+     * Violates the policy and checks that the pool gets cancelled.
+     */
+    it("if policy is violated switch state to cancelled", 
       async function() {
         await policy.updateStatus(true);
         await qspb.checkPolicy(poolId, {from : staker});
@@ -303,15 +380,27 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
     
-    it("checkPolicy: If policy is NOT violated, fail loud", 
+    /*
+     * Tests that there is a loud fail when the pool is not violated.
+     */
+    it("if policy is not violated, fail loud", 
       async function() {
         Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
   });
 
+
+  /*
+   * Tests for function stakeFunds
+   */
   describe("stakeFunds in state Initialized", async function() {
-    it("stakeFunds: cancel if timeout happened", 
+
+    /*
+     * Waits for the timeout and then attempts to stake a few tokens.
+     * Checks that the pool was cancelled afterwards.
+     */
+    it("cancel if timeout happened", 
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks - 1);
         // mines 1 extra blocks causing the timeout
@@ -321,7 +410,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
-    it("stakeFunds: cancel if policy is violated", 
+    /*
+     * Violates the policy and attempts to stake a few tokens. Checks
+     * that the pool was cancelled afterwards.
+     */
+    it("cancel if policy is violated", 
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when the modifier is removed
@@ -331,6 +424,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
+    /*
+     * Stakes a few tokens (less than min stake) in a healthy pool. Verifies that the status did
+     * no change.
+     */
     it("stays in the same state if stake is too low, policy is not violated, and timeout did not happen", 
       async function() {
         await token.approve(qspb.address, 7, {from : staker});
@@ -339,8 +436,13 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
 
+    /*
+     * Funds poool. Stakes too few tokens into a healthy pool. The status should not change. Then stakes more
+     * tokens to satisfy the min stake. Verifies tha the poll became NotViolatedFunded.
+     */
     it("stakeFunds: if the sum of stakes is >= minStake and deposit is large enough, transition to ViolatedFunded.", 
       async function() {
+        // fund pool
         let leftToDeposit = pool.maxPayoutQspWei - pool.depositQspWei;
         await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
@@ -355,6 +457,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       }
     );
     
+    /*
+     * Stakes too few tokens into a healthy pool. The status should not change. Then stakes more
+     * tokens to satisfy the min stake. Verifies tha the poll became NotViolatedUnderFunded.
+     */
     it("stakeFunds: if the sum of stakes is >= minStake and deposit is not large enough, transition to NotViolatedUnderfunded.", 
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
