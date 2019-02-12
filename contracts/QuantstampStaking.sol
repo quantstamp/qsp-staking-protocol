@@ -267,7 +267,7 @@ contract QuantstampStaking is Ownable {
         safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
         emit ClaimWithdrawn(poolIndex, total);
     }
-
+    
     /** Transfers an amount of QSP from the staker to the pool
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param amountQspWei - the amount of QSP Wei that is transferred

@@ -1,6 +1,6 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampToken = artifacts.require('QuantstampToken');
-const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
+const ExpertRegistry = artifacts.require('WhitelistExpertRegistry');
 const Policy = artifacts.require('policies/TrivialBackdoorPolicy');
 const Util = require("./util.js");
 const BigNumber = require('bignumber.js');
@@ -37,8 +37,7 @@ const PoolState = Object.freeze({
 contract('TransitionState1.js (Initialized): check transitions', function(accounts) {
 
   const owner = accounts[0];
-  // todo(mderka) when complete, verify that this is needed
-  // const staker = accounts [1]; 
+  const staker = accounts [1]; 
   const stakeholder = accounts[2];
   const qspAdmin = accounts[3];
   const nonZeroAddress = accounts[4];
@@ -47,7 +46,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder,
     'maxPayoutQspWei' : new BigNumber(Util.toQsp(100)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(400)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(42)),
     'depositQspWei' : new BigNumber(Util.toQsp(5)),
     'bonusExpertFactor' : 0,
     'bonusFirstExpertFactor' : new BigNumber(100),
@@ -74,17 +73,21 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
   /* Make a new instance of QuantstampStaking, QSP Token, and create a pool
    * that will be in the initialized state. */
   beforeEach(async function() {
+
     // create QSP token
     token = await QuantstampToken.new(qspAdmin, {from : owner});
     await token.enableTransfer({from : owner});
     
     // create staking protocol
-    let wrapper = await RegistryWrapper.new(nonZeroAddress);
-    qspb = await QuantstampStaking.new(token.address, wrapper.address, {from: owner});
+    let registry = await ExpertRegistry.new({from : owner});
+    qspb = await QuantstampStaking.new(token.address, registry.address, {from: owner});
 
     // create policy
     policy = await Policy.new();
     pool.contractPolicy = policy.address;
+
+    // give tokens to staker
+    await token.transfer(staker, pool.minStakeQspWei.times(10), {from : owner});
 
     // create pool
     await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
@@ -215,24 +218,153 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
   });
   
-  describe("Other unimplemented tests", async function() {
-    it("withdrawStake: if the policy is violated, switch to cancelled", async function() {});
-    it("withdrawStake: if timeout happened, switch to cancelled", async function() {});
-    it("withdrawStake: if timeout did not happen and policy is not violated, remain in this state", async function() {});
-    
-    it("withdrawInterest: call is not allowed", async function() {});
-    it("withdrawClaim: call is not allowed", async function() {});
-    
-    
-    it("checkPolicy: If policy is violated switch state to cancelled", async function() {});
-    it("checkPolicy: If policy is NOT violated, do not change the state", async function() {});
-    
-    it("updatePoolState: do not change the state", async function() {});
+  describe("withdrawStake in state Initialized", async function() {
 
-    it("stakeFunds: cancel if timeout happened", async function() {});
-    it("stakeFunds: cancel if policy is violated", async function() {});
-    it("stakeFunds: if the sum of stakes is >= minStake and deposit is large enough, transition to ViolatedFunded.", async function() {});
-    it("stakeFunds: if the sum of stakes is >= minStake and deposit is not large enough, transition to NotViolatedInderfunded.", async function() {});
+  it("withdrawStake: if the policy is violated, switch to cancelled",
+      async function() {
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(poolId, 7, {from : staker});
+        // keep this violation after staking, otherwise the state will change
+        await policy.updateStatus(true);
+        await qspb.withdrawStake(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
 
+    it("withdrawStake: if timeout happened, switch to cancelled",
+      async function() {
+        await Util.mineNBlocks(pool.timeoutInBlocks - 2);
+        // mine 2 more blocks
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(poolId, 7, {from : staker});
+        await qspb.withdrawStake(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+
+    it("withdrawStake: if timeout did not happen and policy is not violated, remain in this state",
+      async function() {
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(poolId, 7, {from : staker});
+        await qspb.withdrawStake(poolId, {from : staker});
+        // todo(mderka): uncomment when the bug is removed, SP-227
+        //assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+      }
+    );
+    
+    it("withdrawStake: 0 stake, if the policy is violated, switch to cancelled", 
+      async function() {
+        await policy.updateStatus(true);
+        await qspb.withdrawStake(poolId, {from : staker});
+        // todo(mderka): uncomment when transition is implemented for 0 stake
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+
+    it("withdrawStake: 0 stake, if timeout happened, switch to cancelled", 
+      async function() {
+        await Util.mineNBlocks(pool.timeoutInBlocks);
+        await qspb.withdrawStake(poolId, {from : staker});
+        // todo(mderka): uncomment when transition is implemented for 0 stake
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+
+    it("withdrawStake: 0 stake,if timeout did not happen and policy is not violated, remain in this state", 
+      async function() {
+        await qspb.withdrawStake(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+      }
+    );
+  });
+    
+  describe("withdrawInterest in state Initialized", async function() {
+    it("withdrawInterest: call is not allowed", 
+      async function() {
+        Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
+      }
+    );
+  });
+  
+  describe("withdrawClaim in state Initialized", async function() {
+    it("withdrawClaim: call is not allowed", 
+      async function() {
+        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+      }
+    );
+  });
+    
+  describe("checkPolicy in state Initialized", async function() {
+    it("checkPolicy: If policy is violated switch state to cancelled", 
+      async function() {
+        await policy.updateStatus(true);
+        await qspb.checkPolicy(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+    
+    it("checkPolicy: If policy is NOT violated, fail loud", 
+      async function() {
+        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+      }
+    );
+  });
+
+  describe("stakeFunds in state Initialized", async function() {
+    it("stakeFunds: cancel if timeout happened", 
+      async function() {
+        await Util.mineNBlocks(pool.timeoutInBlocks - 1);
+        // mines 1 extra blocks causing the timeout
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(poolId, 7, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+
+    it("stakeFunds: cancel if policy is violated", 
+      async function() {
+        await policy.updateStatus(true);
+        // todo(mderka): uncomment when the modifier is removed
+        // await token.approve(qspb.address, 7, {from : staker});
+        // await qspb.stakeFunds(poolId, 7, {from : staker});
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+
+    it("stays in the same state if stake is too low, policy is not violated, and timeout did not happen", 
+      async function() {
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(poolId, 7, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+      }
+    );
+
+    it("stakeFunds: if the sum of stakes is >= minStake and deposit is large enough, transition to ViolatedFunded.", 
+      async function() {
+        let leftToDeposit = pool.maxPayoutQspWei - pool.depositQspWei;
+        await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
+        await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
+
+        // stake just not enough
+        await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.minStakeQspWei.sub(1), {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+        // stake enough
+        await qspb.stakeFunds(poolId, 1, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedFunded);
+      }
+    );
+    
+    it("stakeFunds: if the sum of stakes is >= minStake and deposit is not large enough, transition to NotViolatedUnderfunded.", 
+      async function() {
+        await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
+        // stake just not enough
+        await qspb.stakeFunds(poolId, pool.minStakeQspWei.sub(1), {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Initialized);
+        // stake enough
+        await qspb.stakeFunds(poolId, 1, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedUnderfunded);
+      }
+    );
   });
 });
