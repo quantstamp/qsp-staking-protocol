@@ -3,6 +3,8 @@ const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const WhitelistExpertRegistry = artifacts.require('WhitelistExpertRegistry');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
 const CandidateContract = artifacts.require('test/CandidateContract');
 const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
@@ -39,22 +41,26 @@ contract('CandidateContract', function(accounts) {
   let upgradeablePolicy;
   let qaPolicy;
   let qspb;
+  let quantstampStakingData;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
-    candidateContract = await CandidateContract.deployed();
-    zeroBalancePolicy = await ZeroBalancePolicy.deployed();
-    trivialBackdoorPolicy = await TrivialBackdoorPolicy.deployed();
-    tcr = await Registry.deployed();
+    candidateContract = await CandidateContract.new(100);
+    zeroBalancePolicy = await ZeroBalancePolicy.new(candidateContract.address);
+    trivialBackdoorPolicy = await TrivialBackdoorPolicy.new(candidateContract.address);
+    tcr = await Registry.new();
     tcrContainsEntryPolicy = await TCRContainsEntryPolicy.new(listing);
-    democraticPolicy = await DemocraticViolationPolicy.deployed();
+    democraticPolicy = await DemocraticViolationPolicy.new(2, candidateContract.address);
     trustedOpinionPolicy = await TrustedOpinionPolicy.new(2, candidateContract.address, owner);
-    stateNoteChangedPolicy = await StateNotChangedPolicy.deployed();
-    alwaysViolatedPolicy = await AlwaysViolatedPolicy.deployed();
-    neverViolatedPolicy = await NeverViolatedPolicy.deployed();
+    stateNoteChangedPolicy = await StateNotChangedPolicy.new(0);
+    alwaysViolatedPolicy = await AlwaysViolatedPolicy.new(candidateContract.address);
+    neverViolatedPolicy = await NeverViolatedPolicy.new(candidateContract.address);
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
-    qspb = await QuantstampStaking.deployed();
-    qaPolicy = await QuantstampAssurancePolicy.deployed();
+    quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
+    const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
+    qspb = await QuantstampStaking.new(quantstampToken.address, whitelistExpertRegistry.address, quantstampStakingData.address);
+    await quantstampStakingData.addWhitelistAddress(qspb.address);
+    qaPolicy = await QuantstampAssurancePolicy.new(qspb.address, quantstampToken.address);
   });
 
   describe('QuantstampAssurancePolicy', () => {
@@ -107,14 +113,15 @@ contract('CandidateContract', function(accounts) {
       // allow the qspb contract use QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(100000), {from : poolOwner});
       // balance should be 0 in the beginning
-      assert.equal((await qspb.balanceQspWei.call()).toNumber(), 0);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), 0);
       // create pool
       await qspb.createPool(qspb.address, qaPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
 
+
       // update the pool id in the policy contract
-      assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), 0);
+      assert.equal((await quantstampStakingData.getPoolIndex(poolName)).toNumber(), 0);
       await qaPolicy.setAssurancePoolId(0);
 
       // stake
@@ -183,9 +190,9 @@ contract('CandidateContract', function(accounts) {
     });
 
     it("should no longer violate the TCR entry policy once the TCR is updated (entry is whitelisted)", async function() {
-      const voting = await Voting.deployed();
+      const voting = await Voting.new();
       await voting.init(quantstampToken.address);
-      const quantstampParameterizer = await QuantstampParameterizer.deployed();
+      const quantstampParameterizer = await QuantstampParameterizer.new();
       await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
       await tcr.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
       const applicant = listing;

@@ -1,4 +1,5 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
+const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const QuantstampToken = artifacts.require('QuantstampToken');
@@ -47,6 +48,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
   const defaultMaxTotalStake = new BigNumber(Util.toQsp(10000));
 
   let qspb;
+  let quantstampStakingData;
   let quantstampToken;
   let candidateContract;
   let contractPolicy;
@@ -67,9 +69,14 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     candidateContract = await CandidateContract.new(candidateContractBalance);
     contractPolicy = await ZeroBalancePolicy.new();
-    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address, {from: owner});
+
+    quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
+    qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
+      quantstampStakingData.address, {from: owner});
+    await quantstampStakingData.addWhitelistAddress(qspb.address);
+
     // quick check that balance is zero
-    assert.equal(await qspb.balanceQspWei.call(), 0);
+    assert.equal(await qspb.getBalanceQspWei(), 0);
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -96,7 +103,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       initialDepositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
       minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
 
-    currentPoolNumber = await qspb.getPoolsLength();
+    currentPoolNumber = await quantstampStakingData.getPoolsLength();
     currentPoolIndex = currentPoolNumber - 1;
   });
 
@@ -230,9 +237,9 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
 
     it("should only payout those stakes of the same staker which have been placed for a sufficient amount of time", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
-      Util.mineOneBlock();
+      await Util.mineOneBlock();
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker4});
-      Util.mineOneBlock();
+      await Util.mineOneBlock();
       // the 2nd stake made by staker3
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker3});
       await Util.mineNBlocks(payPeriodInBlocks-2);
