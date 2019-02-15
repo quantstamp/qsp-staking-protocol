@@ -567,8 +567,8 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
     );
 
     /*
-     * Violates the policy without expiring the pool it anc checks that the pool gets to
-     * state ViolatedFunded.
+     * Violates the policy without expiring the pool it anc checks that the pool gets
+     * to state ViolatedFunded.
      */
     it("if the max staking time did not elapse and the policy is violated, move to state 5",
       async function() {
