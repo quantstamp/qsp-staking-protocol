@@ -34,7 +34,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract('TransitionState3.js (NotViolatedFunded): check transitions', function(accounts) {
+contract('TransitionState4.js (NotViolatedFunded): check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1]; 
@@ -51,8 +51,8 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
     'bonusExpertFactor' : 0,
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
-    'payPeriodInBlocks' : new BigNumber(20),
-    'minStakeTimeInBlocks' : new BigNumber(15),
+    'payPeriodInBlocks' : new BigNumber(1),
+    'minStakeTimeInBlocks' : new BigNumber(10), // keep this sufficiently high for withdrawInterest
     'timeoutInBlocks' : new BigNumber(50),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "URL",
@@ -99,6 +99,9 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
     // stake enough
     await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
     await qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker});
+    
+    // verify the initial state
+    assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedFunded);
   });
 
   /*
@@ -106,10 +109,6 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
    */
   describe("depositFunds", async function() {
 
-    // "if the timout happened and the policy is not violated, switch to state 7"
-    // "if the timout happened and the policy is violated, switch to state 7"
-    // "if the timeut did not happen and the policy is not violated, remain in this state"
-    // "if the timout did not happen and the policy is violated, switch to state 5"
     /*
      * Expires the policy without violating it anc checks that the pool gets to
      * state PolicyExpired after depositing 0.
@@ -182,10 +181,6 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
    */
   describe("withdrawDeposit", async function() {
 
-    // "if the max staking time elapsed and the policy is not violated, allow the call and move to state 7"
-    // "if the max staking time did not elapse and the policy is not violated, reject the call"
-    // "if the max staking time elapsed and the policy is violated, move to state 7"
-    // "if the max staking time did not elapse and the policy is violated, allows the call and switch to state 5"
     /*
      * Expires the policy without violating it anc checks that the pool gets to
      * state PolicyExpired.
@@ -240,11 +235,6 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
    * Tests for function withdrawStake
    */
   describe("withdrawStake", async function() {
-
-    // "if the max staking time elapsed and the policy is not violated, allow the call and move to state 7"
-    // "if the max staking time did not elapse and the policy is not violated, reject the call"
-    // "if the max staking time elapsed and the policy is violated, move to state 7"
-    // "if the max staking time did not elapse and the policy is violated, switch to state 5 (and do not refund the stake)"
 
     /*
      * Expires the policy without violating it anc checks that the pool gets to
@@ -301,6 +291,114 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
    */
   describe("withdrawInterest", async function() {
 
+    /*
+     * Expires the policy without violating it anc checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("if the max staking time elapsed and the policy is not violated, move to state 7",
+      async function() {
+        await Util.mineNBlocks(pool.minStakeTimeInBlocks);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Expires the policy without violating it anc checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("if the max staking time elapsed and the policy is violated, move to state 7",
+      async function() {
+        await Util.mineNBlocks(pool.minStakeTimeInBlocks.sub(1));
+        await policy.updateStatus(true);
+        // todo(mderka): uncomment when fixed
+        // await qspb.withdrawInterest(poolId, {from : staker});
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Validates that the pool has enough deposit to pay the staker including other stakers.
+     * Without violating the policy or reaching the maximum staking time, it withdraws the
+     * insterest and verifies the the pool remained in NonViolatedFunded state.
+     */
+    it("max staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
+      async function() {
+        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        // validate that the precondition of the test is safely met
+        assert.isTrue(depositLeft.gte(payout.times(3)));
+        assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedFunded);
+          
+        await Util.mineNBlocks(pool.payPeriodInBlocks);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedFunded);
+      }
+    );
+
+    /*
+     * Continuously decreases the deposit in the pool until it does not have enough to pay interest.
+     * Without violating the policy or reaching the maximum staking time, it withdraws the
+     * insterest and verifies the the pool remained in NonViolatedFunded state.
+     */
+    it("max staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
+      async function() {
+        // keep withdrawing until there is not enough deposit left to make another withdraw
+        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        await Util.mineNBlocks(pool.payPeriodInBlocks);
+        while (depositLeft.gte(payout)) {
+          await qspb.withdrawInterest(poolId, {from : staker});
+          depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        }
+        // validate the precondition state
+        depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        assert.isFalse(depositLeft.gte(payout));
+        assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedFunded);
+        
+        // attempt to make another withdraw
+        await qspb.withdrawInterest(poolId, {from : staker});
+        assert.equal(await Util.getState(qspb, poolId), PoolState.Cancelled);
+      }
+    );
+    
+    /*
+     * Continuously decreases the deposit in the pool until it has just enough to pay intereste once.
+     * Without violating the policy or reaching the maximum staking time, it withdraws the
+     * insterest and verifies the the pool remained in NonViolatedFunded state.
+     */
+    it("max staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
+      async function() {
+        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        await Util.mineNBlocks(pool.payPeriodInBlocks);
+        while (depositLeft.gt(payout.times(2))) {
+          await qspb.withdrawInterest(poolId, {from : staker});
+          depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        }
+        // validation the precondition
+        depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        assert.isTrue(depositLeft.gte(payout));
+        assert.isTrue(payout.times(2).gt(depositLeft));
+
+        await qspb.withdrawInterest(poolId, {from : staker});
+        // todo(mderka) uncomment when fixed
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.NotViolatedUnderfunded);
+      }
+    );
+
+    /*
+     * Violates the policy without expiring the pool it anc checks that the pool gets to
+     * state ViolatedFunded.
+     */
+    it("if the max staking time did not elapse and the policy is violated, move to state 5",
+      async function() {
+        await policy.updateStatus(true);
+        // todo(mderka): uncomment when fixed
+        // await qspb.withdrawInterest(poolId, {from : staker});
+        // assert.equal(await Util.getState(qspb, poolId), PoolState.ViolatedFunded);
+      }
+    );
   });
   
 
@@ -308,11 +406,6 @@ contract('TransitionState3.js (NotViolatedFunded): check transitions', function(
    * Tests for function withdrawClaim
    */
   describe("withdrawClaim", async function() {
-
-    // "if the max staking time elapsed and the policy is not violated, allow the call and move to state 7"
-    // "if the max staking time elapsed and the policy is violated, move to state 7"
-    // "if the max staking time did not elapse and the policy is not violated, reject the call"
-    // "if the max staking time did not elapse and the policy is violated, switch to state 5 and allow the claim"
 
     /*
      * Expires the policy without violating it anc checks that the pool gets to
