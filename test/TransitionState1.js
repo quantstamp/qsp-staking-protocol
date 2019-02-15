@@ -76,7 +76,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
    * */
   let assertPoolState = async function(id, state) {
     assert.equal(await Util.getState(qspb, id), state);
-  }
+  };
 
   /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
