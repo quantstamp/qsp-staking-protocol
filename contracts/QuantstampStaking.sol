@@ -51,7 +51,7 @@ contract QuantstampStaking is Ownable {
     event StateChanged(uint poolIndex, QuantstampStakingData.PoolState state);
 
     // Signals that the payout block was updated
-    event LastPayoutBlockUpdate(uint poolIndex, address staker);
+    event LastPayoutBlockUpdate(uint poolIndex, uint stakeIndex, address staker);
 
     // Indicates registry update
     event RegistryUpdated(address newRegistry);
@@ -190,47 +190,43 @@ contract QuantstampStaking is Ownable {
     * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
     * @param poolIndex - the index of the pool from which the staker wants to receive a payout
     */
-    function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
-        // update the state of the pool if necessary
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        // check that the state of the pool
-        require(state == QuantstampStakingData.PoolState.NotViolatedFunded ||
+    function withdrawInterest(uint poolIndex) external {
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
+        // State check
+        require(state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
+            state == QuantstampStakingData.PoolState.ViolatedUnderfunded ||
+            state == QuantstampStakingData.PoolState.NotViolatedFunded ||
             state == QuantstampStakingData.PoolState.PolicyExpired,
             "The state of the pool is not as expected.");
-        // check that enough time (blocks) has passed since the pool has collected stakes totaling
-        // at least minStakeQspWei
-        require(block.number > (data.getPoolPayPeriodInBlocks(poolIndex)
-            .add(data.getPoolTimeOfStateInBlocks(poolIndex))),
-            "Not enough time has passed since the pool is active or the stake was placed.");
-        // compute payout due to be payed to the staker
-        uint payout = computePayout(poolIndex, msg.sender);
-        if (payout == 0) // no need to transfer anything
-            return;
-        // check if the are enough funds in the pool deposit
-        if (data.getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
-            data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).sub(payout));
-            data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
-            for (uint i = 0; i < data.getStakeCount(poolIndex, msg.sender); i++) {
-                uint m = Math.max(
-                    data.getStakeBlockPlaced(poolIndex, msg.sender, i),
-                    data.getPoolTimeOfStateInBlocks(poolIndex)
-                );
-                data.setStakeBlockPlaced(poolIndex, msg.sender, i, m);
-
-                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender,
-                    data.getStakeBlockPlaced(poolIndex, msg.sender, i));
-
-                if (numberOfPayouts > 0) {
-                    data.setStakeLastPayoutBlock(poolIndex, msg.sender, i, block.number);
-                    emit LastPayoutBlockUpdate(poolIndex, msg.sender);
-                }
-            }
-
-            safeTransferFromDataContract(msg.sender, payout);
-            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
-        } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        // Check if policy is expired and if not check if the policy is violated
+        if (state != QuantstampStakingData.PoolState.PolicyExpired &&
+            block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
         }
+        bool violated = state != QuantstampStakingData.PoolState.ViolatedUnderfunded && isViolated(poolIndex);
+        if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedFunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+            return; // no interest is payed in the ViolatedFunded state
+        }
+        uint payout = computePayout(poolIndex, msg.sender);
+        // Check that enough time (blocks) has passed since the pool has collected stakes totaling
+        // at least minStakeQspWei
+        if (block.number < data.getPoolPayPeriodInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
+            payout == 0) { // no need to transfer anything
+            return;
+        } else if (data.getPoolDepositQspWei(poolIndex) < payout) { // place the pool in a Cancelled state
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return;
+        }
+        // Otherwise there are enough funds, so transfer the funds
+        data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).sub(payout));
+        data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
+        updateAllStakes(poolIndex, msg.sender);
+        safeTransferFromDataContract(msg.sender, payout);
+        emit StakerReceivedPayout(poolIndex, msg.sender, payout);
     }
 
     /** Checks if the given address is a staker of the given pool index
@@ -625,5 +621,26 @@ contract QuantstampStaking is Ownable {
     function safeTransferToDataContract(address _from, uint256 amountQspWei) internal {
         require(token.transferFrom(_from, address(data), amountQspWei),
             "Token transfer to data contract did not succeed");
+    }
+
+    /**
+     */
+    function updateAllStakes(uint poolIndex, address sender) internal {
+        uint stakeCount = data.getStakeCount(poolIndex, sender);
+        for (uint i = 0; i < stakeCount; i++) {
+            uint m = Math.max(
+                data.getStakeBlockPlaced(poolIndex, sender, i),
+                data.getPoolTimeOfStateInBlocks(poolIndex)
+            );
+            data.setStakeBlockPlaced(poolIndex, sender, i, m);
+
+            uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, sender,
+                data.getStakeBlockPlaced(poolIndex, sender, i));
+
+            if (numberOfPayouts > 0) {
+                data.setStakeLastPayoutBlock(poolIndex, sender, i, block.number);
+                emit LastPayoutBlockUpdate(poolIndex, i, sender);
+            }
+        }
     }
 }
