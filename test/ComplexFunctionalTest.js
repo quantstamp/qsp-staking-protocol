@@ -412,9 +412,9 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)));
-    // staker1 wants to withdraw his payout before the pay period has passed and gets rejected
-    Util.assertTxFail(qspb.withdrawInterest(orangePoolParams.index, {from : staker1}));
-    // check that all pool properties are as expected
+    // staker1 wants to withdraw his payout before the pay period has passed and gets nothing in return
+    qspb.withdrawInterest(orangePoolParams.index, {from : staker1});
+    // check that all pool properties are the same as before
     await assertEntirePoolState(orangePoolParams, balanceOfQspb);
   });
 
