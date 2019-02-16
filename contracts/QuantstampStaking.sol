@@ -624,6 +624,9 @@ contract QuantstampStaking is Ownable {
     }
 
     /**
+     * @dev Used to update the last payout block of every stake in a pool for a staker.
+     * @param poolIndex The index of the pool where the stakes are updated.
+     * @param sender The address of the staker whose stakes are updated.
      */
     function updateAllStakes(uint poolIndex, address sender) internal {
         uint stakeCount = data.getStakeCount(poolIndex, sender);
