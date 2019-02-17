@@ -102,22 +102,41 @@ contract QuantstampStaking is Ownable {
     function depositFunds(
         uint poolIndex,
         uint depositQspWei
-    ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
+    ) external onlyPoolOwner(poolIndex) {
         address poolOwner = data.getPoolOwner(poolIndex);
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
         require(state == QuantstampStakingData.PoolState.Initialized ||
             state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
             state == QuantstampStakingData.PoolState.NotViolatedFunded ||
             state == QuantstampStakingData.PoolState.PolicyExpired);
+        bool violated = isViolated(poolIndex);
+        // Check for a timeout
+        if (state == QuantstampStakingData.PoolState.Initialized && (block.number >=
+            data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) || violated)) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return; // do not deposit the funds if in the cancelled state
+        } else if (state != QuantstampStakingData.PoolState.PolicyExpired && block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+        } else if ((violated && state == QuantstampStakingData.PoolState.NotViolatedFunded) ||
+            (state == QuantstampStakingData.PoolState.PolicyExpired && block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex).mul(2)))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return; // do not deposit the funds if in the cancelled states
+        }
         safeTransferToDataContract(poolOwner, depositQspWei);
         data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
         data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
 
-        if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded
-                && data.getDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
+        if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded &&
+            data.getDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
             setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
+            data.getDepositQspWei(poolIndex) < data.getPoolMaxPayoutQspWei(poolIndex)) {
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
         }
-
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
     }
 
