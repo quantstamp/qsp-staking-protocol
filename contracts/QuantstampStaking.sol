@@ -199,10 +199,13 @@ contract QuantstampStaking is Ownable {
             state == QuantstampStakingData.PoolState.PolicyExpired,
             "The state of the pool is not as expected.");
         // Check if policy is expired and if not check if the policy is violated
-        if (state != QuantstampStakingData.PoolState.PolicyExpired &&
-            block.number >=
+        if (state != QuantstampStakingData.PoolState.PolicyExpired && block.number >=
             data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
             setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+        } else if (state == QuantstampStakingData.PoolState.PolicyExpired && (block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2).add(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
+            data.getPoolTotalStakeQspWei(poolIndex) == 0)) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         }
         bool violated = state != QuantstampStakingData.PoolState.ViolatedUnderfunded && isViolated(poolIndex);
         if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
