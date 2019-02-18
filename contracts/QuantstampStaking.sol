@@ -247,25 +247,49 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
-        // or the pool is in ViolatedFunded state already
-        require(
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
+        // Check state
+        require((state == QuantstampStakingData.PoolState.Initialized) ||
+            (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
             (state == QuantstampStakingData.PoolState.ViolatedFunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded && isViolated(poolIndex))
+            (state == QuantstampStakingData.PoolState.NotViolatedFunded) ||
+            (state == QuantstampStakingData.PoolState.PolicyExpired)
         );
-
-        // claim all stakes
+        bool violated = isViolated(poolIndex);
+        // Check if pool can be switched from the initialized state to another state
+        if ((state == QuantstampStakingData.PoolState.Initialized) &&
+            (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
+            violated)) { // then timeout has occured or the policy is violated and stakes are not allowed
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return;
+        } else if ((state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
+            state == QuantstampStakingData.PoolState.NotViolatedFunded) && block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            return;
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+            return;
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedFunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+            state = QuantstampStakingData.PoolState.ViolatedFunded;
+        } else if (state == QuantstampStakingData.PoolState.PolicyExpired && block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return;
+        }
         uint total = data.getPoolDepositQspWei(poolIndex).add(data.getPoolTotalStakeQspWei(poolIndex));
-        data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
-        
-        data.setPoolDepositQspWei(poolIndex, 0);
-        data.setPoolTotalStakeQspWei(poolIndex, 0);
-        data.setPoolSizeQspWei(poolIndex, 0);
+            
+        if ((state == QuantstampStakingData.PoolState.ViolatedFunded) && (total > 0)) { // then claim all stakes
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
+            
+            data.setPoolDepositQspWei(poolIndex, 0);
+            data.setPoolTotalStakeQspWei(poolIndex, 0);
+            data.setPoolSizeQspWei(poolIndex, 0);
 
-        setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
-        emit ClaimWithdrawn(poolIndex, total);
+            safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
+            emit ClaimWithdrawn(poolIndex, total);
+        }
     }
 
     /** Transfers an amount of QSP from the staker to the pool

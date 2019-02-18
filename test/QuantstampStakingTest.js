@@ -292,10 +292,15 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await Util.balanceOf(quantstampToken, poolOwner), poolOwnerBudget.minus(depositQspWei));
     });
 
-    it("should not allow claim withdraw when pool is initialized", async function() {
+    it("should not have any effect when pool is initialized", async function() {
       // the pool state is already intialized
       assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.Initialized);
-      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
+      const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
+      const balance = await qspb.getBalanceQspWei();
+      await qspb.withdrawClaim(poolId, {from: poolOwner});
+      assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.Initialized);
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
     it("should fail if policy is not violated", async function() {
@@ -332,7 +337,7 @@ contract('QuantstampStaking', function(accounts) {
           map(function(el){ return el.toNumber(); }), urlOfAuditReport, poolName]);
     });
 
-    it("should not allow claim withdraw when pool is not funded", async function() {
+    it("should not have any effect when pool is not funded", async function() {
       var nextPool = poolId + 1;
       var maxPayout = depositQspWei.plus(10);
       // create another pool with deposit smaller than the payout
@@ -344,10 +349,15 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(nextPool, minStakeQspWei, {from: staker});
       assert.equal(await quantstampStakingData.getPoolState(nextPool), PoolState.NotViolatedUnderfunded);
-      Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
+      const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
+      const balance = await qspb.getBalanceQspWei();
+      await qspb.withdrawClaim(nextPool, {from: poolOwner});
+      assert.equal((await quantstampStakingData.getPoolState(nextPool)).toNumber(), PoolState.NotViolatedUnderfunded);
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
-    it("should not allow claim withdraw when pool is not funded when violated", async function() {
+    it("should not have any effect when pool is not funded when violated", async function() {
       var nextPool = poolId + 1;
       var maxPayout = depositQspWei.plus(10);
       // create another pool with deposit smaller than the payout
@@ -367,12 +377,17 @@ contract('QuantstampStaking', function(accounts) {
       Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
     });
 
-    it("should not allow claim withdraw when policy is not violated", async function() {
+    it("should not have any effect when policy is not violated", async function() {
       // approve and stake funds
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
       assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.NotViolatedFunded);
-      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
+      const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
+      const balance = await qspb.getBalanceQspWei();
+      await qspb.withdrawClaim(poolId, {from: poolOwner});
+      assert.equal((await quantstampStakingData.getPoolState(poolId)).toNumber(), PoolState.NotViolatedFunded);
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
     it("pools allows claim withdraw when policy is violated via status and pool is funded",

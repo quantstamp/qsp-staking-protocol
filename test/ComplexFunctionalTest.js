@@ -50,6 +50,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.owner, await quantstampStakingData.getPoolOwner(poolParams.index));
     assert.equal(poolParams.maxPayoutQspWei.toNumber(), (await quantstampStakingData.getPoolMaxPayoutQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolMinStakeQspWei(poolParams.index)).toNumber());
+    assert.equal(poolParams.state, await quantstampStakingData.getPoolState(poolParams.index));
     assert.equal(poolParams.depositQspWei.toNumber(), (await quantstampStakingData.getPoolDepositQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.bonusExpertFactor.toNumber(), (await quantstampStakingData.getPoolBonusExpertFactor(poolParams.index)).toNumber());
     assert.equal(poolParams.bonusFirstExpertFactor.toNumber(), (await quantstampStakingData.getPoolBonusFirstExpertFactor(poolParams.index)).toNumber());
@@ -59,7 +60,6 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.timeoutInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeoutInBlocks(poolParams.index)).toNumber());
     assert.equal(poolParams.timeOfStateInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeOfStateInBlocks(poolParams.index)).toNumber());
     assert.equal(poolParams.urlOfAuditReport, await quantstampStakingData.getPoolUrlOfAuditReport(poolParams.index));
-    assert.equal(poolParams.state, await quantstampStakingData.getPoolState(poolParams.index));
     assert.equal(poolParams.totalStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.poolSizeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.stakeCount.toNumber(), (await quantstampStakingData.getPoolStakeCount(poolParams.index)).toNumber());
@@ -920,8 +920,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   it("should not allow stakeholder2 to withdraw a claim from the blue pool, because it is not violated", async function() {
     // check that the pool is in the NotViolatedUnderfunded state
     assert.equal(await qspb.getPoolState(bluePoolParams.index), PoolState.NotViolatedUnderfunded);
-    // try to withdraw claim
-    Util.assertTxFail(qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2}));
+    // withdraw claim, but this should have no effect on the balance of the pool
+    await qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2});
     // check that all pool properties are the same as before
     await assertEntirePoolState(bluePoolParams, balanceOfQspb);
   });
