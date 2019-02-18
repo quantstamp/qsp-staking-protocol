@@ -272,31 +272,46 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
-    function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
+    function stakeFunds(uint poolIndex, uint amountQspWei) public {
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
         require((state == QuantstampStakingData.PoolState.Initialized) ||
             (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
             (state == QuantstampStakingData.PoolState.NotViolatedFunded), 
                 "Pool is not in the right state when staking funds.");
+        bool violated = isViolated(poolIndex);
         // Check if pool can be switched from the initialized state to another state
         if ((state == QuantstampStakingData.PoolState.Initialized) &&
-            // then timeout has occured and stakes are not allowed
-            (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)))) {
+            (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
+            violated)) { // then timeout has occured or the policy is violated and stakes are not allowed
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
             return;
-        }
-        uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
-        // If policy is not violated then transfer the stake
-        safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
+        } else if (block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            return;
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+            return;
+        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedFunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+            return;
+        } else { // then policy is not violated and we can transfer the stake
+            // Adjust the stake amount according to the maximum total stake given by the pool owner
+            uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
+        
+            safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
 
-        uint stakeIndex = data.createStake(poolIndex, msg.sender,
-            adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
+            uint stakeIndex = data.createStake(poolIndex, msg.sender,
+                adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
 
-        data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
-            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
+            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
+                calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
             
-        // Check if there are enough stakes in the pool
-        if (data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex)) {
+            emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
+        }
+        // Check if there are enough stakes in the pool to switch the state from initialized
+        if (state == QuantstampStakingData.PoolState.Initialized &&
+            data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex)) {
             // Minimum staking value was reached
             if (data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
                 // The pool is funded by enough to pay stakers
@@ -306,7 +321,6 @@ contract QuantstampStaking is Ownable {
                 setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
             }
         }
-        emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
     }
 
     /** Computes the un-normalized payout amount for experts (including bonuses) and non-experts
