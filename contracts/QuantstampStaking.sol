@@ -126,29 +126,45 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the deposit should be withdrawn
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out or
-        * if the minimum time for staking has passed twice since the pool transitioned into the NotViolated funded state
-        */
-        if (state == QuantstampStakingData.PoolState.PolicyExpired && data.getPoolTotalStakeQspWei(poolIndex) > 0 &&
-            data.getPoolTimeOfStateInBlocks(poolIndex).add(
-                data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
-            return;
-        }
-        address poolOwner = data.getPoolOwner(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized || // always allow to withdraw in these states
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
+        require(state == QuantstampStakingData.PoolState.Initialized ||
             state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired ||
             state == QuantstampStakingData.PoolState.NotViolatedFunded ||
+            state == QuantstampStakingData.PoolState.PolicyExpired ||
             state == QuantstampStakingData.PoolState.Cancelled,
             "Pool is not in the right state when withdrawing deposit.");
+        bool violated = isViolated(poolIndex);
+        if (state == QuantstampStakingData.PoolState.Initialized ||
+            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if ((state == QuantstampStakingData.PoolState.PolicyExpired ||
+            state == QuantstampStakingData.PoolState.NotViolatedFunded) &&
+            (data.getPoolTotalStakeQspWei(poolIndex) == 0 || block.number >=
+            data.getPoolTimeOfStateInBlocks(poolIndex).add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2)))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && block.number >=
+            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            return;
+        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && violated) {
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+        } else if (state == QuantstampStakingData.PoolState.PolicyExpired ||
+            state == QuantstampStakingData.PoolState.NotViolatedFunded) {
+            /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out
+             * or if the minimum time for staking has passed twice since the pool transitioned into NotViolatedFunded.
+             * Also if the pool is not violated and funded, do not allow this action.
+             */
+            return;
+        }
         uint withdrawalAmountQspWei = data.getPoolDepositQspWei(poolIndex);
-        require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
-        data.setPoolDepositQspWei(poolIndex, 0);
-        data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
-        safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
-        setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+        if (withdrawalAmountQspWei > 0) {
+            data.setPoolDepositQspWei(poolIndex, 0);
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
+            address poolOwner = data.getPoolOwner(poolIndex);
+            safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+        }
     }
 
     /** Allows the staker to withdraw all their stakes from the pool.
