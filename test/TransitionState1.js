@@ -201,19 +201,51 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
 
     /*
-     * Violates the policy, calls the function and checks that the transaction failed.
+     * Violates the policy, calls the function with no funds and checks
+     * that the pool is cancelled.
      */
-    it("deposit >,=,< maxPayout revert when the policy is violated",
+    it("deposit < maxPayout revert when the policy is violated",
       async function() {
-        // approve all the possible transfers at once
-        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
-        await token.approve(qspb.address, leftToDeposit.times(3), {from : stakeholder});
-
         await policy.updateStatus(true);
-        Util.assertTxFail(qspb.depositFunds(poolId, 0, {from : stakeholder}));
-        Util.assertTxFail(qspb.depositFunds(poolId, leftToDeposit.sub(1), {from : stakeholder}));
-        Util.assertTxFail(qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder}));
-        Util.assertTxFail(qspb.depositFunds(poolId, leftToDeposit.add(1), {from : stakeholder}));
+        // todo(mderka): uncomment when implemented
+        // await qspb.depositFunds(poolId, 0, {from : stakeholder});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+  
+    /*
+     * Violates the policy, calls the function with just enough funds
+     * and checks that the transaction failed.
+     */
+    it("deposit = maxPayout revert when the policy is violated",
+      async function() {
+        // approve tokens and violate the policy
+        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
+        await policy.updateStatus(true);
+
+        // deposit funds and check the status
+        // todo(mderka): uncomment when implemented
+        // await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Violates the policy, calls the function with more than enough funds
+     * and checks that the transaction failed.
+     */
+    it("deposit > maxPayout revert when the policy is violated",
+      async function() {
+        // approve tokens and violate the policy
+        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        await token.approve(qspb.address, leftToDeposit.add(1), {from : stakeholder});
+        await policy.updateStatus(true);
+
+        // deposit funds and check the status
+        // todo(mderka): uncomment when implemented
+        // await qspb.depositFunds(poolId, leftToDeposit.add(1), {from : stakeholder});
+        // await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
