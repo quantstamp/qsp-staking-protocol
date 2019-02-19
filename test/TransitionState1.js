@@ -194,6 +194,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         await qspb.depositFunds(poolId, 1, {from : stakeholder});
         await assertPoolState(poolId, PoolState.Initialized);
 
+        // more than enough deposit for the payout
         await qspb.depositFunds(poolId, 1, {from : stakeholder});
         await assertPoolState(poolId, PoolState.Initialized);
       }
@@ -246,8 +247,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
 
     /*
-     * Makes no deposit, waits for a timeout, and tries to withdraw. Then verifies that the
-     * pool was cancelled.
+     * Makes no deposit, waits for a safe timeout (+5 blocks), and tries to withdraw.
+     * Then verifies that the pool was cancelled.
      */
     it("in case for timeout, should also swith into Cancelled",
       async function() {
