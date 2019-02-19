@@ -70,6 +70,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
   let token = null;
   let qspb = null;
   let policy = null;
+  let data = null;
   let assertPoolState = async function(id, state) {
     assert.equal(await Util.getState(qspb, id), state);
   };
@@ -86,9 +87,9 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
 
     // create staking protocol
     let registry = await ExpertRegistry.new({from : owner});
-    let stakingData = await QuantstampStakingData.new(token.address, {from : owner});
-    qspb = await QuantstampStaking.new(token.address, registry.address, stakingData.address, {from: owner});
-    await stakingData.addWhitelistAddress(qspb.address, {from : owner});
+    data = await QuantstampStakingData.new(token.address, {from : owner});
+    qspb = await QuantstampStaking.new(token.address, registry.address, data.address, {from: owner});
+    await data.addWhitelistAddress(qspb.address, {from : owner});
 
     // create policy
     policy = await Policy.new();
@@ -330,7 +331,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
      */
     it("max staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
       async function() {
-        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let payout = await data.getPoolMaxPayoutQspWei(poolId);
         let depositLeft = await qspb.getPoolDepositQspWei(poolId);
         // validate that the precondition of the test is safely met
         assert.isTrue(depositLeft.gte(payout.times(3)));
@@ -350,7 +351,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
     it("max staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
       async function() {
         // keep withdrawing until there is not enough deposit left to make another withdraw
-        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let payout = await data.getPoolMaxPayoutQspWei(poolId);
         let depositLeft = await qspb.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gte(payout)) {
@@ -375,7 +376,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
      */
     it("max staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
       async function() {
-        let payout = await qspb.getPoolMaxPayoutQspWei(poolId);
+        let payout = await data.getPoolMaxPayoutQspWei(poolId);
         let depositLeft = await qspb.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gt(payout.times(2))) {
