@@ -6,23 +6,6 @@ const Policy = artifacts.require('policies/TrivialBackdoorPolicy');
 const Util = require("./util.js");
 const BigNumber = require('bignumber.js');
 
-async function instantiatePool(qspb, poolParams) {
-  await qspb.createPool(poolParams.candidateContract,
-    poolParams.contractPolicy,
-    poolParams.maxPayoutQspWei,
-    poolParams.minStakeQspWei,
-    poolParams.depositQspWei,
-    poolParams.bonusExpertFactor,
-    poolParams.bonusFirstExpertFactor,
-    poolParams.payPeriodInBlocks,
-    poolParams.minStakeTimeInBlocks,
-    poolParams.timeoutInBlocks,
-    poolParams.urlOfAuditReport,
-    poolParams.poolName,
-    poolParams.maxTotalStake,
-    {from : poolParams.owner});
-}
-
 const PoolState = Object.freeze({
   None : 0,
   Initialized : 1,
@@ -66,16 +49,37 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     'maxTotalStake' : new BigNumber(Util.toQsp(1000000))
   };
 
-  const poolId = 0;
+  const firstPoolId = 0;
   let token = null;
   let qspb = null;
   let policy = null;
 
   /*
    * Asserts states of the pool with the given id.
-   * */
+   */
   let assertPoolState = async function(id, state) {
     assert.equal(await Util.getState(qspb, id), state);
+  };
+  
+  /*
+   * Instantiates a new pool with the given parameters.
+   */
+  let instantiatePool = async function (poolParams) {
+    await qspb.createPool(poolParams.candidateContract,
+      poolParams.contractPolicy,
+      poolParams.maxPayoutQspWei,
+      poolParams.minStakeQspWei,
+      poolParams.depositQspWei,
+      poolParams.bonusExpertFactor,
+      poolParams.bonusFirstExpertFactor,
+      poolParams.payPeriodInBlocks,
+      poolParams.minStakeTimeInBlocks,
+      poolParams.timeoutInBlocks,
+      poolParams.urlOfAuditReport,
+      poolParams.poolName,
+      poolParams.maxTotalStake,
+      {from : poolParams.owner}
+    );
   };
 
   /*
@@ -89,8 +93,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     await token.enableTransfer({from : owner});
 
     // create staking protocol
-    let registry = await ExpertRegistry.new({from : owner});
-    let stakingData = await QuantstampStakingData.new(token.address, {from : owner});
+    const registry = await ExpertRegistry.new({from : owner});
+    const stakingData = await QuantstampStakingData.new(token.address, {from : owner});
     qspb = await QuantstampStaking.new(token.address, registry.address, stakingData.address, {from: owner});
     await stakingData.addWhitelistAddress(qspb.address, {from : owner});
 
@@ -104,7 +108,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     // create pool
     await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
     await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
-    await instantiatePool(qspb, pool);
+    await instantiatePool(pool);
   });
 
 
@@ -117,39 +121,39 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Waits for the timeout and makes a deposit while policy is not violated.
      * Then verifies that the pool was cancelled regardless of the deposit amount.
      */
-    it("if deposit >,=,< maxPayout and timeout happened, switch to Cancelled",
+    it("if deposit >,=,< maxPayout and timeout happened without policy violated, switch to Cancelled",
       async function() {
         // three pools require 3x the approval
         await token.approve(qspb.address, pool.depositQspWei.times(3), {from : stakeholder});
         pool.poolName = "1"; // todo(mderka): remove this if pool names do not need to be unique
-        await instantiatePool(qspb, pool);
+        await instantiatePool(pool);
         pool.poolName = "2"; // todo(mderka): remove this if pool names do not need to be unique
-        await instantiatePool(qspb, pool);
+        await instantiatePool(pool);
         pool.poolName = "3"; // todo(mderka): remove this if pool names do not need to be unique
-        await instantiatePool(qspb, pool);
+        await instantiatePool(pool);
 
         await Util.mineNBlocks(pool.timeoutInBlocks);
 
         // all pools are timed out now
-        await qspb.depositFunds(poolId, 0, {from : stakeholder});
+        await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
 
         // issue three approvals for deposits in the three pools at once
-        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        const leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, leftToDeposit.times(3), {from : stakeholder});
 
-        await qspb.depositFunds(poolId + 1, leftToDeposit.sub(1), {from : stakeholder});
+        await qspb.depositFunds(firstPoolId + 1, leftToDeposit.sub(1), {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
-        // assert.equal(await Util.getState(qspb, poolId + 1), PoolState.Cancelled);
+        // assert.equal(await Util.getState(qspb, firstPoolId + 1), PoolState.Cancelled);
 
-        await qspb.depositFunds(poolId + 2, leftToDeposit, {from : stakeholder});
+        await qspb.depositFunds(firstPoolId + 2, leftToDeposit, {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
-        // assert.equal(await Util.getState(qspb, poolId + 2), PoolState.Cancelled);
+        // assert.equal(await Util.getState(qspb, firstPoolId + 2), PoolState.Cancelled);
 
-        await qspb.depositFunds(poolId + 3, leftToDeposit.add(1), {from : stakeholder});
+        await qspb.depositFunds(firstPoolId + 3, leftToDeposit.add(1), {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
-        // assert.equal(await Util.getState(qspb, poolId + 3), PoolState.Cancelled);
+        // assert.equal(await Util.getState(qspb, firstPoolId + 3), PoolState.Cancelled);
       }
     );
 
@@ -161,14 +165,13 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("edge case for switching the pool to cancelled state",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
-        await qspb.depositFunds(poolId, 0, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Initialized);
-        // await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
 
         // this deposit will mine one more block
-        await qspb.depositFunds(poolId, 0, {from : stakeholder});
+        await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
         // todo(mderka): functionality not implemented, uncomment when it is
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -179,24 +182,24 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("both deposit >,=,< maxPayout stay in this state if timeout did not happen",
       async function() {
-        await qspb.depositFunds(poolId, 0, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
 
         // approve all the possible transfers at once by adding 100
-        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        const leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, (leftToDeposit.add(100)), {from : stakeholder});
 
         // not enough
-        await qspb.depositFunds(poolId, leftToDeposit.sub(1), {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.depositFunds(firstPoolId, leftToDeposit.sub(1), {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
 
         // just enough
-        await qspb.depositFunds(poolId, 1, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.depositFunds(firstPoolId, 1, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
 
         // more than enough deposit for the payout
-        await qspb.depositFunds(poolId, 1, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.depositFunds(firstPoolId, 1, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
       }
     );
 
@@ -208,8 +211,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when implemented
-        // await qspb.depositFunds(poolId, 0, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   
@@ -220,14 +223,14 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("deposit = maxPayout revert when the policy is violated",
       async function() {
         // approve tokens and violate the policy
-        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        const leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
         await policy.updateStatus(true);
 
         // deposit funds and check the status
         // todo(mderka): uncomment when implemented
-        // await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.depositFunds(firstPoolId, leftToDeposit, {from : stakeholder});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -238,14 +241,14 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("deposit > maxPayout revert when the policy is violated",
       async function() {
         // approve tokens and violate the policy
-        let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        const leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, leftToDeposit.add(1), {from : stakeholder});
         await policy.updateStatus(true);
 
         // deposit funds and check the status
         // todo(mderka): uncomment when implemented
-        // await qspb.depositFunds(poolId, leftToDeposit.add(1), {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.depositFunds(firstPoolId, leftToDeposit.add(1), {from : stakeholder});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
@@ -261,8 +264,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("always switch to Cancelled",
       async function() {
-        await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -273,8 +276,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("switch to Cancelled even if the policy is violated",
       async function() {
         await policy.updateStatus(true);
-        await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -285,8 +288,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("in case for timeout, should also swith into Cancelled",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks.add(5));
-        await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
@@ -303,11 +306,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("if the policy is violated, switch to cancelled",
       async function() {
         await token.approve(qspb.address, 7, {from : staker});
-        await qspb.stakeFunds(poolId, 7, {from : staker});
+        await qspb.stakeFunds(firstPoolId, 7, {from : staker});
         // keep this violation after staking, otherwise the state will change
         await policy.updateStatus(true);
-        await qspb.withdrawStake(poolId, {from : staker});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawStake(firstPoolId, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -322,12 +325,12 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         await Util.mineNBlocks(pool.timeoutInBlocks.sub(3));
         // mine 2 more blocks
         await token.approve(qspb.address, 8, {from : staker});
-        await qspb.stakeFunds(poolId, 8, {from : staker});
+        await qspb.stakeFunds(firstPoolId, 8, {from : staker});
         // asserting the state precondition
-        await assertPoolState(poolId, PoolState.Initialized);
+        await assertPoolState(firstPoolId, PoolState.Initialized);
 
-        await qspb.withdrawStake(poolId, {from : staker});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawStake(firstPoolId, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -338,10 +341,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("if timeout did not happen and policy is not violated, remain in this state",
       async function() {
         await token.approve(qspb.address, 9, {from : staker});
-        await qspb.stakeFunds(poolId, 9, {from : staker});
-        await qspb.withdrawStake(poolId, {from : staker});
+        await qspb.stakeFunds(firstPoolId, 9, {from : staker});
+        await qspb.withdrawStake(firstPoolId, {from : staker});
         // todo(mderka): uncomment when the bug is removed, SP-227
-        //await assertPoolState(poolId, PoolState.Initialized);
+        //await assertPoolState(firstPoolId, PoolState.Initialized);
       }
     );
 
@@ -352,9 +355,9 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("0 stake, if the policy is violated, switch to cancelled",
       async function() {
         await policy.updateStatus(true);
-        await qspb.withdrawStake(poolId, {from : staker});
+        await qspb.withdrawStake(firstPoolId, {from : staker});
         // todo(mderka): uncomment when transition is implemented for 0 stake
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -365,9 +368,9 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("0 stake, if timeout happened, switch to cancelled",
       async function() {
         await Util.mineNBlocks(pool.timeoutInBlocks);
-        await qspb.withdrawStake(poolId, {from : staker});
+        await qspb.withdrawStake(firstPoolId, {from : staker});
         // todo(mderka): uncomment when transition is implemented for 0 stake
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -377,8 +380,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("0 stake, if timeout did not happen and policy is not violated, remain in this state",
       async function() {
-        await qspb.withdrawStake(poolId, {from : staker});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.withdrawStake(firstPoolId, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
       }
     );
   });
@@ -394,7 +397,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("withdrawInterest: call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
+        Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
       }
     );
   });
@@ -411,7 +414,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("call is not allowed when timeout did not happen and policy is not violated",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
       }
     );
 
@@ -423,8 +426,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         // todo(mderka): uncomment when implemented
         // await Util.mineNBlocks(pool.timeoutInBlocks);
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -436,8 +439,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         // todo(mderka): uncomment when implemented
         // await policy.updateStatus(true);
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
@@ -454,8 +457,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("if policy is violated switch state to cancelled",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(poolId, {from : staker});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.checkPolicy(firstPoolId, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -464,7 +467,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("if policy is not violated, fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
       }
     );
   });
@@ -484,8 +487,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
         // mines 1 extra blocks causing the timeout
         await token.approve(qspb.address, 14, {from : staker});
-        await qspb.stakeFunds(poolId, 14, {from : staker});
-        await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.stakeFunds(firstPoolId, 14, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -498,8 +501,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         await policy.updateStatus(true);
         // todo(mderka): uncomment when the modifier is removed
         // await token.approve(qspb.address, 7, {from : staker});
-        // await qspb.stakeFunds(poolId, 7, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await qspb.stakeFunds(firstPoolId, 7, {from : staker});
+        // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -510,8 +513,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("stays in the same state if stake is too low, policy is not violated, and timeout did not happen",
       async function() {
         await token.approve(qspb.address, 13, {from : staker});
-        await qspb.stakeFunds(poolId, 13, {from : staker});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.stakeFunds(firstPoolId, 13, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
       }
     );
 
@@ -524,15 +527,15 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
         // fund pool
         let leftToDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
         await token.approve(qspb.address, leftToDeposit, {from : stakeholder});
-        await qspb.depositFunds(poolId, leftToDeposit, {from : stakeholder});
+        await qspb.depositFunds(firstPoolId, leftToDeposit, {from : stakeholder});
 
         // stake just not enough
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
-        await qspb.stakeFunds(poolId, pool.minStakeQspWei.sub(1), {from : staker});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.stakeFunds(firstPoolId, pool.minStakeQspWei.sub(1), {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
         // stake enough
-        await qspb.stakeFunds(poolId, 1, {from : staker});
-        await assertPoolState(poolId, PoolState.NotViolatedFunded);
+        await qspb.stakeFunds(firstPoolId, 1, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.NotViolatedFunded);
       }
     );
 
@@ -544,11 +547,11 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
         // stake just not enough
-        await qspb.stakeFunds(poolId, pool.minStakeQspWei.sub(1), {from : staker});
-        await assertPoolState(poolId, PoolState.Initialized);
+        await qspb.stakeFunds(firstPoolId, pool.minStakeQspWei.sub(1), {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Initialized);
         // stake enough
-        await qspb.stakeFunds(poolId, 1, {from : staker});
-        await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
+        await qspb.stakeFunds(firstPoolId, 1, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.NotViolatedUnderfunded);
       }
     );
   });
