@@ -332,7 +332,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
     it("max staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
       async function() {
         let payout = await data.getPoolMaxPayoutQspWei(poolId);
-        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        let depositLeft = await data.getPoolDepositQspWei(poolId);
         // validate that the precondition of the test is safely met
         assert.isTrue(depositLeft.gte(payout.times(3)));
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
@@ -352,14 +352,14 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
       async function() {
         // keep withdrawing until there is not enough deposit left to make another withdraw
         let payout = await data.getPoolMaxPayoutQspWei(poolId);
-        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        let depositLeft = await data.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gte(payout)) {
           await qspb.withdrawInterest(poolId, {from : staker});
-          depositLeft = await qspb.getPoolDepositQspWei(poolId);
+          depositLeft = await data.getPoolDepositQspWei(poolId);
         }
         // validate the precondition state
-        depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        depositLeft = await data.getPoolDepositQspWei(poolId);
         assert.isFalse(depositLeft.gte(payout));
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
 
@@ -377,14 +377,14 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
     it("max staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
       async function() {
         let payout = await data.getPoolMaxPayoutQspWei(poolId);
-        let depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        let depositLeft = await data.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gt(payout.times(2))) {
           await qspb.withdrawInterest(poolId, {from : staker});
-          depositLeft = await qspb.getPoolDepositQspWei(poolId);
+          depositLeft = await data.getPoolDepositQspWei(poolId);
         }
         // validation the precondition
-        depositLeft = await qspb.getPoolDepositQspWei(poolId);
+        depositLeft = await data.getPoolDepositQspWei(poolId);
         assert.isTrue(depositLeft.gte(payout));
         assert.isTrue(payout.times(2).gt(depositLeft));
 
