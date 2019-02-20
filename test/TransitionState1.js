@@ -98,7 +98,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     const now = await Util.getBlockNumber();
     console.log(now);
     console.log(await qspb.bn());
-    const left = end.sub(now);
+    const left = end.sub(now).add(offset);
     console.log(timeout);
     console.log(start);
     console.log(end);
