@@ -268,6 +268,11 @@ contract QuantstampStaking is Ownable {
         emit ClaimWithdrawn(poolIndex, total);
     }
 
+    function bn() public view returns(uint) {
+        return block.number;
+    }
+
+event T(uint n);
     /** Transfers an amount of QSP from the staker to the pool
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param amountQspWei - the amount of QSP Wei that is transferred
@@ -279,6 +284,11 @@ contract QuantstampStaking is Ownable {
             (state == QuantstampStakingData.PoolState.NotViolatedFunded), 
                 "Pool is not in the right state when staking funds.");
         // Check if pool can be switched from the initialized state to another state
+emit T(data.getPoolTimeoutInBlocks(poolIndex));
+emit T(block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)));
+emit T(block.number);
+emit T(data.getPoolTimeOfStateInBlocks(poolIndex));
+
         if ((state == QuantstampStakingData.PoolState.Initialized) &&
             // then timeout has occured and stakes are not allowed
             (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)))) {

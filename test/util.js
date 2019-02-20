@@ -48,12 +48,18 @@ async function balanceOfRaw (token, user) {
   return await token.balanceOf(user);
 }
 
+async function getBlockNumber () {
+  web3.eth.getBlockNumber().then(console.log);
+  return await web3.eth.getBlockNumber();
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
   daysToSeconds: daysToSeconds,
   assertTxFail : assertTxFail,
   getState: getState,
+  getBlockNumber: getBlockNumber,
   mineOneBlock: mineOneBlock,
   mineNBlocks: mineNBlocks,
   balanceOf: balanceOf,

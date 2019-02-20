@@ -93,11 +93,22 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
    */
   async function mineUntilTimeout(poolId, offset) {
     const timeout = await stakingData.getPoolTimeoutInBlocks(poolId);
-    const elapsed = await stakingData.getPoolTimeOfStateInBlocks(poolId);
-    const toMine = timeout.sub(elapsed).add(offset);
-    if (toMine.gt(0)) {
-      Util.mineNBlocks(toMine);
+    const start = await stakingData.getPoolTimeOfStateInBlocks(poolId);
+    const end = start.add(timeout);
+    const now = await Util.getBlockNumber();
+    console.log(now);
+    console.log(await qspb.bn());
+    const left = end.sub(now);
+    console.log(timeout);
+    console.log(start);
+    console.log(end);
+    console.log(now);
+    console.log(left);
+    if (left.gt(0)) {
+      await Util.mineNBlocks(left);
     }
+    console.log(await Util.getBlockNumber());
+    console.log(":exit");
   }
 
   /*
@@ -500,10 +511,16 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Waits for the timeout and then attempts to stake a few tokens.
      * Checks that the pool was cancelled afterwards.
      */
-    it("1.4 cancel if timeout happened",
+    it.only("1.4 cancel if timeout happened",
       async function() {
+        const now = await Util.getBlockNumber();
+    console.log(now);
+    console.log(await qspb.bn());
+        console.log("!!!");
         await token.approve(qspb.address, 14, {from : staker});
         await mineUntilTimeout(firstPoolId, 0);
+        console.log(await Util.getBlockNumber());
+        console.log(await stakingData.getPoolTimeOfStateInBlocks(firstPoolId));
         await qspb.stakeFunds(firstPoolId, 14, {from : staker});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
