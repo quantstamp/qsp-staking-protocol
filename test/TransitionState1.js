@@ -96,19 +96,14 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     const start = await stakingData.getPoolTimeOfStateInBlocks(poolId);
     const end = start.add(timeout);
     const now = await Util.getBlockNumber();
+    console.log(":before");
     console.log(now);
     console.log(await qspb.bn());
+    console.log(":after");
     const left = end.sub(now).add(offset);
-    console.log(timeout);
-    console.log(start);
-    console.log(end);
-    console.log(now);
-    console.log(left);
     if (left.gt(0)) {
       await Util.mineNBlocks(left);
     }
-    console.log(await Util.getBlockNumber());
-    console.log(":exit");
   }
 
   /*
