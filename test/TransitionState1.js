@@ -182,7 +182,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("edge case for switching the pool to cancelled state",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
+        await mineUntilTimeout(firstPoolId, -1);
         await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Initialized);
 
@@ -305,7 +305,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("in case for timeout, should also switch into Cancelled",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks.add(5));
+        await mineUntilTimeout(firstPoolId, +5);
         await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
@@ -338,12 +338,12 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("if timeout happened, switch to cancelled",
       async function() {
-        // mine 3 less blocks that is needed for the timeout. 2 additional blocks will
-        // be mined later, and the last block is the withdrawStake call iteself.
-        await Util.mineNBlocks(pool.timeoutInBlocks.sub(3));
         // mine 2 more blocks
         await token.approve(qspb.address, 8, {from : staker});
         await qspb.stakeFunds(firstPoolId, 8, {from : staker});
+        // mine 1 less blocks that is needed for the timeout.
+        // last block is mined with the withdrawStake call iteself.
+        await mineUntilTimeout(firstPoolId, -1);
         // asserting the state precondition
         await assertPoolState(firstPoolId, PoolState.Initialized);
 
@@ -385,7 +385,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("0 stake, if timeout happened, switch to cancelled",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks);
+        await mineUntilTimeout(firstPoolId, 0);
         await qspb.withdrawStake(firstPoolId, {from : staker});
         // todo(mderka): uncomment when transition is implemented for 0 stake
         // await assertPoolState(firstPoolId, PoolState.Cancelled);
@@ -443,7 +443,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     it("if timeout happened, cancel the pool",
       async function() {
         // todo(mderka): uncomment when implemented
-        // await Util.mineNBlocks(pool.timeoutInBlocks);
+        // await mineUntilTimeout(firstPoolId, 0);
         // await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
         // await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
@@ -502,9 +502,8 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      */
     it("cancel if timeout happened",
       async function() {
-        await Util.mineNBlocks(pool.timeoutInBlocks.sub(1));
-        // mines 1 extra blocks causing the timeout
         await token.approve(qspb.address, 14, {from : staker});
+        await mineUntilTimeout(firstPoolId, 0);
         await qspb.stakeFunds(firstPoolId, 14, {from : staker});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
