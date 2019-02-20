@@ -511,16 +511,10 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Waits for the timeout and then attempts to stake a few tokens.
      * Checks that the pool was cancelled afterwards.
      */
-    it.only("1.4 cancel if timeout happened",
+    it("1.4 cancel if timeout happened",
       async function() {
-        const now = await Util.getBlockNumber();
-    console.log(now);
-    console.log(await qspb.bn());
-        console.log("!!!");
         await token.approve(qspb.address, 14, {from : staker});
         await mineUntilTimeout(firstPoolId, 0);
-        console.log(await Util.getBlockNumber());
-        console.log(await stakingData.getPoolTimeOfStateInBlocks(firstPoolId));
         await qspb.stakeFunds(firstPoolId, 14, {from : staker});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
