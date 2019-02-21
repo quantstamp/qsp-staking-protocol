@@ -49,7 +49,6 @@ async function balanceOfRaw (token, user) {
 }
 
 async function getBlockNumber () {
-  web3.eth.getBlockNumber().then(console.log);
   return await web3.eth.getBlockNumber();
 }
 
