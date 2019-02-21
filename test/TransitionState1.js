@@ -92,6 +92,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
    * mineUntilTimeout(poolId, poolTimeout.add(1)) mines until one block after timeout
    */
   async function mineUntilTimeout(poolId, offset) {
+    await assertPoolState(poolId, PoolState.Initialized);
     const timeout = await stakingData.getPoolTimeoutInBlocks(poolId);
     const start = await stakingData.getPoolTimeOfStateInBlocks(poolId);
     const end = start.add(timeout);
@@ -129,6 +130,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
     await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
     await instantiatePool(pool);
+    await assertPoolState(firstPoolId, PoolState.Initialized);
   });
 
 
