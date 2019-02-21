@@ -200,7 +200,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * funds that insufficient to cover the payout, then adds more and in each
      * step verifies that the state remained Initialized.
      */
-    it("1.? if deposit >,=,< maxPayout stay in this state if timeout did not happen",
+    it("1.7 if deposit >,=,< maxPayout stay in this state if timeout did not happen",
       async function() {
         await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Initialized);
@@ -358,7 +358,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Stakes a few tokens and attempts to withdraw stake. Then verifies
      * the the pool remained in the current state.
      */
-    it("1.? if timeout did not happen and policy is not violated, remain in this state",
+    it("1.7 if timeout did not happen and policy is not violated, remain in this state",
       async function() {
         await token.approve(qspb.address, 9, {from : staker});
         await qspb.stakeFunds(firstPoolId, 9, {from : staker});
@@ -398,7 +398,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Stakes 0 tokens and attempts to withdraw stake. Then verifies
      * the the pool remained in the current state.
      */
-    it("1.? no stake, if timeout did not happen and policy is not violated, remain in this state",
+    it("1.7 no stake, if timeout did not happen and policy is not violated, remain in this state",
       async function() {
         await qspb.withdrawStake(firstPoolId, {from : staker});
         await assertPoolState(firstPoolId, PoolState.Initialized);
@@ -415,7 +415,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     /*
      * Tests that the call to the function is not allowed
      */
-    it("1.? withdrawInterest: call is not allowed",
+    it("1.9 withdrawInterest: call is not allowed",
       async function() {
         Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
       }
@@ -432,7 +432,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Tests that the call to the function is not allowed if the policy is not
      * violated and the timeout did not happen.
      */
-    it("1.? call is not allowed when timeout did not happen and policy is not violated",
+    it("1.10 call is not allowed when timeout did not happen and policy is not violated",
       async function() {
         Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
       }
@@ -485,7 +485,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("1.? if policy is not violated, fail loud",
+    it("1.11 if policy is not violated, fail loud",
       async function() {
         Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
       }
@@ -529,7 +529,7 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
      * Stakes a few tokens (less than min stake) in a healthy pool. Verifies that the status did
      * no change.
      */
-    it("1.? stays in the same state if stake is too low, policy is not violated, and timeout did not happen",
+    it("1.8 stays in the same state if stake is too low, policy is not violated, and timeout did not happen",
       async function() {
         await token.approve(qspb.address, 13, {from : staker});
         await qspb.stakeFunds(firstPoolId, 13, {from : staker});
