@@ -3,7 +3,7 @@ const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const ExpertRegistry = artifacts.require('WhitelistExpertRegistry');
 const Policy = artifacts.require('policies/TrivialBackdoorPolicy');
-const Util = require("./util.js");
+const Util = require("../util.js");
 const BigNumber = require('bignumber.js');
 
 const PoolState = Object.freeze({
@@ -18,7 +18,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract('TransitionState1.js (Initialized): check transitions', function(accounts) {
+contract('InitializedState.js: check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -577,4 +577,3 @@ contract('TransitionState1.js (Initialized): check transitions', function(accoun
     );
   });
 });
-
