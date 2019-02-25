@@ -73,7 +73,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
       quantstampStakingData.address, {from: owner});
-    await quantstampStakingData.addWhitelistAddress(qspb.address);
+    await quantstampStakingData.setWhitelistAddress(qspb.address);
 
     // quick check that balance is zero
     assert.equal(await qspb.getBalanceQspWei(), 0);
