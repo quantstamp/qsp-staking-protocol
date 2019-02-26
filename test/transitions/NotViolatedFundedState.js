@@ -114,10 +114,10 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     await token.enableTransfer({from : owner});
 
     // create staking protocol
-    let registry = await ExpertRegistry.new({from : owner});
+    const registry = await ExpertRegistry.new({from : owner});
     data = await QuantstampStakingData.new(token.address, {from : owner});
     qspb = await QuantstampStaking.new(token.address, registry.address, data.address, {from: owner});
-    await data.addWhitelistAddress(qspb.address, {from : owner});
+    await data.setWhitelistAddress(qspb.address, {from : owner});
 
     // create policy
     policy = await Policy.new();
@@ -161,9 +161,10 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.9 if the max staking time elapsed and the policy is not violated, move to state 7",
       async function() {
-        await token.approve(qspb.address, 13, {from : stakeholder});
+        const toDeposit = 13;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
-        await qspb.depositFunds(poolId, 13, {from : stakeholder});
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
@@ -174,11 +175,12 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.10 if the max staking time elapsed and the policy is violated, move to state 7",
       async function() {
-        await token.approve(qspb.address, 14, {from : stakeholder});
+        const toDeposit = 14;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, 14, {from : stakeholder});
+        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         // await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
@@ -188,8 +190,9 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.1 if the max staking time did not elapse and the policy is not violated, stay in this state and do not fail",
       async function() {
-        await token.approve(qspb.address, 12, {from : stakeholder});
-        await qspb.depositFunds(poolId, 12, {from : stakeholder});
+        const toDeposit = 12;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
       }
     );
@@ -200,10 +203,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.6 if the max staking time did not elapse and the policy violated, move to state 5",
       async function() {
+        const toDeposit = 11;
         await policy.updateStatus(true);
-        await token.approve(qspb.address, 11, {from : stakeholder});
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
         // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, 11, {from : stakeholder});
+        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         // await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
@@ -216,10 +220,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         // todo(mderka): does 4.7 conform to time-first principle?
         await policy.updateStatus(true);
-        await token.approve(qspb.address, 13, {from : stakeholder});
+        const toDeposit = 13;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, 13, {from : stakeholder});
+        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         // await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
@@ -373,11 +378,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.2 max staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
       async function() {
-        let payout = await data.getPoolMaxPayoutQspWei(poolId);
-        let depositLeft = await data.getPoolDepositQspWei(poolId);
+        const payout = await qspb.computePayout(poolId, staker);
+        const depositLeft = await data.getPoolDepositQspWei(poolId);
         // validate that the precondition of the test is safely met
-        assert.isTrue(depositLeft.gte(payout.times(3)));
-        await assertPoolState(poolId, PoolState.NotViolatedFunded);
+        const safeSufficientDeposit = payout.times(3);
+        assert.isTrue(depositLeft.gte(safeSufficientDeposit));
 
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         await qspb.withdrawInterest(poolId, {from : staker});
@@ -393,7 +398,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.8 max staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
       async function() {
         // keep withdrawing until there is not enough deposit left to make another withdraw
-        let payout = await data.getPoolMaxPayoutQspWei(poolId);
+        const payout = await qspb.computePayout(poolId, staker);
         let depositLeft = await data.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gte(payout)) {
@@ -418,7 +423,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.3 max staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
       async function() {
-        let payout = await data.getPoolMaxPayoutQspWei(poolId);
+        const payout = await qspb.computePayout(poolId, staker);
         let depositLeft = await data.getPoolDepositQspWei(poolId);
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         while (depositLeft.gt(payout.times(2))) {
@@ -575,10 +580,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.10 if the max staking time elapsed and the policy is not violated, move to state 7",
       async function() {
-        await token.approve(qspb.address, 27, {from : staker});
+        const toStake = 27;
+        await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when this does not fail
-        // await qspb.stakeFunds(poolId, 27, {from : staker});
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
         // await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
@@ -590,10 +596,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.10 if the max staking time elapsed and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
-        await token.approve(qspb.address, 31, {from : staker});
+        const toStake = 31; 
+        await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, 31, {from : staker});
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
         // await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
@@ -604,8 +611,9 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.1 if the max staking time did not elapse and the policy is not violated, stay in this state and do not fail",
       async function() {
-        await token.approve(qspb.address, 14, {from : staker});
-        await qspb.stakeFunds(poolId, 14, {from : staker});
+        const toStake = 14;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
       }
     );
@@ -617,9 +625,10 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.5 if the max staking time did not elapse and the policy is violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
-        await token.approve(qspb.address, 6, {from : staker});
+        const toStake = 6;
+        await token.approve(qspb.address, toStake, {from : staker});
         // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, 6, {from : staker});
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
         // await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
