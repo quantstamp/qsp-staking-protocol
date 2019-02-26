@@ -109,7 +109,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
    */
   async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
     // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
-    const payout = await qspb.computePayout(poolId, staker);
     let depositLeft = await data.getPoolDepositQspWei(poolId);
     await Util.mineNBlocks(pool.payPeriodInBlocks);
     while (depositLeft.gte(balance)) {
@@ -417,7 +416,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout);
 
         // validate the precondition state
-        depositLeft = await data.getPoolDepositQspWei(poolId);
+        const depositLeft = await data.getPoolDepositQspWei(poolId);
         assert.isFalse(depositLeft.gte(payout));
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
 
@@ -439,7 +438,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout.times(2));
         
         // validation the precondition
-        depositLeft = await data.getPoolDepositQspWei(poolId);
+        const depositLeft = await data.getPoolDepositQspWei(poolId);
         assert.isTrue(depositLeft.gte(payout));
         assert.isTrue(payout.times(2).gt(depositLeft));
 
