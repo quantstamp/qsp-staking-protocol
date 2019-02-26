@@ -197,6 +197,7 @@ contract('CancelledState.js: check transitions', function(accounts) {
     it("6.2 if policy is not violated, fail loud",
       async function() {
         Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
