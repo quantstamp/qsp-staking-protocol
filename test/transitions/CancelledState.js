@@ -127,7 +127,6 @@ contract('CancelledState.js: check transitions', function(accounts) {
       async function() {
         await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
         Util.assertTxFail(qspb.depositFunds(firstPoolId, pool.depositQspWei, {from : stakeholder}));
-        assert.equal(await Util.getState(qspb, firstPoolId), PoolState.Cancelled);
       }
     );
   });
@@ -168,7 +167,6 @@ contract('CancelledState.js: check transitions', function(accounts) {
     it("6.2 call is not allowed, pool remains in the Cancelled state",
       async function() {
         Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
@@ -183,7 +181,6 @@ contract('CancelledState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
@@ -197,7 +194,6 @@ contract('CancelledState.js: check transitions', function(accounts) {
     it("6.2 if policy is not violated, fail loud",
       async function() {
         Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -221,7 +217,6 @@ contract('CancelledState.js: check transitions', function(accounts) {
         const stakeAmout = 13;
         await token.approve(qspb.address, stakeAmout, {from : staker});
         Util.assertTxFail(qspb.stakeFunds(firstPoolId, stakeAmout, {from : staker}));
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });
