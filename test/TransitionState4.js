@@ -6,23 +6,6 @@ const Policy = artifacts.require('policies/TrivialBackdoorPolicy');
 const Util = require("./util.js");
 const BigNumber = require('bignumber.js');
 
-async function instantiatePool(qspb, poolParams) {
-  await qspb.createPool(poolParams.candidateContract,
-    poolParams.contractPolicy,
-    poolParams.maxPayoutQspWei,
-    poolParams.minStakeQspWei,
-    poolParams.depositQspWei,
-    poolParams.bonusExpertFactor,
-    poolParams.bonusFirstExpertFactor,
-    poolParams.payPeriodInBlocks,
-    poolParams.minStakeTimeInBlocks,
-    poolParams.timeoutInBlocks,
-    poolParams.urlOfAuditReport,
-    poolParams.poolName,
-    poolParams.maxTotalStake,
-    {from : poolParams.owner});
-}
-
 const PoolState = Object.freeze({
   None : 0,
   Initialized : 1,
@@ -77,7 +60,7 @@ contract('TransitionState4.js (NotViolatedFunded): check transitions', function(
    */
   async function assertPoolState(id, state) {
     assert.equal(await Util.getState(qspb, id), state);
-  };
+  }
 
   /*
    * Instantiates a new pool with the given parameters.

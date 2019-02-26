@@ -52,10 +52,6 @@ async function getBlockNumber () {
   return await web3.eth.getBlockNumber();
 }
 
-async function getState (qspb, poolId) {
-  return (await qspb.getPoolState(poolId)).toNumber();
-}
-
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
