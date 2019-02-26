@@ -548,7 +548,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("4.11 if the max staking time did not elapse and the policy is not violated, stay in this state and fail loud",
+    it("4.12 if the max staking time did not elapse and the policy is not violated, stay in this state and fail loud",
       async function() {
         // todo(mderka): missing indication in the diagram
         Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
