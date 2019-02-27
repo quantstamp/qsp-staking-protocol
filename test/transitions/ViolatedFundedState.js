@@ -85,7 +85,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
   /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
-   * that will be in the NotViolatedFunded state.
+   * that will be in the ViolatedFunded state.
    */
   beforeEach(async function() {
 
