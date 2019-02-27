@@ -84,40 +84,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
   }
 
   /*
-   * Mines blocks until we reach block of staking timeout +- offset for the pool with
-   * given poolId. Examples:
-   *
-   * mineUntilMinStakingTime(poolId, +1) mines until one block before timeout
-   * mineUntilMinStakingTime(poolId, poolTimeout) mines until the first timeout block
-   * mineUntilMinStakingTime(poolId, -1) mines until one block after timeout
-   */
-  async function mineUntilMinStakingTime(poolId, offset) {
-    await assertPoolState(poolId, PoolState.NotViolatedFunded);
-    const timeout = await data.getPoolMinStakeTimeInBlocks(poolId);
-    const start = await data.getPoolTimeOfStateInBlocks(poolId);
-    const end = start.add(timeout);
-    const now = await Util.getBlockNumber();
-    const left = end.sub(now).add(offset);
-    if (left.gt(0)) {
-      await Util.mineNBlocks(left);
-    }
-  }
-
-  /*
-   * Mines blocks for pay periods to elaps and withdraws interest for each
-   * until the deposit left in the pool is less than balance.
-   */
-  async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
-    // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
-    let depositLeft = await data.getPoolDepositQspWei(poolId);
-    await Util.mineNBlocks(pool.payPeriodInBlocks);
-    while (depositLeft.gte(balance)) {
-      await qspb.withdrawInterest(poolId, {from : staker});
-      depositLeft = await data.getPoolDepositQspWei(poolId);
-    }
-  }
-
-  /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
    * that will be in the NotViolatedFunded state.
    */
@@ -166,8 +132,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.1 withdrawClaim and stay in same state",
       async function() {
-          await qspb.withdrawClaim(poolId, {from : stakeholder});
-          await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });
@@ -181,7 +147,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.2 depositFunds: call is now allowed",
       async function() {
-          Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
+        Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
@@ -195,7 +161,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.2 withdrawDeposit: call is now allowed",
       async function() {
-          Util.assertTxFail(qspb.withdrawDeposit(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawDeposit(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
@@ -209,7 +175,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.2 stakeFunds: call is now allowed",
       async function() {
-          Util.assertTxFail(qspb.stakeFunds(poolId, pool.maxPayoutQspWei, {from : staker}));
+        Util.assertTxFail(qspb.stakeFunds(poolId, pool.maxPayoutQspWei, {from : staker}));
       }
     );
   });
@@ -223,7 +189,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.2 withdrawStake: call is now allowed",
       async function() {
-          Util.assertTxFail(qspb.withdrawStake(poolId, pool.maxPayoutQspWei, {from : staker}));
+        Util.assertTxFail(qspb.withdrawStake(poolId, pool.maxPayoutQspWei, {from : staker}));
       }
     );
   });
@@ -237,7 +203,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("5.2 withdrawInterest: call is now allowed",
       async function() {
-          Util.assertTxFail(qspb.withdrawInterest(poolId, pool.maxPayoutQspWei, {from : staker}));
+        Util.assertTxFail(qspb.withdrawInterest(poolId, pool.maxPayoutQspWei, {from : staker}));
       }
     );
   });
