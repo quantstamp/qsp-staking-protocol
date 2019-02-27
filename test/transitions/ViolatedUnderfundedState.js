@@ -129,7 +129,8 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
   describe("depositFunds", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.depositFunds(poolId, 0, {from : stakeholder}));
+        await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
+        Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
