@@ -228,18 +228,17 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
     /*
      * Violates the policy while expiring the pool it and checks that the pool gets to
-     * state ViolatedFunded.
+     * state Cancelled.
      */
-    it("4.7 if the min staking time elapsed and the policy is violated, move to state 5",
+    it("4.9 if the min staking time elapsed and the policy is violated, move to state 7",
       async function() {
-        // todo(mderka): does 4.7 conform to time-first principle?
         await policy.updateStatus(true);
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncommented when the modifier in the smart contract is removed
         // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        // await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
