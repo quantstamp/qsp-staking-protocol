@@ -18,7 +18,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract('CancelledState.js: check transitions', function(accounts) {
+contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -29,14 +29,14 @@ contract('CancelledState.js: check transitions', function(accounts) {
     'candidateContract' : nonZeroAddress,
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder,
-    'maxPayoutQspWei' : new BigNumber(Util.toQsp(100)),
+    'maxPayoutQspWei' : new BigNumber(Util.toQsp(101)),
     'minStakeQspWei' : new BigNumber(Util.toQsp(42)),
-    'depositQspWei' : new BigNumber(Util.toQsp(5)),
+    'depositQspWei' : new BigNumber(Util.toQsp(50)), // insufficient deposit
     'bonusExpertFactor' : 0,
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
-    'payPeriodInBlocks' : new BigNumber(20),
-    'minStakeTimeInBlocks' : new BigNumber(1000000),
+    'payPeriodInBlocks' : new BigNumber(1),
+    'minStakeTimeInBlocks' : new BigNumber(10), // keep this sufficiently high for withdrawInterest
     'timeoutInBlocks' : new BigNumber(50),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "URL",
@@ -49,19 +49,19 @@ contract('CancelledState.js: check transitions', function(accounts) {
     'maxTotalStake' : new BigNumber(Util.toQsp(1000000))
   };
 
-  const firstPoolId = 0;
+  const poolId = 0;
   let token = null;
   let qspb = null;
   let policy = null;
-  let stakingData = null;
-
+  let data = null;
+  
   /*
-   * Asserts states of the pool with the given id.
+   * Asserts the state of the pool with given id.
    */
   async function assertPoolState(id, state) {
     assert.equal(await Util.getState(qspb, id), state);
   }
-  
+
   /*
    * Instantiates a new pool with the given parameters.
    */
@@ -85,7 +85,7 @@ contract('CancelledState.js: check transitions', function(accounts) {
 
   /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
-   * that will be in the initialized state.
+   * that will be in the ViolatedUnderfunded state.
    */
   beforeEach(async function() {
 
@@ -95,38 +95,41 @@ contract('CancelledState.js: check transitions', function(accounts) {
 
     // create staking protocol
     const registry = await ExpertRegistry.new({from : owner});
-    stakingData = await QuantstampStakingData.new(token.address, {from : owner});
-    qspb = await QuantstampStaking.new(token.address, registry.address, stakingData.address, {from: owner});
-    await stakingData.setWhitelistAddress(qspb.address, {from : owner});
+    data = await QuantstampStakingData.new(token.address, {from : owner});
+    qspb = await QuantstampStaking.new(token.address, registry.address, data.address, {from: owner});
+    await data.setWhitelistAddress(qspb.address, {from : owner});
 
     // create policy
     policy = await Policy.new();
     pool.contractPolicy = policy.address;
-
-    // give staker enought tokens than ever needed
+    // give tokens to staker
     await token.transfer(staker, pool.minStakeQspWei.times(10), {from : owner});
 
     // create pool
     await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
     await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
     await instantiatePool(pool);
-    await assertPoolState(firstPoolId, PoolState.Initialized);
 
-    // make the pool cancelled
-    await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
-    await assertPoolState(firstPoolId, PoolState.Cancelled);
+    // make sufficient state (note that deposit is not sufficient)
+    await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
+    await qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker});
+    
+    // manually violate the policy
+    await policy.updateStatus(true);
+    // force the transition into the desired state
+    await qspb.checkPolicy(poolId);
+
+    // verify the initial state
+    await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
   });
-
 
   /*
    * Tests for function depositFunds.
    */
   describe("depositFunds", async function() {
-
-    it("6.2 call not allowed, pool stays in Cancelled",
+    it("3.2 call not allowed",
       async function() {
-        await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
-        Util.assertTxFail(qspb.depositFunds(firstPoolId, pool.depositQspWei, {from : stakeholder}));
+        Util.assertTxFail(qspb.depositFunds(poolId, 0, {from : stakeholder}));
       }
     );
   });
@@ -135,12 +138,9 @@ contract('CancelledState.js: check transitions', function(accounts) {
    * Tests for function withdrawDepost
    */
   describe("withdrawDeposit", async function() {
-
-    it("6.1 call is allowed, but pool stays in Cancelled",
+    it("3.2 call not allowed",
       async function() {
-        // todo(amurashkin): make this call succeed. Currently, it fails loud
-        // await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
+        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -149,11 +149,11 @@ contract('CancelledState.js: check transitions', function(accounts) {
    * Tests for function withdrawStake
    */
   describe("withdrawStake", async function() {
-
-    it("6.1 call is allowed, but pool should remain in the Cancelled state",
+    it("3.1 remains in the same state",
       async function() {
-        await qspb.withdrawStake(firstPoolId, {from : staker});
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
+        // TODO(amurashkin): uncomment once implemented
+        // await qspb.withdrawStake(poolId, {from : staker});
+        // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
   });
@@ -164,9 +164,11 @@ contract('CancelledState.js: check transitions', function(accounts) {
    */
   describe("withdrawInterest", async function() {
 
-    it("6.2 call is not allowed, pool remains in the Cancelled state",
+    it("3.1 remains in the same state",
       async function() {
-        Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
+        // TODO(amurashkin): uncomment once implemented
+        //await qspb.withdrawInterest(poolId, {from : staker});
+        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
   });
@@ -176,47 +178,45 @@ contract('CancelledState.js: check transitions', function(accounts) {
    * Tests for function withdrawClaim
    */
   describe("withdrawClaim", async function() {
-
-    it("6.2 call is not allowed",
+    it("3.2 call not allowed",
       async function() {
-        await policy.updateStatus(true);
-        Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : staker}));
       }
     );
   });
-
 
   /*
    * Tests for function checkPolicy
    */
   describe("checkPolicy", async function() {
-
-    it("6.2 if policy is not violated, fail loud",
+    it("3.2 fails loud when not violated",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
+        await policy.updateStatus(false);
+        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
-    it("6.1 if policy is violated, do not fail, but remain in the cancelled state",
+    it("3.2 remains in the same state when violated",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(firstPoolId, {from : staker});
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
+        await qspb.checkPolicy(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
   });
-
 
   /*
    * Tests for function stakeFunds
    */
   describe("stakeFunds", async function() {
 
-    it("6.2 call is not allowed",
+    it("3.1 remains in the same state",
       async function() {
-        const stakeAmout = 13;
-        await token.approve(qspb.address, stakeAmout, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(firstPoolId, stakeAmout, {from : staker}));
+        const toStake = 27;
+        await token.approve(qspb.address, toStake, {from : staker});
+        // TODO(amurashkin): uncomment once implemented
+        //await qspb.stakeFunds(poolId, toStake, {from : staker});
+        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
   });
