@@ -392,9 +392,10 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.2 min staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
       async function() {
-        const payout = await qspb.computePayout(poolId, staker);
+        const payout = await data.getPoolMaxPayoutQspWei(poolId);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
         // validate that the precondition of the test is safely met
+        // a single insterest is at most maxPayout so 3 * maxPayout is safe
         const safeSufficientDeposit = payout.times(3);
         assert.isTrue(depositLeft.gte(safeSufficientDeposit));
 
@@ -411,8 +412,9 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.8 min staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
       async function() {
-        // keep withdrawing until there is not enough deposit left to make another withdraw
-        const payout = await qspb.computePayout(poolId, staker);
+        // keep withdrawing until there is not enough deposit left to make another withdraw.
+        // the payout for the only single staker is exactly maxPayoutQspWei per period
+        const payout = await data.getPoolMaxPayoutQspWei(poolId);
         await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout);
 
         // validate the precondition state
@@ -433,8 +435,11 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.3 min staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
       async function() {
-        // keep withdrawing until there is not enough deposit left to make 2 more withdraws
-        const payout = await qspb.computePayout(poolId, staker);
+        // Keep withdrawing until there is not enough deposit left to make 2 more withdraws,
+        // The payout for the only single staker is exactly maxPayoutQspWei per period,
+        // The other maxPayoutQspWei is needed to pay the other stakers as per specification.
+        // Therefore, we need at most maxPayoutQspWei + maxPayoutQspWei.
+        const payout = await data.getPoolMaxPayoutQspWei(poolId);
         await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout.times(2));
         
         // validation the precondition
