@@ -180,7 +180,7 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
   describe("withdrawClaim", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : staker}));
+        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -210,13 +210,11 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
    */
   describe("stakeFunds", async function() {
 
-    it("3.1 remains in the same state",
+    it("3.2 call not allowed",
       async function() {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
-        // TODO(amurashkin): uncomment once implemented
-        //await qspb.stakeFunds(poolId, toStake, {from : staker});
-        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
   });
