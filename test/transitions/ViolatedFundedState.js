@@ -36,7 +36,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
     'payPeriodInBlocks' : new BigNumber(1),
-    'minStakeTimeInBlocks' : new BigNumber(10), // keep this sufficiently high for withdrawInterest
+    'minStakeTimeInBlocks' : new BigNumber(10),
     'timeoutInBlocks' : new BigNumber(50),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "URL",
