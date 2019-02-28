@@ -22,7 +22,7 @@ const policyStatuses = [
   false
 ];
 
-policyStatuses.forEach(policyStatus => contract.only(`ViolatedUnderfundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
+policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -123,12 +123,13 @@ policyStatuses.forEach(policyStatus => contract.only(`ViolatedUnderfundedState.j
     // force the transition into the desired state
     await qspb.checkPolicy(poolId);
 
-    // verify the initial state
-    await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
-
     // update the policy status, to make sure the behaviour does not depend
     // on policy status after the pool state is already violated
     await policy.updateStatus(policyStatus);
+
+    // verify the initial state
+    await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+
   });
 
   /*
