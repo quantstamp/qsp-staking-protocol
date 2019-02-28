@@ -17,8 +17,12 @@ const PoolState = Object.freeze({
   PolicyExpired: 7
 });
 
+const policyStatuses = [
+  true,
+  false
+];
 
-contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
+policyStatuses.forEach(policyStatus => contract.only(`ViolatedUnderfundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -121,6 +125,10 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
 
     // verify the initial state
     await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+
+    // update the policy status, to make sure the behaviour does not depend
+    // on policy status after the pool state is already violated
+    await policy.updateStatus(policyStatus);
   });
 
   /*
@@ -219,4 +227,4 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
       }
     );
   });
-});
+}));
