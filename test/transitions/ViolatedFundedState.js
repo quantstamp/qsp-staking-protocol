@@ -145,7 +145,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that the call to the function is not allowed.
      */
-    it("5.2 call is now allowed",
+    it("5.2 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
         Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
@@ -160,7 +160,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that the call to the function is not allowed.
      */
-    it("5.2 call is now allowed",
+    it("5.2 call is not allowed",
       async function() {
         Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
@@ -174,7 +174,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that the call to the function is not allowed.
      */
-    it("5.2 call is now allowed",
+    it("5.2 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
         Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
@@ -189,7 +189,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that the call to the function is not allowed.
      */
-    it("5.2 call is now allowed",
+    it("5.2 call is not allowed",
       async function() {
         Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
       }
@@ -203,7 +203,7 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that the call to the function is not allowed.
      */
-    it("5.2 call is now allowed",
+    it("5.2 call is not allowed",
       async function() {
         Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
       }
