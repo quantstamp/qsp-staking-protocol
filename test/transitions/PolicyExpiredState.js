@@ -162,7 +162,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      * Tests that calling this function after the minStakingTime passes twice will
      * transition the pool into the Cancelled state
      */
-    it("7.3 funds are not deposited after 2*minStakingTime and the pool transitions to the Cancelled state",
+    it("7.3 checks that after the minStakingTime passes twice, the pool transitions to Cancelled",
       async function() {
         // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
@@ -176,13 +176,11 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      * Tests that calling this function after there are no more stakes in the
      * pool, will transition the pool into the Cancelled state
      */
-    it("7.3 funds are not deposited when no more stakes and the pool transitions to the Cancelled state",
+    it("7.3 checks that after there are no more stakes in the pool, it transitions to Cancelled",
       async function() {
         // withdraw all stakes from the pool
         await qspb.withdrawStake(poolId, {from : staker});
         assert.equal((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).toNumber(), 0);
-        // todo (sebi): Check why the following commented assert fails
-        //assert.equal((await data.getPoolStakeCount(poolId, {from : owner})).toNumber(), 0);
         // todo (sebi): Uncomment when implementation is finished
         //await assertPoolState(poolId, PoolState.PolicyExpired);
         // try to deposit funds again
