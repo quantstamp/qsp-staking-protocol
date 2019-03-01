@@ -196,6 +196,20 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     );
 
     /*
+     * Tests that the pool remains in the same state when the policy is not violated, the
+     * minStakingTime did not elapse, and the deposit is not large enough to cover the payout.
+     */
+    it("2.2 if the min staking time did not elapse, policy is not violated and deposit is 0, stay in state 2",
+      async function() {
+        const toDeposit = 0;
+        assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
+      }
+    );
+
+    /*
      * Tests that the pool becomes NotViolatedFunded when the policy is not violated, the
      * minStakingTime did not elapse, and the deposit is large enough to cover the payout.
      */
@@ -488,7 +502,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.16 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("2.15 if the min staking time elapsed and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when this does not fail
@@ -501,7 +515,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.16 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("2.15 if the min staking time elapsed and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
