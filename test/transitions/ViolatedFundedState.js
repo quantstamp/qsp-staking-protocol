@@ -22,8 +22,8 @@ const policyStatuses = [
   false
 ];
 
-policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
 
+policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
   const owner = accounts[0];
   const staker = accounts [1];
   const stakeholder = accounts[2];
@@ -35,7 +35,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
     'owner' : stakeholder,
     'maxPayoutQspWei' : new BigNumber(Util.toQsp(101)),
     'minStakeQspWei' : new BigNumber(Util.toQsp(42)),
-    'depositQspWei' : new BigNumber(Util.toQsp(50)), // insufficient deposit
+    'depositQspWei' : new BigNumber(Util.toQsp(503)),
     'bonusExpertFactor' : 0,
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
@@ -58,7 +58,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   let qspb = null;
   let policy = null;
   let data = null;
-  
+
   /*
    * Asserts the state of the pool with given id.
    */
@@ -89,7 +89,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
 
   /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
-   * that will be in the ViolatedUnderfunded state.
+   * that will be in the ViolatedFunded state.
    */
   beforeEach(async function() {
 
@@ -107,36 +107,55 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
     policy = await Policy.new();
     pool.contractPolicy = policy.address;
     // give tokens to staker
-    await token.transfer(staker, pool.minStakeQspWei.times(10), {from : owner});
+    const fundMultiplier = 10;
+    await token.transfer(staker, pool.minStakeQspWei.times(fundMultiplier), {from : owner});
+    await token.approve(qspb.address, pool.minStakeQspWei.times(fundMultiplier), {from : staker});
 
     // create pool
-    await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
-    await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
+    await token.transfer(stakeholder, pool.maxPayoutQspWei.times(fundMultiplier), {from : owner});
+    await token.approve(qspb.address, pool.depositQspWei.times(fundMultiplier), {from : stakeholder});
     await instantiatePool(pool);
-
-    // make sufficient state (note that deposit is not sufficient)
-    await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
-    await qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker});
     
-    // manually violate the policy
+    // stake enough
+    await qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker});
+
+    // violate the policy
     await policy.updateStatus(true);
-    // force the transition into the desired state
-    await qspb.checkPolicy(poolId);
+
+    // any user action at this point should transition into the ViolatedFunded state
+    await qspb.checkPolicy(poolId, {from : owner});
 
     // update the policy status, to make sure the behaviour does not depend
     // on policy status after the pool state is already violated
     await policy.updateStatus(policyStatus);
 
     // verify the initial state
-    await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+    await assertPoolState(poolId, PoolState.ViolatedFunded);
+  });
 
+  /*
+   * Tests for function withdrawClaim.
+   */
+  describe("withdrawClaim", async function() {
+    /*
+     * Tests that the call is allowed and after executing it the pool remains in the same state.
+     */
+    it("5.1 withdraw the assurance claim and stay in same state",
+      async function() {
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
+      }
+    );
   });
 
   /*
    * Tests for function depositFunds.
    */
   describe("depositFunds", async function() {
-    it("3.2 call not allowed",
+    /*
+     * Tests that the call to the function is not allowed.
+     */
+    it("5.2 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
         Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
@@ -145,10 +164,13 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   });
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit.
    */
   describe("withdrawDeposit", async function() {
-    it("3.2 call not allowed",
+    /*
+     * Tests that the call to the function is not allowed.
+     */
+    it("5.2 call is not allowed",
       async function() {
         Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
@@ -156,41 +178,44 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   });
 
   /*
-   * Tests for function withdrawStake
+   * Tests for function stakeFunds.
+   */
+  describe("stakeFunds", async function() {
+    /*
+     * Tests that the call to the function is not allowed.
+     */
+    it("5.2 call is not allowed",
+      async function() {
+        await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
+        Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+      }
+    );
+  });
+
+  /*
+   * Tests for function withdrawStake.
    */
   describe("withdrawStake", async function() {
-    it("3.1 remains in the same state",
+    /*
+     * Tests that the call to the function is not allowed.
+     */
+    it("5.2 call is not allowed",
       async function() {
-        // TODO(amurashkin): uncomment once implemented
-        // await qspb.withdrawStake(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
       }
     );
   });
 
-
   /*
-   * Tests for function withdrawInterest
+   * Tests for function withdrawInterest.
    */
   describe("withdrawInterest", async function() {
-
-    it("3.1 remains in the same state",
+    /*
+     * Tests that the call to the function is not allowed.
+     */
+    it("5.2 call is not allowed",
       async function() {
-        // TODO(amurashkin): uncomment once implemented
-        //await qspb.withdrawInterest(poolId, {from : staker});
-        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
-      }
-    );
-  });
-
-
-  /*
-   * Tests for function withdrawClaim
-   */
-  describe("withdrawClaim", async function() {
-    it("3.2 call not allowed",
-      async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
       }
     );
   });
@@ -199,32 +224,18 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
    * Tests for function checkPolicy
    */
   describe("checkPolicy", async function() {
-    it("3.2 fails loud when not violated",
+    it("5.2 fails loud when not violated",
       async function() {
         await policy.updateStatus(false);
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
 
-    it("3.2 remains in the same state when violated",
+    it("5.2 remains in the same state when violated",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(poolId, {from : staker});
-        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
-      }
-    );
-  });
-
-  /*
-   * Tests for function stakeFunds
-   */
-  describe("stakeFunds", async function() {
-
-    it("3.2 call not allowed",
-      async function() {
-        const toStake = 27;
-        await token.approve(qspb.address, toStake, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+        await qspb.checkPolicy(poolId, {from : owner});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });
