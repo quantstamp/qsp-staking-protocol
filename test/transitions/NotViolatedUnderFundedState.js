@@ -401,7 +401,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when this is allowed
-        // await qspb.withdrawStake(poolId, {from : staker});
+        // await qspb.withdrawStake(poolId, {from : smallStaker});
         // await assertPoolState(poolId, PoolState.ViolatedUnderFunded);
       }
     );
