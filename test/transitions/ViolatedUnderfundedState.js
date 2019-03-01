@@ -17,8 +17,12 @@ const PoolState = Object.freeze({
   PolicyExpired: 7
 });
 
+const policyStatuses = [
+  true,
+  false
+];
 
-contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
+policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -36,7 +40,7 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
     'payPeriodInBlocks' : new BigNumber(1),
-    'minStakeTimeInBlocks' : new BigNumber(10), // keep this sufficiently high for withdrawInterest
+    'minStakeTimeInBlocks' : new BigNumber(10),
     'timeoutInBlocks' : new BigNumber(50),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "URL",
@@ -119,8 +123,13 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
     // force the transition into the desired state
     await qspb.checkPolicy(poolId);
 
+    // update the policy status, to make sure the behaviour does not depend
+    // on policy status after the pool state is already violated
+    await policy.updateStatus(policyStatus);
+
     // verify the initial state
     await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+
   });
 
   /*
@@ -129,7 +138,8 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
   describe("depositFunds", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.depositFunds(poolId, 0, {from : stakeholder}));
+        await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
+        Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
@@ -180,7 +190,7 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
   describe("withdrawClaim", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : staker}));
+        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -210,14 +220,12 @@ contract('ViolatedUnderfundedState.js: check transitions', function(accounts) {
    */
   describe("stakeFunds", async function() {
 
-    it("3.1 remains in the same state",
+    it("3.2 call not allowed",
       async function() {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
-        // TODO(amurashkin): uncomment once implemented
-        //await qspb.stakeFunds(poolId, toStake, {from : staker});
-        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
   });
-});
+}));
