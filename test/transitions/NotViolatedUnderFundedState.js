@@ -111,20 +111,6 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
   }
 
   /*
-   * Mines blocks for pay periods to elaps and withdraws interest for each
-   * until the deposit left in the pool is less than balance.
-   */
-  async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
-    // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
-    let depositLeft = await data.getPoolDepositQspWei(poolId);
-    await Util.mineNBlocks(pool.payPeriodInBlocks);
-    while (depositLeft.gte(balance)) {
-      await qspb.withdrawInterest(poolId, {from : staker});
-      depositLeft = await data.getPoolDepositQspWei(poolId);
-    }
-  }
-
-  /*
    * Make a new instance of QuantstampStaking, QSP Token, and create a pool
    * that will be in the NotViolatedUnderfunded state.
    */
