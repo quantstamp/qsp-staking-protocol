@@ -148,7 +148,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    */
   describe("depositFunds", async function() {
     /*
-     * Tests that calling this function before the minStakingTime passes again AND there are still are stakes in the
+     * Tests that calling this function before the minStakingTime passes twice AND there are still are stakes in the
      * pool, will execute the call and stay in the same state
      */
     it("7.1 funds are deposited and the pool remains in the same state",
@@ -159,12 +159,12 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Tests that calling this function after the minStakingTime passes again will
+     * Tests that calling this function after the minStakingTime passes twice will
      * transition the pool into the Cancelled state
      */
     it("7.3 funds are not deposited after 2*minStakingTime and the pool transitions to the Cancelled state",
       async function() {
-        // wait until minStakingTime passes again
+        // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -198,10 +198,10 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    */
   describe("withdrawStake", async function() {
     /*
-     * Tests that calling this function before the minStakingTime passes again
+     * Tests that calling this function before the minStakingTime passes twice
      * will execute the call and stay in the same state
      */
-    it("7.2 withdraw the stake and stay in the same state",
+    it("7.2 checks that before the minStakingTime passes twice, the pool stays in the same state",
       async function() {
         await qspb.withdrawStake(poolId, {from : staker});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -210,12 +210,12 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Tests that calling this function after the minStakingTime passes again will
+     * Tests that calling this function after the minStakingTime passes twice will
      * transition the pool into the Cancelled state
      */
-    it("7.4 stake is withdrawn and the pool transitions to the Cancelled state",
+    it("7.4 checks that after the minStakingTime passes twice, the pool transitions to Cancelled",
       async function() {
-        // wait until minStakingTime passes again
+        // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawStake(poolId, {from : staker});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -229,10 +229,10 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    */
   describe("withdrawInterest", async function() {
     /*
-     * Tests that calling this function before the minStakingTime passes again
+     * Tests that calling this function before the minStakingTime passes twice
      * will execute the call and stay in the same state
      */
-    it("7.2 withdraw the interest and stay in the same state",
+    it("7.2 checks that before the minStakingTime passes twice, the pool stays in the same state",
       async function() {
         await qspb.withdrawInterest(poolId, {from : staker});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -241,12 +241,12 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Tests that calling this function after the minStakingTime passes again will
+     * Tests that calling this function after the minStakingTime passes twice will
      * transition the pool into the Cancelled state
      */
-    it("7.4 interest is withdrawn and the pool transitions to the Cancelled state",
+    it("7.4 checks that after the minStakingTime passes twice, the pool transitions to Cancelled",
       async function() {
-        // wait until minStakingTime passes again
+        // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawInterest(poolId, {from : staker});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -260,12 +260,12 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    */
   describe("withdrawDeposit", async function() {
     /*
-     * Tests that calling this function after the minStakingTime passes again will
+     * Tests that calling this function after the minStakingTime passes twice will
      * transition the pool into the Cancelled state
      */
-    it("7.3 funds are withdrawn after 2*minStakingTime and the pool transitions to the Cancelled state",
+    it("7.3 checks that after the minStakingTime passes twice, the pool transitions to Cancelled",
       async function() {
-        // wait until minStakingTime passes again
+        // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
         // todo (sebi): uncomment assert after the FSM is implemented
@@ -277,7 +277,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      * Tests that calling this function after there are no more stakes in the
      * pool, will transition the pool into the Cancelled state
      */
-    it("7.3 funds are withdrawn after no more stakes and the pool transitions to the Cancelled state",
+    it("7.3 checks that after there are no more stakes in the pool, it transitions to Cancelled",
       async function() {
         // withdraw all stakes from the pool
         await qspb.withdrawStake(poolId, {from : staker});
@@ -294,15 +294,14 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Tests that calling this function before the minStakingTime passes again and
+     * Tests that calling this function before the minStakingTime passes twice and
      * there still are stakes in the pool is not allowed
      */
-    it("7.5 call not allowed",
+    it("7.5 checks that before the minStakingTime passes twice and there still are stakes, the call is not allowed",
       async function() {
-        assert((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).gt(0));
+        assert.isTrue((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).gt(0));
         // todo (sebi): uncomment assert after the FSM is implemented
         // Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
   });
@@ -312,12 +311,13 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    */
   describe("withdrawClaim", async function() {
     /*
-     * Tests that calling this function after the minStakingTime passes again will
-     * transition the pool into the Cancelled state
+     * Tests that calling this function after the minStakingTime passes twice will
+     * transition the pool into the Cancelled state, when the policy is not violated
      */
-    it("7.4 claim is NOT withdrawn and the pool transitions to the Cancelled state",
+    it("7.4 checks if the 2*maxStakingTime has passed and transitions to the Cancelled state when policy not violated",
       async function() {
-        // wait until minStakingTime passes again
+        policy.updateStatus(false);
+        // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         // todo (sebi): uncomment assert after the FSM is implemented
         // await qspb.withdrawClaim(poolId, {from : stakeholder});
@@ -326,13 +326,26 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Tests that calling this function before the minStakingTime passes again is not allowed
+     * Tests that calling this function after the minStakingTime passes twice will
+     * transition the pool into the Cancelled state, when the policy is violated
      */
-    it("7.6 call not allowed",
+    it("7.4 checks if the 2*maxStakingTime has passed and transitions to the Cancelled state when policy violated",
       async function() {
+        policy.updateStatus(true);
+        // wait until minStakingTime passes twice
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         // todo (sebi): uncomment assert after the FSM is implemented
-        // Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
-        await assertPoolState(poolId, PoolState.PolicyExpired);
+        // await qspb.withdrawClaim(poolId, {from : stakeholder});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Tests that calling this function before the minStakingTime passes twice is not allowed
+     */
+    it("7.6 checks that calling this function before the minStakingTime passes twice is not allowed",
+      async function() {
+        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -356,7 +369,15 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    * Tests for function checkPolicy
    */
   describe("checkPolicy", async function() {
-    it("7.7 call not allowed",
+    it("7.1 if policy is violated, do not fail, but remain in the cancelled state",
+      async function() {
+        await policy.updateStatus(true);
+        await qspb.checkPolicy(poolId, {from : owner});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    it("7.7 if policy is not violated, fail loud",
       async function() {
         Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
