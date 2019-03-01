@@ -17,9 +17,14 @@ const PoolState = Object.freeze({
   PolicyExpired: 7
 });
 
+const policyStatuses = [
+  true,
+  false
+];
 
-contract('ViolatedFundedState.js: check transitions', function(accounts) {
 
+policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.isViolated = ${policyStatus}`,
+function(accounts) {
   const owner = accounts[0];
   const staker = accounts [1];
   const stakeholder = accounts[2];
@@ -120,6 +125,12 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
 
     // any user action at this point should transition into the ViolatedFunded state
     await qspb.checkPolicy(poolId, {from : owner});
+
+    // update the policy status, to make sure the behaviour does not depend
+    // on policy status after the pool state is already violated
+    await policy.updateStatus(policyStatus);
+
+    // verify the initial state
     await assertPoolState(poolId, PoolState.ViolatedFunded);
   });
 
@@ -223,9 +234,10 @@ contract('ViolatedFundedState.js: check transitions', function(accounts) {
 
     it("5.2 remains in the same state when violated",
       async function() {
+        await policy.updateStatus(true);
         await qspb.checkPolicy(poolId, {from : owner});
         await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });
-});
+}));
