@@ -23,8 +23,7 @@ const policyStatuses = [
 ];
 
 
-policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.isViolated = ${policyStatus}`,
-function(accounts) {
+policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.isViolated = ${policyStatus}`, function(accounts) {
   const owner = accounts[0];
   const staker = accounts [1];
   const stakeholder = accounts[2];
