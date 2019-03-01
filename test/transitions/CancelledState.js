@@ -97,7 +97,7 @@ contract('CancelledState.js: check transitions', function(accounts) {
     const registry = await ExpertRegistry.new({from : owner});
     stakingData = await QuantstampStakingData.new(token.address, {from : owner});
     qspb = await QuantstampStaking.new(token.address, registry.address, stakingData.address, {from: owner});
-    await stakingData.addWhitelistAddress(qspb.address, {from : owner});
+    await stakingData.setWhitelistAddress(qspb.address, {from : owner});
 
     // create policy
     policy = await Policy.new();
