@@ -339,6 +339,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.4 if the min staking time did not elapse, policy is not violated and there is still enough stake, stay in 2",
       async function() {
         await qspb.withdrawStake(poolId, {from : smallStaker});
+        const totalStake = await data.getPoolTotalStakeQspWei(poolId);
+        assert.isTrue(totalStake.gte(pool.minStakeQspWei));
         await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
       }
     );
@@ -363,9 +365,9 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.13 if the min staking time did not elapse, policy is violated and there is not enough stake, go to 6",
       async function() {
         await policy.updateStatus(true);
+        await qspb.withdrawStake(poolId, {from : staker});
         const totalStake = await data.getPoolTotalStakeQspWei(poolId);
         assert.isFalse(totalStake.gte(pool.minStakeQspWei));
-        await qspb.withdrawStake(poolId, {from : staker});
         await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
@@ -376,9 +378,9 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.14 if the min staking time did not elapse, policy is not violated and there is not enough stake, go to 6",
       async function() {
-        const totalStake = await data.getPoolTotalStakeQspWei(poolId);
-        assert.isTrue(totalStake.gte(pool.minStakeQspWei));
         await qspb.withdrawStake(poolId, {from : staker});
+        const totalStake = await data.getPoolTotalStakeQspWei(poolId);
+        assert.isFalse(totalStake.gte(pool.minStakeQspWei));
         await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
