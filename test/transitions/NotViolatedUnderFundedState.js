@@ -356,7 +356,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       }
     );
 
-      /*
+    /*
      * The policy is not violated, max staking time did not elapse and there is not
      * enough stake. The pool should be cancelled.
      */
@@ -364,7 +364,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await policy.updateStatus(true);
         const totalStake = await data.getPoolTotalStakeQspWei(poolId);
-        self.assertFalse(totalStake.gte(pool.minStakeQspWei));
+        assert.isFalse(totalStake.gte(pool.minStakeQspWei));
         await qspb.withdrawStake(poolId, {from : staker});
         await assertPoolState(poolId, PoolState.Cancelled);
       }
@@ -377,7 +377,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.14 if the min staking time did not elapse, policy is not violated and there is not enough stake, go to 6",
       async function() {
         const totalStake = await data.getPoolTotalStakeQspWei(poolId);
-        self.assertTrue(totalStake.gte(pool.minStakeQspWei));
+        assert.isTrue(totalStake.gte(pool.minStakeQspWei));
         await qspb.withdrawStake(poolId, {from : staker});
         await assertPoolState(poolId, PoolState.Cancelled);
       }
