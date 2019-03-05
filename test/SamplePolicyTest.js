@@ -59,7 +59,7 @@ contract('CandidateContract', function(accounts) {
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
     qspb = await QuantstampStaking.new(quantstampToken.address, whitelistExpertRegistry.address, quantstampStakingData.address);
-    await quantstampStakingData.addWhitelistAddress(qspb.address);
+    await quantstampStakingData.setWhitelistAddress(qspb.address);
     qaPolicy = await QuantstampAssurancePolicy.new(qspb.address, quantstampToken.address);
   });
 
@@ -264,4 +264,3 @@ contract('CandidateContract', function(accounts) {
   });
 
 });
-

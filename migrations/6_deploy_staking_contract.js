@@ -22,7 +22,7 @@ module.exports = function(deployer, network) {
     .then(async() => await utils.callMethod({
       network, // whitelisting logic contract in data contract
       contractName: 'QuantstampStakingData',
-      methodName: 'addWhitelistAddress',
+      methodName: 'setWhitelistAddress',
       methodArgsFn: () => ([
         QuantstampStaking.address
       ]),

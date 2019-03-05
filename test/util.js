@@ -40,8 +40,16 @@ async function balanceOf (token, user) {
   return (await token.balanceOf(user)).toNumber();
 }
 
+async function getState (qspb, poolId) {
+  return (await qspb.getPoolState(poolId)).toNumber();
+}
+
 async function balanceOfRaw (token, user) {
   return await token.balanceOf(user);
+}
+
+async function getBlockNumber () {
+  return await web3.eth.getBlockNumber();
 }
 
 module.exports = {
@@ -49,6 +57,8 @@ module.exports = {
   toQsp : toEther,
   daysToSeconds: daysToSeconds,
   assertTxFail : assertTxFail,
+  getState: getState,
+  getBlockNumber: getBlockNumber,
   mineOneBlock: mineOneBlock,
   mineNBlocks: mineNBlocks,
   balanceOf: balanceOf,

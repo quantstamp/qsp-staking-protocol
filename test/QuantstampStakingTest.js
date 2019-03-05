@@ -85,7 +85,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
       quantstampStakingData = await QuantstampStakingData.deployed();
       qspb = await QuantstampStaking.deployed();
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       quantstampToken = await QuantstampToken.deployed();
       candidateContract = await CandidateContract.deployed();
       contractPolicy = await ZeroBalancePolicy.deployed();
@@ -276,7 +276,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address);
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       policy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
@@ -523,7 +523,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -658,7 +658,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
@@ -756,7 +756,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
