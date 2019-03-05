@@ -511,9 +511,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.8 if the min staking time did not elapse and the policy is violated, move to state 3",
       async function() {
         await policy.updateStatus(true);
-        // todo(mderka): uncomment when the call is possible
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
 
@@ -524,9 +523,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.15 if the min staking time elapsed and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -538,9 +536,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -675,4 +672,3 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     );
   });
 });
-

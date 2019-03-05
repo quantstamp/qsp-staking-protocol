@@ -446,10 +446,9 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.4 if timeout happened, cancel the pool",
       async function() {
-        // todo(mderka): uncomment when implemented
-        // await mineUntilTimeout(firstPoolId, 0);
-        // await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
-        // await assertPoolState(firstPoolId, PoolState.Cancelled);
+        await mineUntilTimeout(firstPoolId, 0);
+        await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
@@ -461,8 +460,8 @@ contract('InitializedState.js: check transitions', function(accounts) {
       async function() {
         // todo(mderka): uncomment when implemented
         await policy.updateStatus(true);
-        // await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
-        // await assertPoolState(firstPoolId, PoolState.Cancelled);
+        await qspb.withdrawClaim(firstPoolId, {from : stakeholder});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
   });

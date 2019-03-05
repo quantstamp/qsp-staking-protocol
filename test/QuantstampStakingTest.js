@@ -297,7 +297,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.Initialized);
       const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
       const balance = await qspb.getBalanceQspWei();
-      await qspb.withdrawClaim(poolId, {from: poolOwner});
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
       assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.Initialized);
       assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
       assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
@@ -351,7 +351,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolState(nextPool), PoolState.NotViolatedUnderfunded);
       const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
       const balance = await qspb.getBalanceQspWei();
-      await qspb.withdrawClaim(nextPool, {from: poolOwner});
+      Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
       assert.equal((await quantstampStakingData.getPoolState(nextPool)).toNumber(), PoolState.NotViolatedUnderfunded);
       assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
       assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
@@ -384,7 +384,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolState(poolId), PoolState.NotViolatedFunded);
       const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
       const balance = await qspb.getBalanceQspWei();
-      await qspb.withdrawClaim(poolId, {from: poolOwner});
+      Util.assertTxFail(qspb.withdrawClaim(poolId, {from: poolOwner}));
       assert.equal((await quantstampStakingData.getPoolState(poolId)).toNumber(), PoolState.NotViolatedFunded);
       assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
       assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());

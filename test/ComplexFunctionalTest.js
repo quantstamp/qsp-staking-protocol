@@ -921,7 +921,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // check that the pool is in the NotViolatedUnderfunded state
     assert.equal(await qspb.getPoolState(bluePoolParams.index), PoolState.NotViolatedUnderfunded);
     // withdraw claim, but this should have no effect on the balance of the pool
-    await qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2});
+    Util.assertTxFail(qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2}));
     // check that all pool properties are the same as before
     await assertEntirePoolState(bluePoolParams, balanceOfQspb);
   });
