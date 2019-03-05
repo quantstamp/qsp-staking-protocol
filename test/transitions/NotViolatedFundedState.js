@@ -245,7 +245,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
@@ -253,7 +253,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.9 if the min staking time elapsed and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
@@ -265,7 +265,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy with violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.9 if the min staking time elapsed and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -278,10 +278,9 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Tests that there is no transition and fail when the pool is not violated
      * and did not time out.
      */
-    it("4.11 if the min staking time did not elapse and the policy is not violated, fail",
+    it("4.10 if the min staking time did not elapse and the policy is not violated, fail",
       async function() {
-        // todo(mderka): uncomment when the fail is present
-        // Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
 
@@ -293,8 +292,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        // todo(mderka): uncomment when the transition bug is removed
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });
@@ -645,4 +643,3 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
   });
 });
-

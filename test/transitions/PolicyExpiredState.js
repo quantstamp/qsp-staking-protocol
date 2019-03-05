@@ -266,8 +266,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -280,14 +279,10 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // withdraw all stakes from the pool
         await qspb.withdrawStake(poolId, {from : staker});
         assert.equal((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).toNumber(), 0);
-        // todo (sebi): Check why the following commented assert fails
-        //assert.equal((await data.getPoolStakeCount(poolId, {from : owner})).toNumber(), 0);
-        // todo (sebi): Uncomment when implementation is finished
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
         // try to withdraw funds
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -298,8 +293,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.5 checks that before the minStakingTime passes twice and there still are stakes, the call is not allowed",
       async function() {
         assert.isTrue((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).gt(0));
-        // todo (sebi): uncomment assert after the FSM is implemented
-        // Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -367,7 +361,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    * Tests for function checkPolicy
    */
   describe("checkPolicy", async function() {
-    it("7.1 if policy is violated, do not fail, but remain in the cancelled state",
+    it("7.1 if policy is violated, do not fail, but remain in the PolicyExpired state",
       async function() {
         await policy.updateStatus(true);
         await qspb.checkPolicy(poolId, {from : owner});

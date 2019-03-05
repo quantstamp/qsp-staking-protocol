@@ -273,7 +273,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
 
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
@@ -321,8 +321,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        // todo(mderka): uncomment when the transition bug is removed
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
@@ -675,4 +674,3 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     );
   });
 });
-

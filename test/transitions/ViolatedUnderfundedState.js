@@ -145,7 +145,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   });
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
     it("3.2 call not allowed",
