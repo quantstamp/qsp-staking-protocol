@@ -57,7 +57,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
       quantstampStakingData.address, {from: owner});
-    await quantstampStakingData.addWhitelistAddress(qspb.address);
+    await quantstampStakingData.setWhitelistAddress(qspb.address);
 
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});

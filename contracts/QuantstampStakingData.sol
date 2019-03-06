@@ -13,11 +13,11 @@ contract QuantstampStakingData is Ownable {
     using SafeMath for uint256;
 
     uint constant internal MAX_UINT = ~uint(0);
-    
-    mapping(address => bool) public whitelist;
+
+    address public whitelistedAddress;
 
     modifier onlyWhitelisted() {
-        require(whitelist[msg.sender] == true);
+        require(msg.sender == whitelistedAddress);
         _;
     }
 
@@ -108,6 +108,7 @@ contract QuantstampStakingData is Ownable {
         currentPoolNumber = 0;
         balanceQspWei = 0;
         token = ERC20(tokenAddress);
+        whitelistedAddress = address(0);
     }
 
     /** Creates a new stake in the data contract
@@ -263,12 +264,12 @@ contract QuantstampStakingData is Ownable {
         token.approve(msg.sender, amountQspWei);
     }
 
-    function addWhitelistAddress(address _address) external onlyOwner {
-        whitelist[_address] = true;
+    function setWhitelistAddress(address _address) external onlyOwner {
+        whitelistedAddress = _address;
     }
 
-    function removeWhitelistAddress(address _address) external onlyOwner {
-        whitelist[_address] = false;
+    function clearWhitelistAddress() external onlyOwner {
+        whitelistedAddress = address(0);
     }
 
     function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,

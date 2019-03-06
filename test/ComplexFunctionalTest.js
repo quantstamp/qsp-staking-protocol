@@ -273,7 +273,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // instantiate Assurance Protocol contract
     qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
       quantstampStakingData.address, {from: owner});
-    await quantstampStakingData.addWhitelistAddress(qspb.address);
+    await quantstampStakingData.setWhitelistAddress(qspb.address);
 
     // check if staker1 is considered a security expert from the point of view of the Assurnace Protocol contract
     assert.isTrue(await qspb.isExpert(staker1));
