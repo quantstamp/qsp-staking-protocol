@@ -280,8 +280,7 @@ contract QuantstampStaking is Ownable {
 
         require((state == QuantstampStakingData.PoolState.Initialized) ||
             (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
-            !(block.number < minStakeTime.add(timeOfState) && !violated)), 
+            (state == QuantstampStakingData.PoolState.NotViolatedFunded), 
                 "Pool is not in the right state when staking funds."); // 3.2, 5.2, 6.2, 7.7
         // Check if pool can be switched from the initialized state to another state
         if (state == QuantstampStakingData.PoolState.Initialized) {
@@ -640,21 +639,23 @@ contract QuantstampStaking is Ownable {
         bool violated = isViolated(poolIndex);
         uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
         uint timeoutBlock = data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState);
-        uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
-        uint minStake = data.getPoolMinStakeQspWei(poolIndex);
-        uint deposit = data.getPoolDepositQspWei(poolIndex);
-        uint maxPayout = data.getPoolMaxPayoutQspWei(poolIndex);
-        
-        stakeFundsEffect(poolIndex, amountQspWei); // effect is executed
-        if (timeoutBlock <= block.number && !violated && 
-        totalStake >= minStake && deposit < maxPayout) { // 1.3
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
-        } else if (timeoutBlock <= block.number && !violated && 
-        totalStake >= minStake && deposit >= maxPayout) { // 1.4
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
-        } else if (timeoutBlock > block.number || violated) { // 1.5
+        if (timeoutBlock <= block.number || violated) { // 1.5
+            // effect is not executed
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } // 1.2. (timeoutBlock <= block.number && !violated && totalStake < minStake)
+        } else {
+            stakeFundsEffect(poolIndex, amountQspWei); // effect is executed
+            uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
+            uint minStake = data.getPoolMinStakeQspWei(poolIndex);
+            uint deposit = data.getPoolDepositQspWei(poolIndex);
+            uint maxPayout = data.getPoolMaxPayoutQspWei(poolIndex);
+            if (timeoutBlock > block.number && !violated && 
+            totalStake >= minStake && deposit < maxPayout) { // 1.3
+                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+            } else if (timeoutBlock > block.number && !violated && 
+            totalStake >= minStake && deposit >= maxPayout) { // 1.4
+                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+            } // 1.2. (timeoutBlock > block.number && !violated && totalStake < minStake)
+        }
     }
 
     /**
