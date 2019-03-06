@@ -126,44 +126,41 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the deposit should be withdrawn
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized ||
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.NotViolatedFunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired ||
-            state == QuantstampStakingData.PoolState.Cancelled,
-            "Pool is not in the right state when withdrawing deposit."); // 3.2, 5.2
         bool violated = isViolated(poolIndex);
         uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
         uint timeOfStatePlusMinStakeTime = data.getPoolTimeOfStateInBlocks(poolIndex).add(minStakeTime);
         uint timeOfStatePlus2MinStakeTime = timeOfStatePlusMinStakeTime.add(minStakeTime);
         uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
+        
+        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
+        require(state == QuantstampStakingData.PoolState.Initialized ||
+            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
+            (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
+            !(block.number < timeOfStatePlusMinStakeTime && !violated)) || // 4.11
+            (state == QuantstampStakingData.PoolState.PolicyExpired &&
+            !(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0)) || // 7.5
+            state == QuantstampStakingData.PoolState.Cancelled, // 6.1
+            "Pool is not in the right state when withdrawing deposit."); // 3.2, 5.2
         if (state == QuantstampStakingData.PoolState.Initialized || // 1.6
             state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) { // 2.11
-            withdrawDepositEffect(poolIndex); // effect is executed
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if ((state == QuantstampStakingData.PoolState.PolicyExpired ||
-            state == QuantstampStakingData.PoolState.NotViolatedFunded) && // missing cond. on transition from 4 to 6
+        } else if (state == QuantstampStakingData.PoolState.PolicyExpired &&
             (totalStake == 0 || block.number >= timeOfStatePlus2MinStakeTime)) { // 7.3
-            withdrawDepositEffect(poolIndex); // effect is executed
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
-            block.number >= timeOfStatePlusMinStakeTime) { // 4.9
-            // efect is not executed, only the state transition
+            block.number >= timeOfStatePlus2MinStakeTime) { // 4.8
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
+            block.number >= timeOfStatePlusMinStakeTime &&
+            block.number < timeOfStatePlus2MinStakeTime) { // 4.10
             setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            return; // efect is not executed, only the state transition
         } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
             violated && block.number < timeOfStatePlusMinStakeTime) { // 4.5
-            // efect is not executed, only the state transition
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded) { // 4.10
-            require(!(block.number < timeOfStatePlusMinStakeTime && !violated));
-            withdrawDepositEffect(poolIndex); // effect is executed
-        } else if (state == QuantstampStakingData.PoolState.PolicyExpired) { // 7.5
-            require(!(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0));
-            withdrawDepositEffect(poolIndex); // effect is executed
-        } else { // 6.1
-            withdrawDepositEffect(poolIndex); // effect is executed
+            return; // efect is not executed, only the state transition
         }
+        withdrawDepositEffect(poolIndex); // effect is executed
     }
 
     /** Allows the staker to withdraw all their stakes from the pool.
@@ -651,10 +648,9 @@ contract QuantstampStaking is Ownable {
         if (withdrawalAmountQspWei > 0) {
             data.setPoolDepositQspWei(poolIndex, 0);
             data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
-            address poolOwner = data.getPoolOwner(poolIndex);
-            safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-            emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
         }
+        address poolOwner = data.getPoolOwner(poolIndex);
+        safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
+        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 }
