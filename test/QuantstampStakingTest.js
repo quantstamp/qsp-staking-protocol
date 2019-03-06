@@ -63,6 +63,16 @@ contract('QuantstampStaking', function(accounts) {
   let currentPoolNumber;
   let currentPoolIndex;
 
+  async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
+    // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
+    let depositLeft = await quantstampStakingData.getPoolDepositQspWei(poolId);
+    await Util.mineNBlocks(payPeriodInBlocks);
+    while (depositLeft.gte(balance)) {
+      await qspb.withdrawInterest(poolId, {from : staker});
+      depositLeft = await quantstampStakingData.getPoolDepositQspWei(poolId);
+    }
+  }
+
   describe("constructor", async function() {
     it("should not be able to construct the QuantstampAssurance contract if the token address is 0", async function() {
       quantstampRegistry = await QuantstampStakingRegistry.new();
@@ -560,6 +570,44 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber());
       assert.equal(await quantstampStakingData.getPoolStakeCount(currentPoolIndex), 1);
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex)).toNumber());
+    });
+
+    it("should set minStakeStartBlock to block.number when pool first switches to NotViolatedFunded", async function() {
+      // make deposit such that the current pool is funded
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
+
+      // get the current block
+      const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
+
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+
+      // ensure getMinStakeStartBlock is set to (at least) the current block
+      assert.isTrue(currentBlock.lte(
+        await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)
+      ));
+    });
+
+    it("should keep the value of minStakeStartBlock when pool switches from NotViolatedFunded", async function() {
+      // make deposit such that the current pool is funded
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei - 1, {from: poolOwner});
+
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      const minStakeStartBlockBefore = await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex);
+
+      await mineAndWithdrawUntilDepositLeftLessThan(currentPoolIndex, maxPayoutQspWei - 2);
+
+      // make a small stake to cause the transition to NotViolatedUnderfunded
+      await qspb.stakeFunds(currentPoolIndex, 1, {from: staker});
+
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      const minStakeStartBlockAfter = await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex);
+
+      // make sure the value does not change
+      assert.isTrue(minStakeStartBlockAfter.eq(minStakeStartBlockBefore));
     });
 
     it("should stake funds and set pool to NotViolatedFunded", async function() {
