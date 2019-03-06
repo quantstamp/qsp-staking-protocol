@@ -212,7 +212,7 @@ contract QuantstampStakingData is Ownable {
             0, // total stakes in this pool
             poolName,
             intParams[8],
-            0
+            0 // minStakeStartBlock
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);

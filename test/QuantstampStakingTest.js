@@ -572,6 +572,15 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex)).toNumber());
     });
 
+    it("minStakeStartBlock should remain uninitialized when pool first switches to NotViolatedUnderfunded", async function() {
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.Initialized);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+    });
+
     it("should set minStakeStartBlock to block.number when pool first switches to NotViolatedFunded", async function() {
       // make deposit such that the current pool is funded
       await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
@@ -589,7 +598,7 @@ contract('QuantstampStaking', function(accounts) {
       ));
     });
 
-    it("should keep the value of minStakeStartBlock when pool switches from NotViolatedFunded", async function() {
+    it("should keep the value of minStakeStartBlock when pool switches from NotViolatedFunded and back", async function() {
       // make deposit such that the current pool is funded
       await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei - 1, {from: poolOwner});
 
@@ -604,10 +613,17 @@ contract('QuantstampStaking', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, 1, {from: staker});
 
       assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
-      const minStakeStartBlockAfter = await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex);
 
       // make sure the value does not change
-      assert.isTrue(minStakeStartBlockAfter.eq(minStakeStartBlockBefore));
+      assert.isTrue((await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)).eq(
+        minStakeStartBlockBefore));
+
+      // make a migger stake to cause the transition to NotViolatedFunded
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei - 1, {from: staker});
+
+      // make sure the value does not change
+      assert.isTrue((await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)).eq(
+        minStakeStartBlockBefore));
     });
 
     it("should stake funds and set pool to NotViolatedFunded", async function() {
