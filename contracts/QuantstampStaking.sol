@@ -140,7 +140,7 @@ contract QuantstampStaking is Ownable {
             && !(block.number < timeOfStatePlusMinStakeTime && !violated) // 4.11
             || state == QuantstampStakingData.PoolState.PolicyExpired 
             && !(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0) // 7.5
-            state == QuantstampStakingData.PoolState.Cancelled, // 6.1
+            || state == QuantstampStakingData.PoolState.Cancelled, // 6.1
             "Pool is not in the right state when withdrawing deposit."); // 3.2, 5.2
 
         // Transition
