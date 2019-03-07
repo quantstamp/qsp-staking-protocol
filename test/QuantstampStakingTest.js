@@ -581,6 +581,22 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
     });
 
+    it("minStakeStartBlock should be only set once", async function() {
+      const testValue = 123;
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      await quantstampStakingData.setWhitelistAddress(owner);
+      await quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, testValue, {from: owner});
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), testValue);
+      await quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, testValue + 1, {from: owner});
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), testValue);
+    });
+
+    it("minStakeStartBlock should not be set to 0", async function() {
+      await quantstampStakingData.setWhitelistAddress(owner);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      Util.assertTxFail(quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, 0, {from: owner}));
+    });
+
     it("should set minStakeStartBlock to block.number when pool first switches to NotViolatedFunded", async function() {
       // make deposit such that the current pool is funded
       await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});

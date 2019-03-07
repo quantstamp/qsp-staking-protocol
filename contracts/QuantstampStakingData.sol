@@ -239,7 +239,10 @@ contract QuantstampStakingData is Ownable {
     }
 
     function setPoolMinStakeStartBlock(uint poolIndex, uint blockNumber) external onlyWhitelisted {
-        pools[poolIndex].minStakeStartBlock = blockNumber;
+        require(blockNumber > 0);
+        if (pools[poolIndex].minStakeStartBlock == 0) {
+            pools[poolIndex].minStakeStartBlock = blockNumber;          
+        }
     }
 
     function setPoolTimeOfStateInBlocks(uint index, uint timeOfStateInBlocks) external onlyWhitelisted {
