@@ -131,44 +131,44 @@ contract QuantstampStaking is Ownable {
         uint timeOfStatePlusMinStakeTime = data.getPoolTimeOfStateInBlocks(poolIndex).add(minStakeTime);
         uint timeOfStatePlus2MinStakeTime = timeOfStatePlusMinStakeTime.add(minStakeTime);
         uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
-        
+        QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
+        bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
+        state[1] = (currentState == QuantstampStakingData.PoolState.Initialized);
+        state[2] = (currentState == QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        state[4] = (currentState == QuantstampStakingData.PoolState.NotViolatedFunded);
+        state[6] = (currentState == QuantstampStakingData.PoolState.Cancelled);
+        state[7] = (currentState == QuantstampStakingData.PoolState.PolicyExpired);
+        // transitions that are used more than once in the code below
+        bool transition48 = state[4] && block.number >= timeOfStatePlus2MinStakeTime;
+        bool transition73 = state[7] && (totalStake == 0 || block.number >= timeOfStatePlus2MinStakeTime);
+
         // Guard
-        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized
-            || state == QuantstampStakingData.PoolState.NotViolatedUnderfunded 
-            || state == QuantstampStakingData.PoolState.NotViolatedFunded 
-            && !(block.number < timeOfStatePlusMinStakeTime && !violated) // 4.11
-            || state == QuantstampStakingData.PoolState.PolicyExpired 
-            && !(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0) // 7.5
-            || state == QuantstampStakingData.PoolState.Cancelled, // 6.1
+        require(state[1]
+            || state[2]
+            || state[4] && !(block.number < timeOfStatePlusMinStakeTime && !violated) // 4.11
+            || state[7] && !(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0) // 7.5
+            || state[6], // 6.1
             "Pool is not in the right state when withdrawing deposit."); // 3.2, 5.2
 
         // Transition
-        if (state == QuantstampStakingData.PoolState.Initialized || // 1.6
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) { // 2.11
+        if (state[1] // 1.6
+            || state[2] // 2.11
+            || transition73 // 7.3
+            || transition48) { // 4.8
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state == QuantstampStakingData.PoolState.PolicyExpired &&
-            (totalStake == 0 || block.number >= timeOfStatePlus2MinStakeTime)) { // 7.3
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
-            block.number >= timeOfStatePlus2MinStakeTime) { // 4.8
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
-            block.number >= timeOfStatePlusMinStakeTime &&
-            block.number < timeOfStatePlus2MinStakeTime) { // 4.10
+        } else if (state[4] && block.number >= timeOfStatePlusMinStakeTime
+            && block.number < timeOfStatePlus2MinStakeTime) { // 4.10
             setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded && 
-            violated && block.number < timeOfStatePlusMinStakeTime) { // 4.5
+        } else if (state[4] && violated && block.number < timeOfStatePlusMinStakeTime) { // 4.5
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
         }
 
         // Effect
-        if (state == QuantstampStakingData.PoolState.Initialized // 1.6
-            || state == QuantstampStakingData.PoolState.NotViolatedUnderfunded // 2.11
-            || state == QuantstampStakingData.PoolState.PolicyExpired 
-            && (totalStake == 0 || block.number >= timeOfStatePlus2MinStakeTime) // 7.3
-            || state == QuantstampStakingData.PoolState.NotViolatedFunded 
-            && (block.number >= timeOfStatePlus2MinStakeTime)) { // 4.8
+        if (state[1] // 1.6
+            || state[2] // 2.11
+            || transition73 // 7.3
+            || transition48 // 4.8
+            || state[6]) { // 6.1
             withdrawDepositEffect(poolIndex);
         }
     }
