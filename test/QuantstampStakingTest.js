@@ -63,6 +63,16 @@ contract('QuantstampStaking', function(accounts) {
   let currentPoolNumber;
   let currentPoolIndex;
 
+  async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
+    // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
+    let depositLeft = await quantstampStakingData.getPoolDepositQspWei(poolId);
+    await Util.mineNBlocks(payPeriodInBlocks);
+    while (depositLeft.gte(balance)) {
+      await qspb.withdrawInterest(poolId, {from : staker});
+      depositLeft = await quantstampStakingData.getPoolDepositQspWei(poolId);
+    }
+  }
+
   describe("constructor", async function() {
     it("should not be able to construct the QuantstampAssurance contract if the token address is 0", async function() {
       quantstampRegistry = await QuantstampStakingRegistry.new();
@@ -85,7 +95,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not create a pool if it cannot transfer the deposit from the pool owner", async function() {
       quantstampStakingData = await QuantstampStakingData.deployed();
       qspb = await QuantstampStaking.deployed();
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       quantstampToken = await QuantstampToken.deployed();
       candidateContract = await CandidateContract.deployed();
       contractPolicy = await ZeroBalancePolicy.deployed();
@@ -276,7 +286,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address);
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       policy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
@@ -508,7 +518,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
@@ -560,6 +570,76 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber());
       assert.equal(await quantstampStakingData.getPoolStakeCount(currentPoolIndex), 1);
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex)).toNumber());
+    });
+
+    it("minStakeStartBlock should remain uninitialized when pool first switches to NotViolatedUnderfunded", async function() {
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.Initialized);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+    });
+
+    it("minStakeStartBlock should be only set once", async function() {
+      const testValue = 123;
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      await quantstampStakingData.setWhitelistAddress(owner);
+      await quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, testValue, {from: owner});
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), testValue);
+      await quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, testValue + 1, {from: owner});
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), testValue);
+    });
+
+    it("minStakeStartBlock should not be set to 0", async function() {
+      await quantstampStakingData.setWhitelistAddress(owner);
+      assert.equal(await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex), 0);
+      Util.assertTxFail(quantstampStakingData.setPoolMinStakeStartBlock(currentPoolIndex, 0, {from: owner}));
+    });
+
+    it("should set minStakeStartBlock to block.number when pool first switches to NotViolatedFunded", async function() {
+      // make deposit such that the current pool is funded
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
+
+      // get the current block
+      const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
+
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+
+      // ensure getMinStakeStartBlock is set to (at least) the current block
+      assert.isTrue(currentBlock.lte(
+        await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)
+      ));
+    });
+
+    it("should keep the value of minStakeStartBlock when pool switches from NotViolatedFunded and back", async function() {
+      // make deposit such that the current pool is funded
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei - 1, {from: poolOwner});
+
+      // stake funds
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
+      const minStakeStartBlockBefore = await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex);
+
+      await mineAndWithdrawUntilDepositLeftLessThan(currentPoolIndex, maxPayoutQspWei - 2);
+
+      // make a small stake to cause the transition to NotViolatedUnderfunded
+      await qspb.stakeFunds(currentPoolIndex, 1, {from: staker});
+
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedUnderfunded);
+
+      // make sure the value does not change
+      assert.isTrue((await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)).eq(
+        minStakeStartBlockBefore));
+
+      // make a migger stake to cause the transition to NotViolatedFunded
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei - 1, {from: staker});
+
+      // make sure the value does not change
+      assert.isTrue((await quantstampStakingData.getPoolMinStakeStartBlock(currentPoolIndex)).eq(
+        minStakeStartBlockBefore));
     });
 
     it("should stake funds and set pool to NotViolatedFunded", async function() {
@@ -643,7 +723,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
@@ -741,7 +821,7 @@ contract('QuantstampStaking', function(accounts) {
       quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
       qspb = await QuantstampStaking.new(quantstampToken.address, wrapper.address,
         quantstampStakingData.address, {from: owner});
-      await quantstampStakingData.addWhitelistAddress(qspb.address);
+      await quantstampStakingData.setWhitelistAddress(qspb.address);
       candidateContract = await CandidateContract.new(candidateContractBalance);
       contractPolicy = await ZeroBalancePolicy.new();
       // enable transfers before any payments are allowed
