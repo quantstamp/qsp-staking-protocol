@@ -191,45 +191,55 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the staker wants to receive a payout
     */
     function withdrawInterest(uint poolIndex) external {
-        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
-        // State check
-        require(state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.ViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.NotViolatedFunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired,
-            "The state of the pool is not as expected.");
-        // Check if policy is expired and if not check if the policy is violated
-        if (state != QuantstampStakingData.PoolState.PolicyExpired && block.number >=
-            data.getPoolMinStakeTimeInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))) {
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-        } else if (state == QuantstampStakingData.PoolState.PolicyExpired && (block.number >=
-            data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2).add(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
-            data.getPoolTotalStakeQspWei(poolIndex) == 0)) {
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        }
-        bool violated = state != QuantstampStakingData.PoolState.ViolatedUnderfunded && isViolated(poolIndex);
-        if (violated && state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
-        } else if (violated && state == QuantstampStakingData.PoolState.NotViolatedFunded) {
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-            return; // no interest is payed in the ViolatedFunded state
-        }
+        uint deposit = data.getDepositQspWei(poolIndex);
+        uint activeTime = data.getPoolMinStakeStartBlock(poolIndex);
+        bool expired = block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        bool expiredTwice = block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
+        bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
+        state[2] = (currentState == QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        state[3] = (currentState == QuantstampStakingData.PoolState.ViolatedUnderfunded);
+        state[4] = (currentState == QuantstampStakingData.PoolState.NotViolatedFunded);
+        state[7] = (currentState == QuantstampStakingData.PoolState.PolicyExpired);
+        bool violated = isViolated(poolIndex) || state[3];
+        // Guard
+        require(state[2] || state[3] || state[4] || state[7],
+        "Pool is in a state that does not allow to deposit funds"); // 1.8, 5.2, 6.2
         uint payout = computePayout(poolIndex, msg.sender);
-        // Check that enough time (blocks) has passed since the pool has collected stakes totaling
-        // at least minStakeQspWei
-        if (block.number < data.getPoolPayPeriodInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) ||
-            payout == 0) { // no need to transfer anything
-            return;
-        } else if (data.getPoolDepositQspWei(poolIndex) < payout) { // place the pool in a Cancelled state
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-            return;
+        // Effect
+        if ((state[2] && !expired // 2.1 OR 2.6 OR 2.12  
+        || state[2] && expiredTwice // 2.14a
+        || state[2] && expired && !expiredTwice // 2.16
+        || state[3] // 3.1
+        || state[4] && !expired && !violated // 4.2 OR 4.3 OR 4.7
+        || state[4] && expiredTwice // 4.8
+        || state[4] && !expiredTwice && expired // 4.10
+        || state[7]) // 7.2 OR 7.4
+        && block.number >= data.getPoolPayPeriodInBlocks(poolIndex).add(activeTime)) { // 1 pay period has passed
+            data.setDepositQspWei(poolIndex, deposit.sub(payout));
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
+            updateAllStakes(poolIndex, msg.sender);
+            safeTransferFromDataContract(msg.sender, payout);
+            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         }
-        // Otherwise there are enough funds, so transfer the funds
-        data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).sub(payout));
-        data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
-        updateAllStakes(poolIndex, msg.sender);
-        safeTransferFromDataContract(msg.sender, payout);
-        emit StakerReceivedPayout(poolIndex, msg.sender, payout);
+        // Transition
+        if (state[4] && !expired && !violated && deposit >= payout
+        && deposit.sub(payout) < data.getPoolMaxPayoutQspWei(poolIndex)) { // 4.3
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        } else if (state[2] && !expired && violated // 2.6
+        || state[3]) { // 3.1
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+        } else if (state[4] && !expired && violated) { // 4.5
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+        } else if (state[2] && !expired && !violated && deposit < payout // 2.12
+        || state[2] && expiredTwice // 2.14a
+        || state[4] && !expired && !violated && deposit < payout // 4.7
+        || state[4] && expiredTwice) { // 4.8
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state[2] && expired && !expiredTwice // 2.16
+        || state[4] && !expiredTwice && expired) { // 4.10
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+        }
     }
 
     /** Checks if the given address is a staker of the given pool index
