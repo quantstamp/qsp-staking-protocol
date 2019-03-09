@@ -13,11 +13,11 @@ contract QuantstampStakingData is Ownable {
     using SafeMath for uint256;
 
     uint constant internal MAX_UINT = ~uint(0);
-    
-    mapping(address => bool) public whitelist;
+
+    address public whitelistedAddress;
 
     modifier onlyWhitelisted() {
-        require(whitelist[msg.sender] == true);
+        require(msg.sender == whitelistedAddress);
         _;
     }
 
@@ -54,6 +54,7 @@ contract QuantstampStakingData is Ownable {
         uint stakeCount; // the total number of stakes in the pool
         string poolName; // an alphanumeric string defined by the pool owner
         uint maxTotalStakeQspWei; // The maximum amount that can be staked in this pool
+        uint minStakeStartBlock; // The block number since which the pool has been active
     }
 
     struct Stake {
@@ -108,6 +109,7 @@ contract QuantstampStakingData is Ownable {
         currentPoolNumber = 0;
         balanceQspWei = 0;
         token = ERC20(tokenAddress);
+        whitelistedAddress = address(0);
     }
 
     /** Creates a new stake in the data contract
@@ -209,7 +211,8 @@ contract QuantstampStakingData is Ownable {
             0, // the pool size is initially 0
             0, // total stakes in this pool
             poolName,
-            intParams[8]
+            intParams[8],
+            0 // minStakeStartBlock
         );
         pools[currentPoolNumber] = p;
         bonusExpertAtPower[currentPoolNumber].push(1);
@@ -233,6 +236,13 @@ contract QuantstampStakingData is Ownable {
     */
     function setState(uint poolIndex, PoolState newState) external onlyWhitelisted {
         pools[poolIndex].state = newState; // set the state
+    }
+
+    function setPoolMinStakeStartBlock(uint poolIndex, uint blockNumber) external onlyWhitelisted {
+        require(blockNumber > 0);
+        if (pools[poolIndex].minStakeStartBlock == 0) {
+            pools[poolIndex].minStakeStartBlock = blockNumber;          
+        }
     }
 
     function setPoolTimeOfStateInBlocks(uint index, uint timeOfStateInBlocks) external onlyWhitelisted {
@@ -263,12 +273,12 @@ contract QuantstampStakingData is Ownable {
         token.approve(msg.sender, amountQspWei);
     }
 
-    function addWhitelistAddress(address _address) external onlyOwner {
-        whitelist[_address] = true;
+    function setWhitelistAddress(address _address) external onlyOwner {
+        whitelistedAddress = _address;
     }
 
-    function removeWhitelistAddress(address _address) external onlyOwner {
-        whitelist[_address] = false;
+    function clearWhitelistAddress() external onlyOwner {
+        whitelistedAddress = address(0);
     }
 
     function setStakeBlockPlaced(uint poolIndex, address staker, uint stakeIndex,
@@ -384,6 +394,10 @@ contract QuantstampStakingData is Ownable {
 
     function getPoolMaxTotalStakeQspWei(uint index) public view returns(uint) {
         return pools[index].maxTotalStakeQspWei;
+    }
+
+    function getPoolMinStakeStartBlock(uint poolIndex) public view returns(uint) {
+        return pools[poolIndex].minStakeStartBlock;
     }
 
     /** Returns the list of staker addresses that placed stakes in this pool in chronological order

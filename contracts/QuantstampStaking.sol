@@ -568,6 +568,12 @@ contract QuantstampStaking is Ownable {
             if (newState != QuantstampStakingData.PoolState.PolicyExpired) {
                 data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
             }
+
+            if (newState == QuantstampStakingData.PoolState.NotViolatedFunded
+                && data.getPoolMinStakeStartBlock(poolIndex) == 0) {
+                data.setPoolMinStakeStartBlock(poolIndex, block.number);
+            }
+
             emit StateChanged(poolIndex, newState); // emit an event that the state has changed
         }
     }
