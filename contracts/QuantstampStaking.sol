@@ -193,8 +193,9 @@ contract QuantstampStaking is Ownable {
     function withdrawInterest(uint poolIndex) external {
         uint deposit = data.getDepositQspWei(poolIndex);
         uint activeTime = data.getPoolMinStakeStartBlock(poolIndex);
-        bool expired = block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
-        bool expiredTwice = block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        bool expired = activeTime > 0 && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        bool expiredTwice = activeTime > 0
+        && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
         QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
         bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
         state[2] = (currentState == QuantstampStakingData.PoolState.NotViolatedUnderfunded);
@@ -203,8 +204,7 @@ contract QuantstampStaking is Ownable {
         state[7] = (currentState == QuantstampStakingData.PoolState.PolicyExpired);
         bool violated = isViolated(poolIndex) || state[3];
         // Guard
-        require(state[2] || state[3] || state[4] || state[7],
-        "Pool is in a state that does not allow to deposit funds"); // 1.8, 5.2, 6.2
+        require(state[2] || state[3] || state[4] || state[7], "State doesn't allow to deposit funds"); // 1.8, 5.2, 6.2
         uint payout = computePayout(poolIndex, msg.sender);
         // Effect
         if ((state[2] && !expired // 2.1 OR 2.6 OR 2.12  
@@ -215,7 +215,8 @@ contract QuantstampStaking is Ownable {
         || state[4] && expiredTwice // 4.8
         || state[4] && !expiredTwice && expired // 4.10
         || state[7]) // 7.2 OR 7.4
-        && block.number >= data.getPoolPayPeriodInBlocks(poolIndex).add(activeTime)) { // 1 pay period has passed
+        && deposit >= payout // if (deposit < payout) this function reverts
+        && block.number >= data.getPoolPayPeriodInBlocks(poolIndex).add(activeTime)) { // >=1 pay period has passed
             data.setDepositQspWei(poolIndex, deposit.sub(payout));
             data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
             updateAllStakes(poolIndex, msg.sender);
@@ -226,15 +227,15 @@ contract QuantstampStaking is Ownable {
         if (state[4] && !expired && !violated && deposit >= payout
         && deposit.sub(payout) < data.getPoolMaxPayoutQspWei(poolIndex)) { // 4.3
             setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
-        } else if (state[2] && !expired && violated // 2.6
-        || state[3]) { // 3.1
+        } else if (state[2] && !expired && violated) { // 2.6
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
         } else if (state[4] && !expired && violated) { // 4.5
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
         } else if (state[2] && !expired && !violated && deposit < payout // 2.12
         || state[2] && expiredTwice // 2.14a
         || state[4] && !expired && !violated && deposit < payout // 4.7
-        || state[4] && expiredTwice) { // 4.8
+        || state[4] && expiredTwice // 4.8
+        || state[7] && expiredTwice) { // 7.4
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         } else if (state[2] && expired && !expiredTwice // 2.16
         || state[4] && !expiredTwice && expired) { // 4.10
@@ -380,7 +381,7 @@ contract QuantstampStaking is Ownable {
             uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
             uint startBlockNumber = Math.max(blockPlaced,
-                data.getPoolTimeOfStateInBlocks(poolIndex));
+                data.getPoolMinStakeStartBlock(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
@@ -652,7 +653,7 @@ contract QuantstampStaking is Ownable {
         for (uint i = 0; i < stakeCount; i++) {
             uint m = Math.max(
                 data.getStakeBlockPlaced(poolIndex, sender, i),
-                data.getPoolTimeOfStateInBlocks(poolIndex)
+                data.getPoolMinStakeStartBlock(poolIndex)
             );
             data.setStakeBlockPlaced(poolIndex, sender, i, m);
 
