@@ -247,46 +247,45 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
-        // Check state
-        require((state == QuantstampStakingData.PoolState.Initialized) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
-            (state == QuantstampStakingData.PoolState.ViolatedFunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded) ||
-            (state == QuantstampStakingData.PoolState.PolicyExpired)
-        ); // 3.2, 6.2
-        bool violated = isViolated(poolIndex);
-        uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
+        uint activeTime = data.getPoolMinStakeStartBlock(poolIndex);
         uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        uint timeOfStatePlusMinStakeTime = timeOfState.add(minStakeTime);
-        uint timeOfStatePlus2MinStakeTime = timeOfStatePlusMinStakeTime.add(minStakeTime);
-        // Check if pool can be switched from the initialized state to another state
-        if (state == QuantstampStakingData.PoolState.Initialized) {
-            require(!(data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState) > block.number && !violated)); // 1.9
-            // 1.5: if it passes the require we are in 1.5 where the efect is not executed, only the state transition
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if ((state == QuantstampStakingData.PoolState.NotViolatedUnderfunded || // 2.15
-            state == QuantstampStakingData.PoolState.NotViolatedFunded) && // 4.9
-            block.number >= timeOfStatePlusMinStakeTime) {
-            //efect is not executed, only the state transition
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded &&
-            block.number < timeOfStatePlusMinStakeTime) {
-            require(violated); // 2.17
-            // 2.8: if it passes the require we are in 2.8 where the efect is not executed, only the state transition
+        bool expired = activeTime > 0 && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        bool expiredTwice = activeTime > 0
+            && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        bool timedout = data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState) <= block.number;
+        QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
+        bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
+        state[1] = (currentState == QuantstampStakingData.PoolState.Initialized);
+        state[2] = (currentState == QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        state[4] = (currentState == QuantstampStakingData.PoolState.NotViolatedFunded);
+        state[5] = (currentState == QuantstampStakingData.PoolState.ViolatedFunded);
+        state[7] = (currentState == QuantstampStakingData.PoolState.PolicyExpired);
+        bool violated = isViolated(poolIndex) || state[5];
+        // Guard
+        require(state[1] && (timedout || violated) // 1.9
+            || state[2] && (expired || violated) // 2.17
+            || state[4] && (expired || violated) // 4.11
+            || state[5] // 5.1
+            || state[7] && expiredTwice, // 7.6
+            "The pool is in a state that does not allow withdrawing a claim"); // 3.2, 6.2
+        // Effect
+        if (state[4] && !expired && violated // 4.4
+            || state[5]) { // 5.1
+            withdrawClaimEffect(poolIndex);
+        }
+        // Transition
+        if (state[2] && !expired && violated) { // 2.8
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
-        } else if (state == QuantstampStakingData.PoolState.PolicyExpired) {
-            require(block.number >= timeOfStatePlus2MinStakeTime); // 7.6
-            // 7.4: if it passes the require we are in 7.4 where the efect is not executed, only the state transition
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
-            block.number < timeOfStatePlusMinStakeTime) {
-            require(violated); // 4.10
-            // 4.4: if it passes the require we are in 4.4
-            withdrawClaimEffect(poolIndex); // effect is executed
+        } else if (state[4] && !expired && violated) { // 4.4
             setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        } else if (state == QuantstampStakingData.PoolState.ViolatedFunded) { // 5.1
-            withdrawClaimEffect(poolIndex); // effect is executed
+        } else if (state[1] && (timedout || violated)// 1.5
+            || state[2] && expiredTwice // 2.14a
+            || state[4] && expiredTwice // 4.8
+            || state[7] && expiredTwice) { // 7.4
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state[2] && expired && !expiredTwice // 2.15
+            || state[4] && expired && !expiredTwice) {// 4.10
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
         }
     }
 
