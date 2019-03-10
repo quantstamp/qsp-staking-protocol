@@ -273,22 +273,40 @@ contract QuantstampStaking is Ownable {
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
     function stakeFunds(uint poolIndex, uint amountQspWei) public {
-        QuantstampStakingData.PoolState state = getPoolState(poolIndex);
+        bool funded = data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex);
+        uint activeTime = data.getPoolMinStakeStartBlock(poolIndex);
+        bool expired = activeTime > 0 && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        bool expiredTwice = activeTime > 0
+            && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        bool timedout = data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex))
+            <= block.number;
+        QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
+        bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
+        state[1] = (currentState == QuantstampStakingData.PoolState.Initialized);
+        state[2] = (currentState == QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        state[4] = (currentState == QuantstampStakingData.PoolState.NotViolatedFunded);
         bool violated = isViolated(poolIndex);
-        uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
-
-        require((state == QuantstampStakingData.PoolState.Initialized) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded), 
-                "Pool is not in the right state when staking funds."); // 3.2, 5.2, 6.2, 7.7
-        // Check if pool can be switched from the initialized state to another state
-        if (state == QuantstampStakingData.PoolState.Initialized) {
-            stakeFundsTransitionFromInitialized(poolIndex, amountQspWei);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) { 
-            stakeFundsTransitionFromNotViolatedUnderfunded(poolIndex, amountQspWei);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded) {
-            stakeFundsTransitionFromNotViolatedFunded(poolIndex, amountQspWei);
+        // Guard
+        require(state[1] || state[2] || state[4], "State doesn't allow to stake funds"); // 3.2, 5.2, 6.2, 7.7
+        // Effect (if condition is inside the helper function to lower cyclomatic complexity)
+        stakeFundsEffect(poolIndex, amountQspWei, state, timedout, violated, expired);
+        bool minStakeReached = data.getPoolMinStakeQspWei(poolIndex) <= data.getPoolTotalStakeQspWei(poolIndex);
+        // Transition
+        if (state[1] && !timedout && !violated && minStakeReached && !funded) { // 1.3
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        } else if (state[2] && !expired && violated) { // 2.5
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
+        } else if (state[1] && !timedout && !violated && minStakeReached && funded) { // 1.4
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+        } else if (state[4] && !expired && violated) { // 4.5
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+        } else if (state[1] && (timedout || violated) // 1.5
+            || state[2] && expiredTwice // 2.14a
+            || state[4] && expiredTwice) { // 4.8
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state[2] && expired && !expiredTwice // 2.15
+            || state[4] && expired && !expiredTwice) { // 4.10
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
         }
     }
 
@@ -620,94 +638,28 @@ contract QuantstampStaking is Ownable {
     * @dev Used to transfer the stake from the caller to the pool after the checks in stakeFunds.
     * @param poolIndex The index of the pool in which the stake will be transferred.
     * @param amountQspWei The amount of funds transferred.
+    * @param state An array of boolean values, onle the value that corresponds to the ID of the pool state is true
+    * @param timedout A boolean value indicating if the pool is timed out
+    * @param violated A boolean value indicating if the policy is violated
+    * @param violated A boolean value indicating if the policy is expired
     */
-    function stakeFundsEffect(uint poolIndex, uint amountQspWei) internal {
-        // Adjust the stake amount according to the maximum total stake given by the pool owner
-        uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
-    
-        safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
-
-        uint stakeIndex = data.createStake(poolIndex, msg.sender,
-            adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
-
-        data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
-            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
+    function stakeFundsEffect(uint poolIndex, uint amountQspWei, bool[] state, bool timedout, 
+        bool violated, bool expired) internal {
+        if (state[1] && !timedout && !violated // 1.2 OR 1.3 OR 1.4
+            || state[2] && !expired && !violated // 2.3
+            || state[4] && !expired && !violated) { // 4.1
+            // Adjust the stake amount according to the maximum total stake given by the pool owner
+            uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
         
-        emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
-    }
+            safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
 
-    /**
-    * @dev Used to check the transition conditions from the initialized state for stakeFunds.
-    * @param poolIndex The index of the pool in which the stake will be transferred.
-    * @param amountQspWei The amount of funds transferred.
-    */
-    function stakeFundsTransitionFromInitialized(uint poolIndex, uint amountQspWei) internal {
-        bool violated = isViolated(poolIndex);
-        uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        uint timeoutBlock = data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState);
-        if (timeoutBlock <= block.number || violated) { // 1.5
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else {
-            stakeFundsEffect(poolIndex, amountQspWei); // effect is executed
-            uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
-            uint minStake = data.getPoolMinStakeQspWei(poolIndex);
-            uint deposit = data.getPoolDepositQspWei(poolIndex);
-            uint maxPayout = data.getPoolMaxPayoutQspWei(poolIndex);
-            if (timeoutBlock > block.number && !violated && 
-            totalStake >= minStake && deposit < maxPayout) { // 1.3
-                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
-            } else if (timeoutBlock > block.number && !violated && 
-            totalStake >= minStake && deposit >= maxPayout) { // 1.4
-                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
-            } // 1.2. (timeoutBlock > block.number && !violated && totalStake < minStake)
-        }
-    }
+            uint stakeIndex = data.createStake(poolIndex, msg.sender,
+                adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
 
-    /**
-    * @dev Used to check the transition conditions from the NotViolatedUnderfunded state for stakeFunds.
-    * @param poolIndex The index of the pool in which the stake will be transferred.
-    * @param amountQspWei The amount of funds transferred.
-    */
-    function stakeFundsTransitionFromNotViolatedUnderfunded(uint poolIndex, uint amountQspWei) internal {
-        bool violated = isViolated(poolIndex);
-        uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
-        
-        if (block.number < minStakeTime.add(timeOfState) && !violated) { //2.3
-            stakeFundsEffect(poolIndex, amountQspWei); // effect is executed
-            // stay in same state
-        } else if (block.number < minStakeTime.add(timeOfState) && violated) { // 2.5
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
-        } else if (block.number >= minStakeTime.add(timeOfState)) { // 2.15
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-        }
-    }
-
-    /**
-    * @dev Used to check the transition conditions from the NotViolatedFunded state for stakeFunds.
-    * @param poolIndex The index of the pool in which the stake will be transferred.
-    * @param amountQspWei The amount of funds transferred.
-    */
-    function stakeFundsTransitionFromNotViolatedFunded(uint poolIndex, uint amountQspWei) internal {
-        bool violated = isViolated(poolIndex);
-        uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
-        
-        if (block.number < minStakeTime.add(timeOfState) && !violated) { // 4.1
-            stakeFundsEffect(poolIndex, amountQspWei); // effect is executed
-            // stay in same state
-        } else if (block.number < minStakeTime.add(timeOfState) && violated) { // 4.5
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        } else if (block.number >= minStakeTime.mul(2).add(timeOfState)) { // 4.8
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (block.number >= minStakeTime.add(timeOfState)) { // 4.10
-            // effect is not executed
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
+            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
+                calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
+            
+            emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
         }
     }
 }
