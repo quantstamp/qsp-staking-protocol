@@ -127,9 +127,10 @@ contract QuantstampStaking is Ownable {
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
         bool violated = isViolated(poolIndex);
-        uint minStakeTime = data.getPoolMinStakeTimeInBlocks(poolIndex);
-        uint timeOfStatePlusMinStakeTime = data.getPoolTimeOfStateInBlocks(poolIndex).add(minStakeTime);
-        uint timeOfStatePlus2MinStakeTime = timeOfStatePlusMinStakeTime.add(minStakeTime);
+        uint activeTime = data.getPoolMinStakeStartBlock(poolIndex);
+        bool expired = activeTime > 0 && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        bool expiredTwice = activeTime > 0
+            && block.number >= activeTime.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
         uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
         QuantstampStakingData.PoolState currentState = getPoolState(poolIndex);
         bool[] memory state = new bool[](8); // 8 states in total in the Assurance Protocol, including state 0.
@@ -138,38 +139,31 @@ contract QuantstampStaking is Ownable {
         state[4] = (currentState == QuantstampStakingData.PoolState.NotViolatedFunded);
         state[6] = (currentState == QuantstampStakingData.PoolState.Cancelled);
         state[7] = (currentState == QuantstampStakingData.PoolState.PolicyExpired);
-        // transitions that are used more than once in the code below
-        bool transition48 = state[4] && block.number >= timeOfStatePlus2MinStakeTime;
-        bool transition73 = state[7] && (totalStake == 0 || block.number >= timeOfStatePlus2MinStakeTime);
-
         // Guard
         require(state[1]
             || state[2]
-            || state[4] && !(block.number < timeOfStatePlusMinStakeTime && !violated) // 4.11
-            || state[7] && !(block.number < timeOfStatePlus2MinStakeTime && totalStake != 0) // 7.5
-            || state[6], // 6.1
+            || state[4] && !(!expired && !violated) // 4.11
+            || state[6] // 6.1
+            || state[7] && !(!expiredTwice && totalStake != 0), // 7.5
             "Pool is not in the right state when withdrawing deposit."); // 3.2, 5.2
-
-        // Transition
-        if (state[1] // 1.6
-            || state[2] // 2.11
-            || transition73 // 7.3
-            || transition48) { // 4.8
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state[4] && block.number >= timeOfStatePlusMinStakeTime
-            && block.number < timeOfStatePlus2MinStakeTime) { // 4.10
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-        } else if (state[4] && violated && block.number < timeOfStatePlusMinStakeTime) { // 4.5
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        }
-
         // Effect
         if (state[1] // 1.6
             || state[2] // 2.11
-            || transition73 // 7.3
-            || transition48 // 4.8
-            || state[6]) { // 6.1
+            || state[4] && expiredTwice // 4.8
+            || state[6] // 6.1
+            || state[7] && (expiredTwice || totalStake == 0)) { // 7.3
             withdrawDepositEffect(poolIndex);
+        }
+        // Transition
+        if (state[4] && !expired && violated) { // 4.5
+            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+        } else if (state[1] // 1.6
+            || state[2] // 2.11
+            || state[4] && expiredTwice // 4.8
+            || state[7] && (expiredTwice || totalStake == 0)) { // 7.3
+            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+        } else if (state[4] && expired && !expiredTwice) { // 4.10
+            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
         }
     }
 
