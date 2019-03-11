@@ -9,6 +9,7 @@ const TCROpinionPolicy = artifacts.require('policies/TCROpinionPolicy');
 const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy');
 const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
 const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
+const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampToken = artifacts.require('test/QuantstampToken');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const QuantstampStaking = artifacts.require('QuantstampStaking');
@@ -26,6 +27,7 @@ module.exports = function(deployer, network) {
       .then(() => deployer.deploy(StateNotChangedPolicy, 0))
       .then(() => deployer.deploy(AlwaysViolatedPolicy))
       .then(() => deployer.deploy(NeverViolatedPolicy))
+      .then(() => deployer.deploy(ValueNotChangedPolicy, CandidateContract.address))
       .then(() => deployer.deploy(QuantstampAssurancePolicy, QuantstampStaking.address, QuantstampToken.address));
   }
 };
