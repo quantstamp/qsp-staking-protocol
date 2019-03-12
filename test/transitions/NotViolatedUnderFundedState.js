@@ -93,15 +93,9 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
    * mineUntilMinStakingTime(poolId, -1) mines until one block after timeout
    */
   async function mineUntilMinStakingTime(poolId, offset) {
-    /* todo(mderka): This function measures minStakingTime in a particular state.
-     * The smart contract is unable to measure the time since the first stake that
-     * moved the pool from state Initialized, which is the true origin of minStakingTime.
-     * When this is possible, this function should be adjusted. Currently it works based
-     * on the fact that the pool in this test only moved from state Initialized directly
-     * to state NotViolatedUndefunded before this function is called.
-     */
     const timeout = await data.getPoolMinStakeTimeInBlocks(poolId);
-    const start = await data.getPoolTimeOfStateInBlocks(poolId);
+    const start = await data.getPoolMinStakeStartBlock(poolIndex);
+    assert.isTrue(start.gt(0));
     const end = start.add(timeout);
     const now = await Util.getBlockNumber();
     const left = end.sub(now).add(offset);
@@ -230,7 +224,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Violates the policy while expiring the pool and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.15 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("2.15 if the min staking time elapsed once and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         const toDeposit = 13;
@@ -246,7 +240,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired after depositing 0.
      */
-    it("2.15 if the min staking time elapsed and the policy is not violated, deposit 0, move to state 7",
+    it("2.15 if the min staking time elapsed once and the policy is not violated, deposit 0, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
@@ -259,7 +253,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired after depositing non-zero funds.
      */
-    it("2.15 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("2.15 if the min staking time elapsed once, large deposit, and the policy is not violated, move to state 7",
       async function() {
         const toDeposit = 13001;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
@@ -267,6 +261,50 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         // todo(mderka): Uncomment when implemented
         // await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Violates the policy twice while expiring the pool twise and checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("2.14a if the min staking time elaped twice and the policy is violated, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        const toDeposit = 13;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        // todo(mderka): uncommented when the modifier in the smart contract is removed
+        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state PolicyExpired after depositing 0.
+     */
+    it("2.14a if the min staking time elapsed twice and the policy is not violated, deposit 0, move to state 6",
+      async function() {
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        await qspb.depositFunds(poolId, 0, {from : stakeholder});
+        // todo(mderka): Uncomment when implemented
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state PolicyExpired after depositing non-zero funds.
+     */
+    it("2.14a if the min staking time elapsed twice, large deposit, and the policy is not violated, move to state 6",
+      async function() {
+        const toDeposit = 13001;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        // todo(mderka): Uncomment when implemented
+        // await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
