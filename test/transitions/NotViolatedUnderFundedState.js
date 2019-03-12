@@ -489,7 +489,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * interest and verifies the pool remained in NonViolatedUnderfunded state.
      */
-    it("2.1 min staking time did not elapse, policy is not violated, enough to pay the interest, stay in 2",
+    it("2.1 did not expire, policy is not violated, enough to pay the interest, stay in 2",
       async function() {
         await Util.mineNBlocks(pool.payPeriodInBlocks);
         const payout = await qspb.computePayout(poolId, smallStaker);
@@ -507,7 +507,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Violates the policy without expiring the pool and checks that the pool gets to
      * state ViolatedUnderfunded.
      */
-    it("2.6 if the min staking time did not elapse and the policy is violated, move to state 3",
+    it("2.6 if did not expire and the policy is violated, move to state 3",
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when fixed
@@ -521,7 +521,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * interest and verifies the pool transitions to Cancelled state.
      */
-    it("2.12 min staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
+    it("2.12 if did not expire, policy is not violated, not enough to pay any interest, go to 6",
       async function() {
         // mine large number (10) of periouds for payout to exceed the deposit
         await Util.mineNBlocks(pool.payPeriodInBlocks.times(10));
@@ -539,7 +539,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.16 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("2.16 if expired once and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when call is possible
@@ -552,13 +552,40 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.16 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("2.16 if expired once and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when fixed
         // await qspb.withdrawInterest(poolId, {from : staker});
         // await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("2.14a if expired twice and the policy is not violated, move to state 6",
+      async function() {
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when call is possible
+        // await qspb.withdrawInterest(poolId, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice while violating it and checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("2.14a if expired twice once and the policy is violated, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when fixed
+        // await qspb.withdrawInterest(poolId, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
