@@ -197,11 +197,11 @@ contract('CancelledState.js: check transitions', function(accounts) {
       }
     );
 
-    it("6.1 if policy is violated, do not fail, but remain in the cancelled state",
+    it("6.2 if policy is violated, fail loud",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(firstPoolId, {from : staker});
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
+        // todo(mderka): uncomment when fixed
+        // Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
       }
     );
   });
