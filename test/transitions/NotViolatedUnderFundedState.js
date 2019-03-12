@@ -374,7 +374,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Tests that there is no transition or fail when the policy is not violated, max staking time
      * did not elapse and there is still enough stake.
      */
-    it("2.4 if the min staking time did not elapse, policy is not violated and there is still enough stake, stay in 2",
+    it("2.4 if did not expire, policy is not violated and there is still enough stake, stay in 2",
       async function() {
         await qspb.withdrawStake(poolId, {from : smallStaker});
         const totalStake = await data.getPoolTotalStakeQspWei(poolId);
@@ -387,7 +387,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Violates the policy without expiring the pool, stakes are still high enough, checks that 
      * the pool gets to state ViolatedUnderfunded.
      */
-    it("2.7 if the min staking time did not elapse and the policy is violated, move to state 3",
+    it("2.7 if did not expire and the policy is violated and there is still enough stake, move to state 3",
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when this is allowed
@@ -400,7 +400,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * The policy is not violated, max staking time did not elapse and there is not
      * enough stake. The pool should be cancelled.
      */
-    it("2.13 if the min staking time did not elapse, policy is violated and there is not enough stake, go to 6",
+    it("2.13 if did not expire, policy is violated and there is not enough stake, go to 6",
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawStake(poolId, {from : staker});
@@ -414,7 +414,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * The policy is not violated, max staking time did not elapse and there is not
      * enough stake. The pool should be cancelled.
      */
-    it("2.14 if the min staking time did not elapse, policy is not violated and there is not enough stake, go to 6",
+    it("2.13 if did not expire, policy is not violated and there is not enough stake, go to 6",
       async function() {
         await qspb.withdrawStake(poolId, {from : staker});
         const totalStake = await data.getPoolTotalStakeQspWei(poolId);
@@ -427,7 +427,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.15 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("2.15 if expired and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawStake(poolId, {from : staker});
@@ -440,13 +440,40 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.15 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("2.15 if expired and the policy is violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawStake(poolId, {from : staker});
         // todo(mderka): uncomment when fixed
         // await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("2.14a if expired twice and the policy is not violated, move to state 6",
+      async function() {
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        await qspb.withdrawStake(poolId, {from : staker});
+        // todo(mderka): uncomment when fixed
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice while violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("2.14a if expired twice and the policy is violated, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        await mineUntilMinStakingTime(poolId, poolParams.minStakeTimeInBlocks);
+        await qspb.withdrawStake(poolId, {from : staker});
+        // todo(mderka): uncomment when fixed
+        // await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
