@@ -138,6 +138,22 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     await token.approve(qspb.address, 1, {from : smallStaker});
     await qspb.stakeFunds(poolId, 1, {from : smallStaker});
 
+    // deposit enought funds to bring pool to state 4 and back in order to activate it
+    const toDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei.add(1));
+    await token.approve(qspb.address, pool.toDeposit, {from : stakeholder});
+    await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+    await assertPoolState(poolId, PoolState.NotViolatedFunded);
+
+    // mine periods for payout until there is not enough deposit left
+    let payout = await qspb.computePayout(poolId, staker);
+    let depositLeft = await data.getPoolDepositQspWei(poolId);
+    while (depositLeft.gte(payout)) {
+      await qspb.claimInterest(poolId, toDeposit, {from : staker});
+      payout = await qspb.computePayout(poolId, staker);
+      depositLeft = await data.getPoolDepositQspWei(poolId);
+      await Util.mineNBlocks(pool.payPeriodInBlocks);
+    }
+
     // verify the initial state
     await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
   });
