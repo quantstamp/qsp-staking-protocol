@@ -148,7 +148,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     let payout = await qspb.computePayout(poolId, staker);
     let depositLeft = await data.getPoolDepositQspWei(poolId);
     while (depositLeft.gte(payout)) {
-      await qspb.claimInterest(poolId, toDeposit, {from : staker});
+      await qspb.claimInterest(poolId, {from : staker});
       payout = await qspb.computePayout(poolId, staker);
       depositLeft = await data.getPoolDepositQspWei(poolId);
       await Util.mineNBlocks(pool.payPeriodInBlocks);
