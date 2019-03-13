@@ -518,7 +518,6 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(balanceOfStaker2.plus(payoutStaker2).toNumber(), (await quantstampToken.balanceOf(staker2)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker2);
-    console.log(orangePoolParams.depositQspWei.toNumber());
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
     balanceOfQspb = balanceOfQspb.minus(payoutStaker2);
     // check that all pool properties are as expected
@@ -532,8 +531,6 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     assert.isTrue(currentBlock.lt(staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks)));
-    let pp = await qspb.computePayout(0, staker4);
-    console.log(pp);
     // staker4 wants to withdraw his payout before a pay period has passed since he staked and gets rejected, i.e. nothing gets transferred
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
     // the balance of staker4 should have stayed the same
@@ -551,8 +548,6 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.isTrue(staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks).gt(currentBlock));
     const blocksUntilFirstPayout = staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilFirstPayout);
-    let pp = await qspb.computePayout(0, staker4);
-    console.log(pp);
     // staker4 wants to withdraw his payout and receives it
     const payoutStaker4 = staker4PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
