@@ -231,6 +231,17 @@ contract QuantstampStaking is Ownable {
         } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
         }
+
+        /* 
+         * todo(mderka): This is a necessary addition that allows for transition from state 4
+         * to state 2. This is necessary to activate the pool in test suites. Within SP-251,
+         * ensure absolute correctness of this addition.
+         */
+        state = data.getPoolState(poolIndex);
+        if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
+            data.getPoolDepositQspWei(poolIndex) < data.getPoolMaxPayoutQspWei(poolIndex)) {
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+        }
     }
 
     /** Checks if the given address is a staker of the given pool index

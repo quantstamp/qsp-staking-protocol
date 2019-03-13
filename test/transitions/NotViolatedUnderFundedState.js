@@ -128,7 +128,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     await token.transfer(smallStaker, pool.minStakeQspWei.times(10), {from : owner});
 
     // create pool
-    await token.transfer(stakeholder, pool.maxPayoutQspWei.times(10), {from : owner});
+    await token.transfer(stakeholder, pool.maxPayoutQspWei.times(30), {from : owner});
     await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
     await instantiatePool(pool);
 
@@ -138,20 +138,30 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     await token.approve(qspb.address, 1, {from : smallStaker});
     await qspb.stakeFunds(poolId, 1, {from : smallStaker});
 
-    // deposit enought funds to bring pool to state 4 and back in order to activate it
-    const toDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei.add(1));
-    await token.approve(qspb.address, pool.toDeposit, {from : stakeholder});
+    // deposit enough funds to bring pool to state 4 and back in order to activate it
+    const toDeposit = pool.maxPayoutQspWei.times(4);
+    await token.approve(qspb.address, toDeposit, {from : stakeholder});
     await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
     await assertPoolState(poolId, PoolState.NotViolatedFunded);
-
+    
     // mine periods for payout until there is not enough deposit left
-    let payout = await qspb.computePayout(poolId, staker);
     let depositLeft = await data.getPoolDepositQspWei(poolId);
-    while (depositLeft.gte(payout)) {
+    await Util.mineNBlocks(pool.payPeriodInBlocks);
+    while (depositLeft.gte(pool.maxPayoutQspWei)) {
+      // we need to mine blocks to get pay periods passed
+      // the calls inside the loop body also mine blocks
+      // we will use this variable to determine how many more
+      // blocks need to be mine at the end of the loop
+      let before = await Util.getBlockNumber();
+      
+      // the loop body should come here
       await qspb.withdrawInterest(poolId, {from : staker});
-      payout = await qspb.computePayout(poolId, staker);
       depositLeft = await data.getPoolDepositQspWei(poolId);
-      await Util.mineNBlocks(pool.payPeriodInBlocks);
+
+      // mine remaining blocks for the next pay period to elapse
+      let after = await Util.getBlockNumber();
+      let diff = after - before; // the results are numbers
+      await Util.mineNBlocks(pool.payPeriodInBlocks.sub(diff));
     }
 
     // verify the initial state
@@ -169,10 +179,13 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.2 if the min staking time did not elapse, policy is not violated and deposit is too small, stay in state 2",
       async function() {
-        const toDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei.add(1));
+        const currentDeposit = await data.getPoolDepositQspWei(poolId);
+        const toDeposit = pool.maxPayoutQspWei.sub(currentDeposit.add(1));
+        console.log(toDeposit.toNumber());
         assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        console.log(await Util.getState(qspb, poolId));
         await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
       }
     );
@@ -229,7 +242,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.10 if the min staking time did not elapse, policy is not violated and deposit is enough, transition to state 4",
       async function() {
-        const toDeposit = pool.maxPayoutQspWei.sub(pool.depositQspWei);
+        const currentDeposit = await data.getPoolDepositQspWei(poolId);
+        const toDeposit = pool.maxPayoutQspWei.sub(currentDeposit);
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
