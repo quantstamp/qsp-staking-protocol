@@ -59,7 +59,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.timeoutInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeoutInBlocks(poolParams.index)).toNumber());
     assert.equal(poolParams.timeOfStateInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeOfStateInBlocks(poolParams.index)).toNumber());
     assert.equal(poolParams.urlOfAuditReport, await quantstampStakingData.getPoolUrlOfAuditReport(poolParams.index));
-    assert.equal(poolParams.state, await quantstampStakingData.getPoolState(poolParams.index));
+    assert.equal(poolParams.state, (await quantstampStakingData.getPoolState(poolParams.index)).toNumber());
     assert.equal(poolParams.totalStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.poolSizeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(poolParams.index)).toNumber());
     assert.equal(poolParams.stakeCount.toNumber(), (await quantstampStakingData.getPoolStakeCount(poolParams.index)).toNumber());
@@ -325,7 +325,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker1 in the Orange Pool that is smaller than the minimum stake, which keeps the pool in the same state", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.Initialized);
     // staker1 places a stake in the Orange Pool
     await qspb.stakeFunds(orangePoolParams.index, staker1StakeOrangePool, {from : staker1});
     // since staker1 is a security expert on the TCR, the pool should update its firstExpertStaker field
@@ -344,7 +344,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker2 in the Orange Pool, which causes the pool to transition into the NotViolatedFunded state", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.Initialized);
     // allow the Assurance protocol to transfer funds from staker2
     await quantstampToken.approve(qspb.address, staker2Budget, {from : staker2});
     // staker2 places a stake in the Orange Pool
@@ -353,6 +353,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // since the total amount staked in this pool is not over the minimum stake, the pool should transition to the NotViolatedFunded state
     orangePoolParams.state = PoolState.NotViolatedFunded;
     orangePoolParams.timeOfStateInBlocks = staker2StakeBlock;
+    orangePoolParams.activationTime = staker2StakeBlock;
     // the total QSP staked should also increase, as well as the pool size and stake count
     orangePoolParams.totalStakeQspWei = orangePoolParams.totalStakeQspWei.plus(staker2StakeOrangePool);
     staker2PayoutOrangePool = staker2StakeOrangePool.times(orangePoolParams.bonusExpertFactor.pow(2).plus(new BigNumber(100).pow(2))).
@@ -367,7 +368,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker5 in the Orange Pool, which keeps the pool in the same state", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // allow the Assurance protocol to transfer funds from staker5
     await quantstampToken.approve(qspb.address, staker5Budget, {from : staker5});
     // staker5 places a stake in the Orange Pool already after some blocks since the orange pool has transitioned into the NotViolatedFunded state
@@ -408,7 +409,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should reject the payout request of staker1 because the payout period has not yet passed for the orange pool", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)));
@@ -420,7 +421,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker4 in the Orange Pool, which keeps the pool in the same state", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // award budget to staker4
     await quantstampToken.transfer(staker4, staker4Budget, {from : owner});
     // allow the Assurance protocol to transfer funds from staker5
@@ -464,7 +465,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker3 in the Gray Pool and transition the pool in the NotViolatedFunded state", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(grayPoolParams.index)).toNumber(), PoolState.Initialized);
     // award budget to staker3
     await quantstampToken.transfer(staker3, staker3Budget, {from : owner});
     // allow the Assurance protocol to transfer funds from staker3
@@ -493,7 +494,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should not allow staker1 to withdraw his stake from the orange pool in the NotViolatedFunded", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // try to withdraw stake
     Util.assertTxFail(qspb.withdrawStake(orangePoolParams.index, {from : staker1}));
     // check that all pool properties are as expected
@@ -502,16 +503,22 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should allow staker2 to receive his payout from the orange pool", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // compute payout for staker2
     const payoutStaker2 = staker2PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     const balanceOfStaker2 = await quantstampToken.balanceOf(staker2);
     // staker2 wants to withdraw his payout and receives it
+    // this will change the pool state due to low deposit
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker2});
+    const newStateBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
+    orangePoolParams.timeOfStateInBlocks = newStateBlock;
+    orangePoolParams.state = PoolState.NotViolatedUnderfunded;
+    
     // the balance of staker2 should have increased
     assert.equal(balanceOfStaker2.plus(payoutStaker2).toNumber(), (await quantstampToken.balanceOf(staker2)).toNumber());
     // the deposit of the orange pool needs to be updated
     orangePoolParams.depositQspWei = orangePoolParams.depositQspWei.minus(payoutStaker2);
+    console.log(orangePoolParams.depositQspWei.toNumber());
     // the balance of the Assurance contract should be decreased by the amount withdrawn from the orange pool
     balanceOfQspb = balanceOfQspb.minus(payoutStaker2);
     // check that all pool properties are as expected
@@ -519,12 +526,14 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   });
 
   it("should not award a payout to staker4 because not enough time has passed since he has placed his stake", async function() {
-    // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    // check that the pool is in the NotViolatedUnderfunded state
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     const balanceOfStaker4 = await quantstampToken.balanceOf(staker4);
     // check that the pay period for the orange pool has not passed yet
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     assert.isTrue(currentBlock.lt(staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks)));
+    let pp = await qspb.computePayout(0, staker4);
+    console.log(pp);
     // staker4 wants to withdraw his payout before a pay period has passed since he staked and gets rejected, i.e. nothing gets transferred
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
     // the balance of staker4 should have stayed the same
@@ -534,13 +543,16 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   });
 
   it("should award a payout to staker4 after enough time has passed since he has placed his stake", async function() {
-    // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    // check that the pool is in the NotViolatedUnderfunded state
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     const balanceOfStaker4 = await quantstampToken.balanceOf(staker4);
     // fast-forward to block where the first pay period ends
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
+    assert.isTrue(staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks).gt(currentBlock));
     const blocksUntilFirstPayout = staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilFirstPayout);
+    let pp = await qspb.computePayout(0, staker4);
+    console.log(pp);
     // staker4 wants to withdraw his payout and receives it
     const payoutStaker4 = staker4PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
@@ -555,13 +567,13 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   });
 
   it("should award a second payout to staker2 exactly at the end of the second pay period of the orange pool", async function() {
-    // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    // check that the pool is in the NotViolatedUnderfunded state
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     // check that the 2nd pay period has not passed
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
-    assert(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)).gt(currentBlock), "Already passed second pay period of orange pool");
+    assert(orangePoolParams.activationTime.plus(orangePoolParams.payPeriodInBlocks.times(2)).gt(currentBlock), "Already passed second pay period of orange pool");
     // fast-forward to block where the second pay period ends
-    const blocksUntilSecondPayout = orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
+    const blocksUntilSecondPayout = orangePoolParams.activationTime.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
     await Util.mineNBlocks(blocksUntilSecondPayout);
     // compute payout for staker2
     const payoutStaker2 = staker2PayoutOrangePool.times(orangePoolParams.maxPayoutQspWei).dividedToIntegerBy(orangePoolParams.poolSizeQspWei);
@@ -580,8 +592,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   });
 
   it("should award 2 payouts to staker5 who has already staked for 2 pay periods and not requested a payout yet", async function() {
-    // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    // check that the pool is in the NotViolatedUnderfunded state
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     // check that the 2nd pay period has not passed for staker5
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // fast-forward to block where the second pay period ends
@@ -604,8 +616,8 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   });
 
   it("should not be able to payout staker4 from the orange pool due to inssuficient funds, orange pool should then be cancelled", async function() {
-    // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.NotViolatedFunded);
+    // check that the pool is in the NotViolatedUnderfunded state
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // fast-forward to block where the second pay period for staker4 starts
     const blocksUntilSecondPayout = staker4StakeBlock.plus(orangePoolParams.payPeriodInBlocks.times(2)).minus(currentBlock);
@@ -627,7 +639,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should allow stakers and the stakeholder to withdraw their funds from the orange pool in the cancelled state", async function() {
     // check that the pool is in the Cancelled state
-    assert.equal(await qspb.getPoolState(orangePoolParams.index), PoolState.Cancelled);
+    assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.Cancelled);
     // check the balance of stakers
     const balanceOfStaker1 = await quantstampToken.balanceOf(staker1);
     const balanceOfStaker2 = await quantstampToken.balanceOf(staker2);
@@ -666,7 +678,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should award a payout to staker3 from the gray pool after the first pay period", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(grayPoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // check if the first pay period of the gray pool has passed
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // fast-forward to block where the first pay period for the gray pool starts
@@ -690,7 +702,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should deposit funds from stakeholder2 in the gray pool", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(grayPoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     await qspb.depositFunds(grayPoolParams.index, newDepostStakeholder2GrayPool, {from : stakeholder2});
     // the deposit of the gray pool needs to be updated
     grayPoolParams.depositQspWei = grayPoolParams.depositQspWei.plus(newDepostStakeholder2GrayPool);
@@ -702,7 +714,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for expert staker5, which should set the first expert staker in the gray pool", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(grayPoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // staker5 places a stake in the Gray Pool
     await qspb.stakeFunds(grayPoolParams.index, staker5StakeGrayPool, {from : staker5});
     staker5StakeBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
@@ -740,7 +752,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should allow staker1 to stake in white pool", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(whitePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(whitePoolParams.index)).toNumber(), PoolState.Initialized);
     // staker1 places a stake in the White Pool
     await qspb.stakeFunds(whitePoolParams.index, staker1StakeWhitePool, {from : staker1});
     // since staker1 is a security expert on the TCR, the pool should update its firstExpertStaker field
@@ -780,7 +792,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should not allow staker5 to place a stake in the white pool after the timeout of the pool was reached", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(whitePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(whitePoolParams.index)).toNumber(), PoolState.Initialized);
     // check if the timeout of the white pool was reached
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // fast-forward to block where the timeout occurs
@@ -806,7 +818,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place stakes for stakers 2 and 4 in the purple pool, after which the pool should transition in to NotViolatedUnderfunded", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(purplePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(purplePoolParams.index)).toNumber(), PoolState.Initialized);
     // staker 2 stakes funds
     await qspb.stakeFunds(purplePoolParams.index, staker2StakePurplePool, {from : staker2});
     // since staker2 is a security expert on the TCR, the pool should update its firstExpertStaker field
@@ -838,7 +850,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should not award staker5 a payout from the gray pool before the payout period has passed", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(grayPoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(grayPoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     // staker 5 should not receive a payout before the pay period has passed
     assert.isTrue(staker5StakeBlock.plus(grayPoolParams.payPeriodInBlocks).gt(currentBlock));
@@ -881,7 +893,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should deposit funds in the purple pool and transition into NotViolatedFunded", async function() {
     // check that the pool is in the NotViolatedUnderfunded state
-    assert.equal(await qspb.getPoolState(purplePoolParams.index), PoolState.NotViolatedUnderfunded);
+    assert.equal((await qspb.getPoolState(purplePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     // deposit funds
     const amountDeposited = new BigNumber(Util.toQsp(5000));
     await qspb.depositFunds(purplePoolParams.index, amountDeposited, {from : stakeholder3});
@@ -897,7 +909,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should place a stake for staker1 in the blue pool, which should transition the pool into the NotViolatedUnderfunded state", async function() {
     // check that the pool is in the Initialized state
-    assert.equal(await qspb.getPoolState(bluePoolParams.index), PoolState.Initialized);
+    assert.equal((await qspb.getPoolState(bluePoolParams.index)).toNumber(), PoolState.Initialized);
     // staker1 places a stake in the Blue Pool
     await qspb.stakeFunds(bluePoolParams.index, staker1StakeBluePool, {from : staker1});
     // since staker1 is a security expert on the TCR, the pool should update its firstExpertStaker field
@@ -919,7 +931,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should not allow stakeholder2 to withdraw a claim from the blue pool, because it is not violated", async function() {
     // check that the pool is in the NotViolatedUnderfunded state
-    assert.equal(await qspb.getPoolState(bluePoolParams.index), PoolState.NotViolatedUnderfunded);
+    assert.equal((await qspb.getPoolState(bluePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     // try to withdraw claim
     Util.assertTxFail(qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2}));
     // check that all pool properties are the same as before
@@ -928,7 +940,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
 
   it("should not allow stakers to withdraw stakes from a violated pool. Only the pool owner should be able to withdraw the claim", async function() {
     // check that the pool is in the NotViolatedFunded state
-    assert.equal(await qspb.getPoolState(purplePoolParams.index), PoolState.NotViolatedFunded);
+    assert.equal((await qspb.getPoolState(purplePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // violate the policy of the purple pool
     await purplePoolParams.candidateContract.transferOwnership(orangePoolParams.owner, {from : stakeholder3});
     assert.isTrue(await purplePoolParams.contractPolicy.isViolated(purplePoolParams.candidateContract.address));
