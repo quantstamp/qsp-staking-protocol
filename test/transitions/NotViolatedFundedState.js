@@ -92,9 +92,9 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
    * mineUntilMinStakingTime(poolId, -1) mines until one block after timeout
    */
   async function mineUntilMinStakingTime(poolId, offset) {
-    await assertPoolState(poolId, PoolState.NotViolatedFunded);
     const timeout = await data.getPoolMinStakeTimeInBlocks(poolId);
-    const start = await data.getPoolTimeOfStateInBlocks(poolId);
+    const start = await data.getPoolMinStakeStartBlock(poolId);
+    assert.isTrue(start.gt(0));
     const end = start.add(timeout);
     const now = await Util.getBlockNumber();
     const left = end.sub(now).add(offset);
@@ -161,7 +161,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired after depositing 0.
      */
-    it("4.9 if the min staking time elapsed and the policy is not violated, deposit 0, move to state 7",
+    it("4.9 if expired once and not violated, deposit 0, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
@@ -173,7 +173,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired after depositing non-zero funds.
      */
-    it("4.9 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.9 if expired once and not violated, move to state 7",
       async function() {
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
@@ -184,25 +184,23 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
 
     /*
-     * Expires the policy after violating it and checks that the pool gets to
-     * state PolicyExpired.
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled after depositing non-zero funds.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.8 if expired once and not violated, move to state 6",
       async function() {
-        const toDeposit = 14;
+        const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
-        await policy.updateStatus(true);
-        await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
     /*
      * Tests that there is no transition and no fail when the pool is not violated.
      */
-    it("4.1 if the min staking time did not elapse and the policy is not violated, stay in this state and do not fail",
+    it("4.1a if not expired and not violated, stay in this state and do not fail",
       async function() {
         const toDeposit = 12;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
@@ -215,7 +213,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.6 if the min staking time did not elapse and the policy violated, move to state 5",
+    it("4.6 if not expired and the policy violated, move to state 5",
       async function() {
         const toDeposit = 11;
         await policy.updateStatus(true);
@@ -230,7 +228,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy while expiring the pool it and checks that the pool gets to
      * state Cancelled.
      */
-    it("4.9 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.9 if expired once and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         const toDeposit = 13;
@@ -239,6 +237,21 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         // todo(mderka): uncommented when the modifier in the smart contract is removed
         // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled after depositing non-zero funds.
+     */
+    it("4.8 if expired once and violated, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        const toDeposit = 13;
+        await token.approve(qspb.address, toDeposit, {from : stakeholder});
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
@@ -253,7 +266,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
@@ -265,7 +278,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy with violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -278,7 +291,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Tests that there is no transition and fail when the pool is not violated
      * and did not time out.
      */
-    it("4.11 if the min staking time did not elapse and the policy is not violated, fail",
+    it("4.11 if not expired and not violated, fail",
       async function() {
         // todo(mderka): uncomment when the fail is present
         // Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
@@ -289,7 +302,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.5 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.5 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
@@ -308,7 +321,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawStake(poolId, {from : staker});
@@ -320,7 +333,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -332,7 +345,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that there is no transition and no fail when the pool is not violated.
      */
-    it("4.11 if the min staking time did not elapse and the policy is not violated, fail transaction",
+    it("4.11 if not expired and not violated, fail transaction",
       async function() {
         Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
       }
@@ -342,7 +355,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.5 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.5 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when this is allowed
@@ -362,7 +375,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawInterest(poolId, {from : staker});
@@ -374,7 +387,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -463,7 +476,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.5 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.5 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when fixed
@@ -483,7 +496,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when this does not fail
@@ -496,7 +509,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -509,7 +522,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("4.11 if the min staking time did not elapse and the policy is not violated, fail",
+    it("4.11 if not expired and not violated, fail",
       async function() {
         Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
@@ -520,7 +533,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.4 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.4 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawClaim(poolId, {from : stakeholder});
@@ -540,7 +553,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncomment when fixed
@@ -553,7 +566,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -566,7 +579,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("4.12 if the min staking time did not elapse and the policy is not violated, stay in this state and fail loud",
+    it("4.12 if not expired and not violated, stay in this state and fail loud",
       async function() {
         // todo(mderka): missing indication in the diagram
         Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
@@ -577,7 +590,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets to
      * state ViolatedFunded.
      */
-    it("4.4 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.4 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         await qspb.checkPolicy(poolId, {from : staker});
@@ -596,7 +609,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is not violated, move to state 7",
+    it("4.10 if expired once and not violated, move to state 7",
       async function() {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
@@ -611,7 +624,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if the min staking time elapsed and the policy is violated, move to state 7",
+    it("4.10 if expired once and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         const toStake = 31; 
@@ -627,7 +640,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Tests that there is no fail and no transition when the pool is not violated and
      * it did not expire.
      */
-    it("4.1 if the min staking time did not elapse and the policy is not violated, stay in this state and do not fail",
+    it("4.1 if not expired and not violated, stay in this state and do not fail",
       async function() {
         const toStake = 14;
         await token.approve(qspb.address, toStake, {from : staker});
@@ -640,7 +653,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Violates the policy without expiring the pool it and checks that the pool gets
      * to state ViolatedFunded.
      */
-    it("4.5 if the min staking time did not elapse and the policy is violated, move to state 5",
+    it("4.5 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
         const toStake = 6;
