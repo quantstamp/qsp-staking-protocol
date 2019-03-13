@@ -226,7 +226,6 @@ contract QuantstampStaking is Ownable {
                     emit LastPayoutBlockUpdate(poolIndex, msg.sender);
                 }
             }
-
             safeTransferFromDataContract(msg.sender, payout);
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
@@ -383,7 +382,6 @@ contract QuantstampStaking is Ownable {
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
             uint startBlockNumber = Math.max(blockPlaced,
                 data.getPoolMinStakeStartBlock(poolIndex));
-                //data.getPoolTimeOfStateInBlocks(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
