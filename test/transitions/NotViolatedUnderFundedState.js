@@ -67,7 +67,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
    * Instantiates a new pool with the given parameters.
    */
   async function instantiatePool(poolParams) {
-    await qspb.createPool(pool.candidateContract,
+    await qspb.createPool(poolParams.candidateContract,
       poolParams.contractPolicy,
       poolParams.maxPayoutQspWei,
       poolParams.minStakeQspWei,
@@ -80,7 +80,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       poolParams.urlOfAuditReport,
       poolParams.poolName,
       poolParams.maxTotalStake,
-      {from : pool.owner}
+      {from : poolParams.owner}
     );
   }
 
@@ -124,7 +124,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     policy = await Policy.new();
     pool.contractPolicy = policy.address;
     // give tokens to stakers
-    await token.transfer(staker, pool.maxTotalStake.times(10), {from : owner});
+    await token.transfer(staker, pool.minStakeQspWei.times(10), {from : owner});
     await token.transfer(smallStaker, pool.minStakeQspWei.times(10), {from : owner});
 
     // create pool
