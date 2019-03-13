@@ -325,7 +325,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      * Violates the policy, stakes a few tokens and attempts to withdraw stake. Then verifies
      * that the pool was cancelled.
      */
-    it("1.5 if the policy is violated, switch to cancelled",
+    it("1.5 if no timeout, policy is violated, switch to cancelled",
       async function() {
         await token.approve(qspb.address, 7, {from : staker});
         await qspb.stakeFunds(firstPoolId, 7, {from : staker});
@@ -340,7 +340,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      * Waits for the timeout, stakes a few tokens and attempts to withdraw stake. Then verifies
      * that the pool was cancelled.
      */
-    it("1.5 if timeout happened, switch to cancelled",
+    it("1.5 if timeout happened, policy not violated, switch to cancelled",
       async function() {
         // mine 2 more blocks
         await token.approve(qspb.address, 8, {from : staker});
@@ -374,7 +374,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      * Stakes 0 tokens, violates the policy and attempts to withdraw stake. Then verifies
      * the the pool remained in the current state.
      */
-    it("1.5 no stake, if the policy is violated, switch to cancelled",
+    it("1.5 zero stake, if no timeout, the policy is violated, switch to cancelled",
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawStake(firstPoolId, {from : staker});
@@ -387,7 +387,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      * Waits for the timeout, stakes 0 tokens and attempts to withdraw stake. Then verifies
      * the the pool was cancelled.
      */
-    it("1.5 no stake, if timeout happened, switch to cancelled",
+    it("1.5 zero stake, if timeout happened, policy not violated, switch to cancelled",
       async function() {
         await mineUntilTimeout(firstPoolId, 0);
         await qspb.withdrawStake(firstPoolId, {from : staker});
