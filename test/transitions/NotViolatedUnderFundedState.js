@@ -181,11 +181,9 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         const currentDeposit = await data.getPoolDepositQspWei(poolId);
         const toDeposit = pool.maxPayoutQspWei.sub(currentDeposit.add(1));
-        console.log(toDeposit.toNumber());
         assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        console.log(await Util.getState(qspb, poolId));
         await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
       }
     );
