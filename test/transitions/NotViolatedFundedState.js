@@ -425,7 +425,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if expired and not violated, move to state 7",
+    it("4.9 if expired once and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawInterest(poolId, {from : staker});
@@ -437,7 +437,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if expired and violated, move to state 7",
+    it("4.9 if expired once and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -448,11 +448,38 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
 
     /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and not violated, move to state 6",
+      async function() {
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        // todo(mderka): uncomment when implemented
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice while violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and violated, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when fixed
+        // await qspb.withdrawInterest(poolId, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
      * Validates that the pool has enough deposit to pay the staker including other stakers.
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it("4.2 min staking time did not elapse, policy is not violated, enough to pay multiple interests, stay in 4",
+    it("4.2 if not expired, not violated, enough to pay multiple interests, stay in 4",
       async function() {
         const payout = await data.getPoolMaxPayoutQspWei(poolId);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
@@ -502,7 +529,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it("4.3 min staking time did not elapse, policy is not violated, enough to pay single interest, go to 2",
+    it("4.3 not expired, not violated, enough to pay single interest, go to 2",
       async function() {
         // Keep withdrawing until there is not enough deposit left to make 2 more withdraws,
         // The payout for the only single staker is exactly maxPayoutQspWei per period,
