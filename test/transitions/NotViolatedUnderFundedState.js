@@ -124,7 +124,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     policy = await Policy.new();
     pool.contractPolicy = policy.address;
     // give tokens to stakers
-    await token.transfer(staker, pool.minStakeQspWei.times(10), {from : owner});
+    await token.transfer(staker, pool.maxTotalStake.times(10), {from : owner});
     await token.transfer(smallStaker, pool.minStakeQspWei.times(10), {from : owner});
 
     // create pool
