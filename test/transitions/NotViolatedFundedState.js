@@ -712,7 +712,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if expired once and not violated, move to state 7",
+    it("4.10 if expired once and not violated, max stake not reached, move to state 7",
       async function() {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
@@ -727,7 +727,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.10 if expired once and violated, move to state 7",
+    it("4.10 if expired once and violated, max stake not reached, move to state 7",
       async function() {
         await policy.updateStatus(true);
         const toStake = 31; 
@@ -740,10 +740,123 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
 
     /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and not violated, max stake not reached, move to state 6",
+      async function() {
+        const toStake = 27;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when this does not fail
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice while violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and violated, max stake not reached, move to state 6",
+      async function() {
+        await policy.updateStatus(true);
+        const toStake = 31;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when the modifier is removed
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy without violating it and checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("4.10 if expired once and not violated, max stake reached, move to state 7",
+      async function() {
+        // additional setup
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+
+        // test case
+        const toStake = 27;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, 0);
+        // todo(mderka): uncomment when this does not fail
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Expires the policy while violating it and checks that the pool gets to
+     * state PolicyExpired.
+     */
+    it("4.10 if expired once and violated, max stake reached, move to state 7",
+      async function() {
+        // additional setup
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+
+        // test case
+        await policy.updateStatus(true);
+        const toStake = 31;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, 0);
+        // todo(mderka): uncomment when the modifier is removed
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.PolicyExpired);
+      }
+    );
+
+    /*
+     * Expires the policy twice without violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and not violated, max stake reached, move to state 6",
+      async function() {
+        // additional setup
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+
+        // test case
+        const toStake = 27;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when this does not fail
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
+     * Expires the policy twice while violating it and checks that the pool gets to
+     * state Cancelled.
+     */
+    it("4.8 if expired twice and violated, max stake reached, move to state 6",
+      async function() {
+        // additional setup
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+
+        // test case
+        await policy.updateStatus(true);
+        const toStake = 31;
+        await token.approve(qspb.address, toStake, {from : staker});
+        await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
+        // todo(mderka): uncomment when the modifier is removed
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.Cancelled);
+      }
+    );
+
+    /*
      * Tests that there is no fail and no transition when the pool is not violated and
      * it did not expire.
      */
-    it("4.1 if not expired and not violated, stay in this state and do not fail",
+    it("4.1 if not expired and not violated, max stake not reached, stay in this state and do not fail",
       async function() {
         const toStake = 14;
         await token.approve(qspb.address, toStake, {from : staker});
@@ -753,11 +866,48 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
 
     /*
+     * Tests that there is no fail and no transition when the pool is not violated and
+     * it did not expire.
+     */
+    it("4.13 if not expired and not violated, max stake reached, fail",
+      async function() {
+        // additional setup
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+
+        // test case
+        const toStake = 14;
+        await token.approve(qspb.address, toStake, {from : staker});
+        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+      }
+    );
+
+    /*
      * Violates the policy without expiring the pool it and checks that the pool gets
      * to state ViolatedFunded.
      */
-    it("4.5 if not expired and violated, move to state 5",
+    it("4.5 if not expired and violated, max stake not reached, move to state 5",
       async function() {
+        await policy.updateStatus(true);
+        const toStake = 6;
+        await token.approve(qspb.address, toStake, {from : staker});
+        // todo(mderka): uncomment when the modifier is removed
+        // await qspb.stakeFunds(poolId, toStake, {from : staker});
+        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+      }
+    );
+
+    /*
+     * Violates the policy without expiring the pool it and checks that the pool gets
+     * to state ViolatedFunded after max stake has been reached.
+     */
+    it("4.5 if not expired and violated, max stake reached, move to state 5",
+      async function() {
+        // additional setup to reach max stake
+        await token.approve(qspb.address, pool.maxStakeQspWei, {from : staker});
+        await qspb.stakeFunds(poolId, pool.maxStakeQspWei, {from : staker});
+        
+        // test case
         await policy.updateStatus(true);
         const toStake = 6;
         await token.approve(qspb.address, toStake, {from : staker});
