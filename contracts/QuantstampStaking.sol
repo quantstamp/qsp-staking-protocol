@@ -237,8 +237,7 @@ contract QuantstampStaking is Ownable {
          * to state 2. This is necessary to activate the pool in test suites. Within SP-251,
          * ensure absolute correctness of this addition.
          */
-        state = data.getPoolState(poolIndex);
-        if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
+        if (data.getPoolState(poolIndex) == QuantstampStakingData.PoolState.NotViolatedFunded &&
             data.getPoolDepositQspWei(poolIndex) < data.getPoolMaxPayoutQspWei(poolIndex)) {
             setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
         }
