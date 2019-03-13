@@ -230,8 +230,8 @@ contract QuantstampStaking is Ownable {
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return;
         }
-
         /* 
          * todo(mderka): This is a necessary addition that allows for transition from state 4
          * to state 2. This is necessary to activate the pool in test suites. Within SP-251,
