@@ -534,18 +534,20 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.3 not expired, not violated, enough to pay but dips below maxPayout, go to 2",
       async function() {
-        // Keep withdrawing until there is not enough deposit left to make 2 more withdraws,
-        // The payout for the only single staker is exactly maxPayoutQspWei per period,
+        // Keep withdrawing until there is not enough deposit left to for 2 maximum payouts.
+        // The payout for the only single staker (as is in this case) is exactly maxPayoutQspWei per period.
         // The other maxPayoutQspWei is needed to pay the other stakers as per specification.
-        // Therefore, we need at most maxPayoutQspWei + maxPayoutQspWei.
-        const payout = await data.getPoolMaxPayoutQspWei(poolId);
-        await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout.times(2));
+        // Therefore, we need less than maxPayoutQspWei + maxPayoutQspWei.
+        await mineAndWithdrawUntilDepositLeftLessThan(poolId, pool.maxPayoutQspWei.times(2));
         
         // validation the precondition
-        const depositLeft = await data.getPoolDepositQspWei(poolId);
-        assert.isTrue(depositLeft.gte(payout));
-        assert.isTrue(payout.times(2).gt(depositLeft));
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
+        const depositLeft = await data.getPoolDepositQspWei(poolId);
+        const payout = await qspb.computePayout(poolId, staker);
+        assert.isTrue(depositLeft.gte(payout));
+        assert.isFalse(depositLeft.sub(payout).gte(pool.maxPayoutQspWei));
+        // the follwoing is the assumption of the test case
+        assert.equal(payout, pool.maxPayoutQspWei); 
 
         await qspb.withdrawInterest(poolId, {from : staker});
         // todo(mderka) uncomment when fixed
