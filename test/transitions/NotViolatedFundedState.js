@@ -515,6 +515,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
         // validate the precondition state
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
+
         // mine several more pay periods to reach payout higher than the deposit left
         await Util.mineNBlocks(pool.payPeriodInBlocks.times(3));
         payout = await qspb.computePayout(poolId, staker);
