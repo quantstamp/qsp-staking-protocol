@@ -164,8 +164,10 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       await Util.mineNBlocks(pool.payPeriodInBlocks.sub(diff));
     }
 
-    // verify the initial state
+    // verify the initial state and max stake was not reached yet
     await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
+    const currentStake = await data.getPoolTotalStakeQspWei(poolId);
+    assert.isTrue(pool.maxTotalStake.gte(currentStake)); 
   });
 
   /*
@@ -195,7 +197,6 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.2 if the min staking time did not elapse, policy is not violated and deposit is 0, stay in state 2",
       async function() {
         const toDeposit = 0;
-        assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
         await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
@@ -296,7 +297,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      * Violates the policy twice while expiring the pool twise and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("2.14a if the min staking time elaped twice and the policy is violated, move to state 6",
+    it("2.14a if expired twice and the policy is violated, move to state 6",
       async function() {
         await policy.updateStatus(true);
         const toDeposit = 13;
@@ -418,6 +419,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.7 if did not expire and the policy is violated and there is still enough stake, move to state 3",
       async function() {
         await policy.updateStatus(true);
+        const totalStake = await data.getPoolTotalStakeQspWei(poolId);
+        assert.isTrue(totalStake.gte(pool.minStakeQspWei));
         // todo(mderka): uncomment when this is allowed
         // await qspb.withdrawStake(poolId, {from : smallStaker});
         // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
