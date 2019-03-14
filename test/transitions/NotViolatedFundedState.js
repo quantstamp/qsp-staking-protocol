@@ -409,17 +409,24 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it("4.8 min staking time did not elapse, policy is not violated, not enough to pay any interest, go to 6",
+    it("4.7 if not expired, not violated, not enough to pay any interest, go to 6",
       async function() {
-        // keep withdrawing until there is not enough deposit left to make another withdraw.
-        // the payout for the only single staker is exactly maxPayoutQspWei per period
-        const payout = await data.getPoolMaxPayoutQspWei(poolId);
-        await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout);
+        // Keep withdrawing until there is not enough deposit left to make 2 more withdraws, only 1.
+        // The payout for the only single staker is exactly maxPayoutQspWei per period.
+        // The other maxPayoutQspWei is needed to pay the other stakers as per specification.
+        // Therefore, we need at most maxPayoutQspWei + maxPayoutQspWei.
+        // IMPORTANT: DO NOT PERFORM THE LAST WITHDRAW, IT CHANGES STATE
+        let payout = await data.getPoolMaxPayoutQspWei(poolId);
+        await mineAndWithdrawUntilDepositLeftLessThan(poolId, payout.times(2));
 
         // validate the precondition state
+        await assertPoolState(poolId, PoolState.NotViolatedFunded);
+
+        // mine several more pay periods to reach payout higher than the deposit left
+        await Util.mineNBlocks(pool.payPeriodInBlocks.times(3));
+        payout = await qspb.computePayout(poolId, staker);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
         assert.isFalse(depositLeft.gte(payout));
-        await assertPoolState(poolId, PoolState.NotViolatedFunded);
 
         // attempt to make another withdraw
         await qspb.withdrawInterest(poolId, {from : staker});
