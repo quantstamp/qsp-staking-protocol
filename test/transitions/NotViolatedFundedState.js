@@ -237,7 +237,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await mineUntilMinStakingTime(poolId, 0);
         // todo(mderka): uncommented when the modifier in the smart contract is removed
         // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        // await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -245,7 +245,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy twice without violating it and checks that the pool gets to
      * state Cancelled after depositing non-zero funds.
      */
-    it("4.8 if expired once and violated, move to state 6",
+    it("4.8 if expired twice and violated, move to state 6",
       async function() {
         await policy.updateStatus(true);
         const toDeposit = 13;
@@ -429,7 +429,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy without violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.9 if expired once and not violated, move to state 7",
+    it("4.10 if expired once and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.withdrawInterest(poolId, {from : staker});
@@ -441,7 +441,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Expires the policy while violating it and checks that the pool gets to
      * state PolicyExpired.
      */
-    it("4.9 if expired once and violated, move to state 7",
+    it("4.10 if expired once and violated, move to state 7",
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
@@ -483,7 +483,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it("4.2 if not expired, not violated, enough to pay multiple interests, stay in 4",
+    it("4.2 if not expired, not violated, enough to pay and stay above maxPayout, stay in 4",
       async function() {
         const payout = await data.getPoolMaxPayoutQspWei(poolId);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
@@ -532,7 +532,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it("4.3 not expired, not violated, enough to pay single interest, go to 2",
+    it("4.3 not expired, not violated, enough to pay but dips below maxPayout, go to 2",
       async function() {
         // Keep withdrawing until there is not enough deposit left to make 2 more withdraws,
         // The payout for the only single staker is exactly maxPayoutQspWei per period,
@@ -633,7 +633,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.11 if not expired and not violated, fail",
       async function() {
         Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
-        await assertPoolState(poolId, PoolState.NotViolatedFunded);
       }
     );
 
@@ -715,8 +714,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.11 if not expired and not violated, stay in this state",
       async function() {
         // todo(mderka): uncomment when the transition bug fixed
-        // await qspb.checkPolicy(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.NotViolatedFunded);
+        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
