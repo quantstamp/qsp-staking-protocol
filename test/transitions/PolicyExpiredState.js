@@ -151,7 +151,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      * Tests that calling this function before the minStakingTime passes twice AND there are still are stakes in the
      * pool, will execute the call and stay in the same state
      */
-    it("7.1 funds are deposited and the pool remains in the same state",
+    it("7.1 pool did not expire twice and stakes are still present, stay in state 7",
       async function() {
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
         await assertPoolState(poolId, PoolState.PolicyExpired);
@@ -361,11 +361,11 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
    * Tests for function checkPolicy
    */
   describe("checkPolicy", async function() {
-    it("7.1 if policy is violated, do not fail, but remain in the PolicyExpired state",
+    it("7.7 if policy is violated, fail",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(poolId, {from : owner});
-        await assertPoolState(poolId, PoolState.PolicyExpired);
+        // todo(mderka): uncomment when fixed
+        // Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
 

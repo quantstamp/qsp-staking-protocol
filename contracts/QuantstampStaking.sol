@@ -225,12 +225,13 @@ contract QuantstampStaking is Ownable {
         QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
         // check that the state of the pool
         require(state == QuantstampStakingData.PoolState.NotViolatedFunded ||
+            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
             state == QuantstampStakingData.PoolState.PolicyExpired,
             "The state of the pool is not as expected.");
         // check that enough time (blocks) has passed since the pool has collected stakes totaling
         // at least minStakeQspWei
         require(block.number > (data.getPoolPayPeriodInBlocks(poolIndex)
-            .add(data.getPoolTimeOfStateInBlocks(poolIndex))),
+            .add(data.getPoolMinStakeStartBlock(poolIndex))),
             "Not enough time has passed since the pool is active or the stake was placed.");
         // compute payout due to be payed to the staker
         uint payout = computePayout(poolIndex, msg.sender);
@@ -255,11 +256,20 @@ contract QuantstampStaking is Ownable {
                     emit LastPayoutBlockUpdate(poolIndex, msg.sender);
                 }
             }
-
             safeTransferFromDataContract(msg.sender, payout);
             emit StakerReceivedPayout(poolIndex, msg.sender, payout);
         } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
+            return;
+        }
+        /* 
+         * todo(mderka): This is a necessary addition that allows for transition from state 4
+         * to state 2. This is necessary to activate the pool in test suites. Within SP-251,
+         * ensure absolute correctness of this addition.
+         */
+        if (data.getPoolState(poolIndex) == QuantstampStakingData.PoolState.NotViolatedFunded &&
+            data.getPoolDepositQspWei(poolIndex) < data.getPoolMaxPayoutQspWei(poolIndex)) {
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
         }
     }
 
@@ -401,7 +411,7 @@ contract QuantstampStaking is Ownable {
             uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
             uint startBlockNumber = Math.max(blockPlaced,
-                data.getPoolTimeOfStateInBlocks(poolIndex));
+                data.getPoolMinStakeStartBlock(poolIndex));
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
