@@ -548,7 +548,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         assert.isTrue(depositLeft.gte(payout));
         assert.isFalse(depositLeft.sub(payout).gte(pool.maxPayoutQspWei));
         // the follwoing is the assumption of the test case
-        assert.equal(payout, pool.maxPayoutQspWei); 
+        assert.isTrue(payout.eq(pool.maxPayoutQspWei)); 
 
         await qspb.withdrawInterest(poolId, {from : staker});
         // todo(mderka) uncomment when fixed
