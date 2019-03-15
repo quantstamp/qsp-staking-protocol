@@ -20,19 +20,19 @@ contract QuantstampStaking is Ownable {
     uint constant internal MAX_UINT = ~uint(0);
 
     // solhint-disable-next-line
-    uint constant internal S1_Initialized = QuantstampStakingData.PoolState.Initialized;
+    QuantstampStakingData.PoolState constant internal S1_Initialized = QuantstampStakingData.PoolState.Initialized;
     // solhint-disable-next-line
-    uint constant internal S2_NotViolatedUnderfunded = QuantstampStakingData.PoolState.NotViolatedUnderfunded;
+    QuantstampStakingData.PoolState constant internal S2_NotViolatedUnderfunded = QuantstampStakingData.PoolState.NotViolatedUnderfunded;
     // solhint-disable-next-line
-    uint constant internal S3_ViolatedUnderfunded = QuantstampStakingData.PoolState.ViolatedUnderfunded;
+    QuantstampStakingData.PoolState constant internal S3_ViolatedUnderfunded = QuantstampStakingData.PoolState.ViolatedUnderfunded;
     // solhint-disable-next-line
-    uint constant internal S4_NotViolatedFunded = QuantstampStakingData.PoolState.NotViolatedFunded;
+    QuantstampStakingData.PoolState constant internal S4_NotViolatedFunded = QuantstampStakingData.PoolState.NotViolatedFunded;
     // solhint-disable-next-line
-    uint constant internal S5_ViolatedFunded = QuantstampStakingData.PoolState.ViolatedFunded;
+    QuantstampStakingData.PoolState constant internal S5_ViolatedFunded = QuantstampStakingData.PoolState.ViolatedFunded;
     // solhint-disable-next-line
-    uint constant internal S6_Cancelled = QuantstampStakingData.PoolState.Cancelled;
+    QuantstampStakingData.PoolState constant internal S6_Cancelled = QuantstampStakingData.PoolState.Cancelled;
     // solhint-disable-next-line
-    uint constant internal S7_PolicyExpired = QuantstampStakingData.PoolState.PolicyExpired;
+    QuantstampStakingData.PoolState constant internal S7_PolicyExpired = QuantstampStakingData.PoolState.PolicyExpired;
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
