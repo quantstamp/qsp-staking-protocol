@@ -32,7 +32,7 @@ contract QuantstampStaking is Ownable {
     // solhint-disable-next-line
     uint constant internal S6_Cancelled = QuantstampStakingData.PoolState.Cancelled;
     // solhint-disable-next-line
-    uint constant internal S7_PolicyExpired = SQuantstampStakingData.PoolState.PolicyExpired;
+    uint constant internal S7_PolicyExpired = QuantstampStakingData.PoolState.PolicyExpired;
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
