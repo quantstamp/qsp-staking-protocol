@@ -559,7 +559,7 @@ contract QuantstampStaking is Ownable {
     * block when pool enters state 4 (NotViolatedFunded).
     * @param poolIndex - the index of the pool to check
     */
-    function isExpired(poolIndex) internal view returns (bool) {
+    function isExpired(uint poolIndex) internal view returns (bool) {
         uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
         uint expirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
         return activationBlock > 0 && block.number >= expirationBlock;
@@ -569,7 +569,7 @@ contract QuantstampStaking is Ownable {
     * block when pool enters state 4 (NotViolatedFunded).
     * @param poolIndex - the index of the pool to check
     */
-    function isExpiredTwice(poolIndex) internal view returns (bool) {
+    function isExpiredTwice(uint poolIndex) internal view returns (bool) {
         uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
         uint doubleExpirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
         return activationBlock > 0 && block.number >= doubleExpirationBlock;
