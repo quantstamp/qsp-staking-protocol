@@ -387,7 +387,7 @@ contract('QuantstampStaking', function(accounts) {
       Util.assertTxFail(qspb.withdrawClaim(nextPool, {from: poolOwner}));
     });
 
-    it("should not have any effect when policy is not violated", async function() {
+    it("should reject when policy is not violated", async function() {
       // approve and stake funds
       await quantstampToken.approve(qspb.address, minStakeQspWei, {from : staker});
       await qspb.stakeFunds(poolId, minStakeQspWei, {from: staker});
