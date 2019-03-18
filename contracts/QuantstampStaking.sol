@@ -19,6 +19,16 @@ contract QuantstampStaking is Ownable {
 
     uint constant internal MAX_UINT = ~uint(0);
 
+    /* solhint-disable */
+    QuantstampStakingData.PoolState constant internal S1_Initialized = QuantstampStakingData.PoolState.Initialized;
+    QuantstampStakingData.PoolState constant internal S2_NotViolatedUnderfunded = QuantstampStakingData.PoolState.NotViolatedUnderfunded;
+    QuantstampStakingData.PoolState constant internal S3_ViolatedUnderfunded = QuantstampStakingData.PoolState.ViolatedUnderfunded;
+    QuantstampStakingData.PoolState constant internal S4_NotViolatedFunded = QuantstampStakingData.PoolState.NotViolatedFunded;
+    QuantstampStakingData.PoolState constant internal S5_ViolatedFunded = QuantstampStakingData.PoolState.ViolatedFunded;
+    QuantstampStakingData.PoolState constant internal S6_Cancelled = QuantstampStakingData.PoolState.Cancelled;
+    QuantstampStakingData.PoolState constant internal S7_PolicyExpired = QuantstampStakingData.PoolState.PolicyExpired;
+    /* solhint-enable */
+
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
     ERC20 public token;
@@ -126,29 +136,45 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the deposit should be withdrawn
     */
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        /* If the policy is expired do not let the stakeholder withdraw his deposit until all stakers are payed out or
-        * if the minimum time for staking has passed twice since the pool transitioned into the NotViolated funded state
-        */
-        if (state == QuantstampStakingData.PoolState.PolicyExpired && data.getPoolTotalStakeQspWei(poolIndex) > 0 &&
-            data.getPoolTimeOfStateInBlocks(poolIndex).add(
-                data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2)) > block.number) {
-            return;
+        // Gather conditions
+        bool violated = isViolated(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+
+        // Guard: Reject in 5.2, 4.11, 3.2, 7.5
+        require(S1_Initialized == s                                           // 1.6
+            || S2_NotViolatedUnderfunded == s                                 // 2.11
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                                          // 4.5
+                || !expiredTwice && expired                                   // 4.10
+                || expiredTwice                                               // 4.8
+            )
+            || S6_Cancelled == s                                              // 6.1
+            || S7_PolicyExpired == s && (expiredTwice || totalStake == 0),    // 7.3
+            "Pool is not in the right state when withdrawing deposit.");    
+
+        // Effect: No effect in 4.5, 4.10
+        if (S1_Initialized == s                                               // 1.6
+            || S2_NotViolatedUnderfunded == s                                 // 2.11
+            || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
+            || S6_Cancelled == s                                              // 6.1
+            || S7_PolicyExpired == s && (expiredTwice || totalStake == 0)) {  // 7.3
+            withdrawDepositEffect(poolIndex);
         }
-        address poolOwner = data.getPoolOwner(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized || // always allow to withdraw in these states
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired ||
-            state == QuantstampStakingData.PoolState.NotViolatedFunded ||
-            state == QuantstampStakingData.PoolState.Cancelled,
-            "Pool is not in the right state when withdrawing deposit.");
-        uint withdrawalAmountQspWei = data.getPoolDepositQspWei(poolIndex);
-        require(withdrawalAmountQspWei > 0, "The stakeholder has no balance to withdraw");
-        data.setPoolDepositQspWei(poolIndex, 0);
-        data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
-        safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
-        setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+
+        // Transition: Retain state in 6.1
+        if (S4_NotViolatedFunded == s && !expired && violated) {              // 4.5
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S1_Initialized == s                                        // 1.6
+            || S2_NotViolatedUnderfunded == s                                 // 2.11
+            || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
+            || S7_PolicyExpired == s && (expiredTwice || totalStake == 0)) {  // 7.3
+            setState(poolIndex, S6_Cancelled);
+        } else if (S4_NotViolatedFunded == s && expired && !expiredTwice) {   // 4.10
+            setState(poolIndex, S7_PolicyExpired);
+        }
     }
 
     /** Allows the staker to withdraw all their stakes from the pool.
@@ -533,6 +559,26 @@ contract QuantstampStaking is Ownable {
         return IPolicy(poolPolicy).isViolated(candidateContract);
     }
 
+    /** Returns true if the pool expired. Expiration occurs if minStakingTime elapses since the
+    * block when pool enters state 4 (NotViolatedFunded).
+    * @param poolIndex - the index of the pool to check
+    */
+    function isExpired(uint poolIndex) internal view returns (bool) {
+        uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        uint expirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        return activationBlock > 0 && block.number >= expirationBlock;
+    }
+
+    /** Returns true if the pool expired twice. Double expiration occurs if minStakingTime elapses since the
+    * block when pool enters state 4 (NotViolatedFunded).
+    * @param poolIndex - the index of the pool to check
+    */
+    function isExpiredTwice(uint poolIndex) internal view returns (bool) {
+        uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        uint doubleExpirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        return activationBlock > 0 && block.number >= doubleExpirationBlock;
+    }
+
     /** This function returns the number of payouts that a staker must receive for his/her stake in a pool.
     * @param poolIndex - the index of the pool where the stake was placed
     * @param i - the index of the stake in the stakes array
@@ -641,5 +687,20 @@ contract QuantstampStaking is Ownable {
     function safeTransferToDataContract(address _from, uint256 amountQspWei) internal {
         require(token.transferFrom(_from, address(data), amountQspWei),
             "Token transfer to data contract did not succeed");
+    }
+
+    /**
+    * @dev Used to transfer the deposit funds from the pool to the caller after the checks in withdrawDeposit
+    * @param poolIndex The index of the pool from which deposit should be withdrawn
+    */
+    function withdrawDepositEffect(uint poolIndex) internal {
+        uint withdrawalAmountQspWei = data.getPoolDepositQspWei(poolIndex);
+        if (withdrawalAmountQspWei > 0) {
+            data.setPoolDepositQspWei(poolIndex, 0);
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(withdrawalAmountQspWei));
+        }
+        address poolOwner = data.getPoolOwner(poolIndex);
+        safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
+        emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
     }
 }

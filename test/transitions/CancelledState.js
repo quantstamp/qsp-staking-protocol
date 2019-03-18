@@ -132,14 +132,13 @@ contract('CancelledState.js: check transitions', function(accounts) {
   });
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
     it("6.1 call is allowed, but pool stays in Cancelled",
       async function() {
-        // todo(amurashkin): make this call succeed. Currently, it fails loud
-        // await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
+        await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );

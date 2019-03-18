@@ -260,7 +260,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
@@ -320,8 +320,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.11 if not expired and not violated, fail",
       async function() {
-        // todo(mderka): uncomment when the fail is present
-        // Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
 
@@ -333,8 +332,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await qspb.withdrawDeposit(poolId, {from : stakeholder});
-        // todo(mderka): uncomment when the transition bug is removed
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });
@@ -950,4 +948,3 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     );
   });
 });
-

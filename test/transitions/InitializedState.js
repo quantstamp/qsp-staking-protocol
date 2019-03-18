@@ -277,7 +277,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
 
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
