@@ -301,7 +301,7 @@ contract QuantstampStaking is Ownable {
         // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
         require(S1_Initialized && (timedout || violated)                                            // 1.5
             || S2_NotViolatedUnderfunded == s && (!expired && violated || expired || expiredTwice)  // 2.8, 2.15, 2.14a
-            || S4_NotViolatedFunded == s && (!expired && violated || expired || expireTwice)        // 4.4, 4.10, 4.8
+            || S4_NotViolatedFunded == s && (!expired && violated || expired || expiredTwice)       // 4.4, 4.10, 4.8
             || S5_ViolatedFunded == s                                                               // 5.1
             || S7_PolicyExpired == s && expiredTwice,                                               // 7.4
             "The pool is in a state that does not allow withdrawing a claim");
