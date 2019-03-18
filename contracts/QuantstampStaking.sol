@@ -317,7 +317,7 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, S3_ViolatedUnderfunded);
         } else if (S4_NotViolatedFunded == s && !expired && violated) {       // 4.4
             setState(poolIndex, S5_ViolatedFunded);
-        } else if (state[1] && (timedout || violated)                         // 1.5
+        } else if (S1_Initialized && (timedout || violated)                   // 1.5
             || S2_NotViolatedUnderfunded == s && expiredTwice                 // 2.14a
             || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
             || S7_PolicyExpired && expiredTwice) {                            // 7.4
