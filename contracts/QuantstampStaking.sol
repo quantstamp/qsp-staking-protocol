@@ -308,7 +308,7 @@ contract QuantstampStaking is Ownable {
 
         // Effect: No effect in 1.5, 2.8, 2.14a, 2.15, 4.8, 4.10, 7.4
         if (S4_NotViolatedFunded == s && !expired && violated   // 4.4
-            || S5_ViolatedFunded == s ) {                       // 5.1
+            || S5_ViolatedFunded == s) {                       // 5.1
             withdrawClaimEffect(poolIndex);
         }
 
