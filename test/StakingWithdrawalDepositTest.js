@@ -90,9 +90,13 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal(await quantstampStakingData.balanceQspWei(), Util.toQsp(0));
     });
 
-    it("should fail if balance is already 0", async function() {
+    it("should not have any effect if balance is already 0", async function() {
       await qspb.withdrawDeposit(0, {from: poolOwner});
-      Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
+      const balancePoolOwner = await Util.balanceOf(quantstampToken, poolOwner);
+      const balance = await qspb.getBalanceQspWei();
+      await qspb.withdrawDeposit(0, {from: poolOwner});
+      assert.equal(await Util.balanceOf(quantstampToken, poolOwner), balancePoolOwner);
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
     it("should succeed if the policy is violated but the pool is in the Initialized state", async function() {
@@ -137,8 +141,11 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       const poolDeposit = await quantstampStakingData.getPoolDepositQspWei(0);
       await qspb.withdrawDeposit(0, {from: poolOwner});
       assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
-      // it should fail if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
-      Util.assertTxFail(qspb.withdrawDeposit(0, {from: poolOwner}));
+      // it should not have any effect if the stakeholder tries to withdraw their deposit when they have nothing left to withdraw
+      const balance = await qspb.getBalanceQspWei();
+      await qspb.withdrawDeposit(0, {from: poolOwner});
+      assert.equal(balanceOfPoolOwner.plus(poolDeposit).toNumber(), (await quantstampToken.balanceOf(poolOwner)).toNumber());
+      assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
     it("should allow the stakeholder to withdraw their deposit when the policy expired twice even before all stakers withdraw their payouts and stakes", async function() {
