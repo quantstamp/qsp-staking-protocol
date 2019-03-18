@@ -292,11 +292,19 @@ contract QuantstampStaking is Ownable {
             && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
 
         // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
-        require(S1_Initialized == s && (timedout || violated)                                       // 1.5
-            || S2_NotViolatedUnderfunded == s && (!expired && violated || expired || expiredTwice)  // 2.8, 2.15, 2.14a
-            || S4_NotViolatedFunded == s && (!expired && violated || expired || expiredTwice)       // 4.4, 4.10, 4.8
-            || S5_ViolatedFunded == s                                                               // 5.1
-            || S7_PolicyExpired == s && expiredTwice,                                               // 7.4
+        require(S1_Initialized == s && (timedout || violated)   // 1.5
+            || S2_NotViolatedUnderfunded == s && (
+                !expired && violated                            // 2.8
+                || expired && !expiredTwice                     // 2.15
+                || expiredTwice                                 // 2.14a
+            ) 
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                            // 4.4
+                || expired && !expiredTwice                     // 4.10
+                || expiredTwice                                 // 4.8
+            )
+            || S5_ViolatedFunded == s                           // 5.1
+            || S7_PolicyExpired == s && expiredTwice,           // 7.4
             "The pool is in a state that does not allow withdrawing a claim");
 
         // Effect: No effect in 1.5, 2.8, 2.14a, 2.15, 4.8, 4.10, 7.4
