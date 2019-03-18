@@ -295,11 +295,11 @@ contract QuantstampStaking is Ownable {
         bool expiredTwice = activationBlock > 0 && block.number >= doubleExpirationBlock;
         bool violated = isViolated(poolIndex);
         QuantstampStakingData.PoolState s = getPoolState(poolIndex);
-        uint timeOfState = data.getPoolTimeOfStateInBlocks(poolIndex);
-        bool timedout = S1_Initialized == s && data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState) <= block.number;
+        bool timedout = S1_Initialized == s 
+            && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
 
         // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
-        require(S1_Initialized == s && (timedout || violated)                                            // 1.5
+        require(S1_Initialized == s && (timedout || violated)                                       // 1.5
             || S2_NotViolatedUnderfunded == s && (!expired && violated || expired || expiredTwice)  // 2.8, 2.15, 2.14a
             || S4_NotViolatedFunded == s && (!expired && violated || expired || expiredTwice)       // 4.4, 4.10, 4.8
             || S5_ViolatedFunded == s                                                               // 5.1
@@ -308,7 +308,7 @@ contract QuantstampStaking is Ownable {
 
         // Effect: No effect in 1.5, 2.8, 2.14a, 2.15, 4.8, 4.10, 7.4
         if (S4_NotViolatedFunded == s && !expired && violated   // 4.4
-            || S5_ViolatedFunded == s) {                       // 5.1
+            || S5_ViolatedFunded == s) {                        // 5.1
             withdrawClaimEffect(poolIndex);
         }
 
@@ -317,7 +317,7 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, S3_ViolatedUnderfunded);
         } else if (S4_NotViolatedFunded == s && !expired && violated) {       // 4.4
             setState(poolIndex, S5_ViolatedFunded);
-        } else if (S1_Initialized == s && (timedout || violated)                   // 1.5
+        } else if (S1_Initialized == s && (timedout || violated)              // 1.5
             || S2_NotViolatedUnderfunded == s && expiredTwice                 // 2.14a
             || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
             || S7_PolicyExpired == s && expiredTwice) {                       // 7.4
