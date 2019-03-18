@@ -19,20 +19,15 @@ contract QuantstampStaking is Ownable {
 
     uint constant internal MAX_UINT = ~uint(0);
 
-    // solhint-disable-next-line
+    /* solhint-disable */
     QuantstampStakingData.PoolState constant internal S1_Initialized = QuantstampStakingData.PoolState.Initialized;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S2_NotViolatedUnderfunded = QuantstampStakingData.PoolState.NotViolatedUnderfunded;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S3_ViolatedUnderfunded = QuantstampStakingData.PoolState.ViolatedUnderfunded;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S4_NotViolatedFunded = QuantstampStakingData.PoolState.NotViolatedFunded;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S5_ViolatedFunded = QuantstampStakingData.PoolState.ViolatedFunded;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S6_Cancelled = QuantstampStakingData.PoolState.Cancelled;
-    // solhint-disable-next-line
     QuantstampStakingData.PoolState constant internal S7_PolicyExpired = QuantstampStakingData.PoolState.PolicyExpired;
+    /* solhint-enable */
 
     // Token used to make deposits and stakes. This contract assumes that the owner of the contract
     // trusts token's code and that transfer function (e.g. transferFrom, transfer) work correctly.
@@ -143,11 +138,8 @@ contract QuantstampStaking is Ownable {
     function withdrawDeposit(uint poolIndex) external onlyPoolOwner(poolIndex) {
         // Gather conditions
         bool violated = isViolated(poolIndex);
-        uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
-        uint expirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
-        uint doubleExpirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
-        bool expired = activationBlock > 0 && block.number >= expirationBlock;
-        bool expiredTwice = activationBlock > 0 && block.number >= doubleExpirationBlock;
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
         uint totalStake = data.getPoolTotalStakeQspWei(poolIndex);
         QuantstampStakingData.PoolState s = getPoolState(poolIndex);
 
@@ -561,6 +553,26 @@ contract QuantstampStaking is Ownable {
         address poolPolicy = data.getPoolContractPolicy(poolIndex);
         address candidateContract = data.getPoolCandidateContract(poolIndex);
         return IPolicy(poolPolicy).isViolated(candidateContract);
+    }
+
+    /** Returns true if the pool expired. Expiration occurs if minStakingTime elapses since the
+    * block when pool enters state 4 (NotViolatedFunded).
+    * @param poolIndex - the index of the pool to check
+    */
+    function isExpired(poolIndex) internal view returns (bool) {
+        uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        uint expirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex));
+        return activationBlock > 0 && block.number >= expirationBlock;
+    }
+
+    /** Returns true if the pool expired twice. Double expiration occurs if minStakingTime elapses since the
+    * block when pool enters state 4 (NotViolatedFunded).
+    * @param poolIndex - the index of the pool to check
+    */
+    function isExpiredTwice(poolIndex) internal view returns (bool) {
+        uint activationBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        uint doubleExpirationBlock = activationBlock.add(data.getPoolMinStakeTimeInBlocks(poolIndex).mul(2));
+        return activationBlock > 0 && block.number >= doubleExpirationBlock;
     }
 
     /** This function returns the number of payouts that a staker must receive for his/her stake in a pool.
