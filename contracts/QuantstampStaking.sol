@@ -299,7 +299,7 @@ contract QuantstampStaking is Ownable {
         bool timedout = S1_Initialized == s && data.getPoolTimeoutInBlocks(poolIndex).add(timeOfState) <= block.number;
 
         // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
-        require(S1_Initialized && (timedout || violated)                                            // 1.5
+        require(S1_Initialized == s && (timedout || violated)                                            // 1.5
             || S2_NotViolatedUnderfunded == s && (!expired && violated || expired || expiredTwice)  // 2.8, 2.15, 2.14a
             || S4_NotViolatedFunded == s && (!expired && violated || expired || expiredTwice)       // 4.4, 4.10, 4.8
             || S5_ViolatedFunded == s                                                               // 5.1
