@@ -367,7 +367,7 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
     });
 
-    it("should not have any effect when pool is not funded when violated", async function() {
+    it("should reject withdrawClaim() when pool is not funded and already in violated state", async function() {
       var nextPool = poolId + 1;
       var maxPayout = depositQspWei.plus(10);
       // create another pool with deposit smaller than the payout
