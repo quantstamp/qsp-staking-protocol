@@ -320,7 +320,7 @@ contract QuantstampStaking is Ownable {
         } else if (S1_Initialized && (timedout || violated)                   // 1.5
             || S2_NotViolatedUnderfunded == s && expiredTwice                 // 2.14a
             || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
-            || S7_PolicyExpired && expiredTwice) {                            // 7.4
+            || S7_PolicyExpired == s && expiredTwice) {                       // 7.4
             setState(poolIndex, S6_Cancelled);
         } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice // 2.15
             || S4_NotViolatedFunded == s && expired && !expiredTwice) {       // 4.10
