@@ -146,7 +146,11 @@ contract QuantstampStaking is Ownable {
         // Guard: Reject in 5.2, 4.11, 3.2, 7.5
         require(S1_Initialized == s                                           // 1.6
             || S2_NotViolatedUnderfunded == s                                 // 2.11
-            || S4_NotViolatedFunded == s && (expired || violated)             // 4.5, 4.8, 4.10
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                                          // 4.5
+                || !expiredTwice && expired                                   // 4.10
+                || expiredTwice                                               // 4.8
+            )
             || S6_Cancelled == s                                              // 6.1
             || S7_PolicyExpired == s && (expiredTwice || totalStake == 0),    // 7.3
             "Pool is not in the right state when withdrawing deposit.");    
