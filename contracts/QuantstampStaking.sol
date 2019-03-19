@@ -674,7 +674,7 @@ contract QuantstampStaking is Ownable {
     function wasMaxStakeReached(uint poolIndex) internal view returns(bool) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        return max != 0 && current > max;
+        return max != 0 && current >= max;
     }
 
     /** Returns the maximum statke that can be placed in a pool
