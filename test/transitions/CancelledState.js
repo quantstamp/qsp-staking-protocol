@@ -132,14 +132,13 @@ contract('CancelledState.js: check transitions', function(accounts) {
   });
 
   /*
-   * Tests for function withdrawDepost
+   * Tests for function withdrawDeposit
    */
   describe("withdrawDeposit", async function() {
 
     it("6.1 call is allowed, but pool stays in Cancelled",
       async function() {
-        // todo(amurashkin): make this call succeed. Currently, it fails loud
-        // await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
+        await qspb.withdrawDeposit(firstPoolId, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
@@ -197,11 +196,11 @@ contract('CancelledState.js: check transitions', function(accounts) {
       }
     );
 
-    it("6.1 if policy is violated, do not fail, but remain in the cancelled state",
+    it("6.2 if policy is violated, fail loud",
       async function() {
         await policy.updateStatus(true);
-        await qspb.checkPolicy(firstPoolId, {from : staker});
-        await assertPoolState(firstPoolId, PoolState.Cancelled);
+        // todo(mderka): uncomment when fixed
+        // Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
       }
     );
   });
