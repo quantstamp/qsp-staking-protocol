@@ -308,6 +308,59 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
+    function stakeFunds(uint poolIndex, uint amountQspWei) public {
+        bool funded = data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        bool violated = isViolated(poolIndex);
+        bool timedout = S1_Initialized == s
+            && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
+        bool maxStakeReached = wasMaxStakeReached(poolIndex);
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+
+        // Guard: Reject in 2.20, 3.2, 4.13, 5.2, 6.2, 7.7
+        require(S1_Initialized == s                             // 1.2, 1.3, 1.4, 1.5 (never rejects)
+            || S2_NotViolatedUnderfunded == s 
+                && !(!expired && !violated && maxStakeReached)  // 2.3, 2.5, 2.14a, 2.15 (not in 2.20)
+            || S4_NotViolatedFunded == s 
+                && !(!expired && !violated && maxStakeReached), // 4.1, 4.5, 4.8, 4.10 (not in 4.13)
+            "State does not allow to stake funds");
+
+        // Effect: Skip in 1.5, 2.5, 2.14a, 2.15, 4.5, 4.8, 4.10
+        if (S1_Initialized == s && !(timedout || violated)      // 1.2, 1.3, 1.4 (not in 1.5)
+            || S2_NotViolatedUnderfunded == s 
+                && !expired && !violated && !maxStakeReached    // 2.3
+            || S4_NotViolatedFunded == s && 
+                && !expired && !violated && !maxStakeReached) { // 4.1
+            stakeFundsEffect(poolIndex, amountQspWei);
+        }
+
+        // Additional condition        
+        bool minStakeReached = data.getPoolMinStakeQspWei(poolIndex) <= data.getPoolTotalStakeQspWei(poolIndex);
+
+        // Transition: Retain state in 1.2, 2.3, 4.1
+        if (S1_Initialized == s && !timedout && !violated && minStakeReached && !funded) {        // 1.3
+            setState(poolIndex, S2_NotViolatedUnderfunded);
+        } else if (S2_NotViolatedUnderfunded == s && !expired && violated) {                      // 2.5
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (S1_Initialized == s && !timedout && !violated && minStakeReached && funded) {  // 1.4
+            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) {                           // 4.5
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S1_Initialized == s && (timedout || violated)          // 1.5
+            || S2_NotViolatedUnderfunded == s && expiredTwice             // 2.14a
+            || S4_NotViolatedFunded == s && expiredTwice) {               // 4.8
+            setState(poolIndex, S6_Cancelled);
+        } else if (S2_NotViolatedUnderfunded && expired && !expiredTwice  // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {   // 4.10
+            setState(poolIndex, S7_PolicyExpired);
+        }
+    }
+
+    /** Transfers an amount of QSP from the staker to the pool
+    * @param poolIndex - the index of the pool where the funds are transferred to
+    * @param amountQspWei - the amount of QSP Wei that is transferred
+    */
     function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
         QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
         require((state == QuantstampStakingData.PoolState.Initialized) ||
@@ -321,7 +374,7 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
             return;
         }
-        uint adjustedAmountQspWei = updateStakeAmount(poolIndex, amountQspWei);
+        uint adjustedAmountQspWei = adjustStakeAmount(poolIndex, amountQspWei);
         // If policy is not violated then transfer the stake
         safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
 
@@ -650,22 +703,29 @@ contract QuantstampStaking is Ownable {
         return state;
     }
 
-    /** Checks if the entire stake can be placed in a pool
+    /** Checks if the maximum pool stake was reached
+     * @param poolIndex - the index of the pool to check
+     */
+    function wasMaxStakeReached(uint poolIndex) interna view returns(bool) {
+        uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
+        uint current = data.getPoolTotalStakeQspWei(poolIndex);
+        return max != 0 && current > max);
+    }
+
+    /** Returns the maximum statke that can be placed in a pool
      * @param poolIndex - the index of the pool for which the stake is submitted
      * @param amountQspWei - the stake size
      * @return the current state of the pool
      */
-    function updateStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
-        uint adjustedAmountQspWei = amountQspWei;
+    function adjustStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        if (max != 0) {
-            require(current < max);
-            if (current.add(amountQspWei) > max) {
-                adjustedAmountQspWei = max.sub(current);
-            }
+        if (max == 0) {
+            return amountQspWei;
+        } else if (current.add(amountQspWei) > max) {
+            return max.sub(current);
         }
-        return adjustedAmountQspWei;
+        return 0;
     }
     
     /**
@@ -702,5 +762,23 @@ contract QuantstampStaking is Ownable {
         address poolOwner = data.getPoolOwner(poolIndex);
         safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+    }
+
+    /**
+    * @dev Used to transfer the stake from the caller to the pool after the checks in stakeFunds.
+    * @param poolIndex The index of the pool in which the stake will be transferred.
+    * @param amountQspWei The amount of funds transferred.
+    */
+    function stakeFundsEffect(uint poolIndex, uint amountQspWei) internal {
+        // Adjust the stake amount according to the maximum total stake given by the pool owner
+        uint adjustedAmountQspWei = adjustStakeAmount(poolIndex, amountQspWei);
+        if (adjustedAmountQspWei > 0) {
+            safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
+            uint stakeIndex = data.createStake(poolIndex, msg.sender,
+                adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
+            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
+                calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
+        }
+        emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
     }
 }
