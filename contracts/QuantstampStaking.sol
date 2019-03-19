@@ -352,12 +352,12 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
         } else if (S4_NotViolatedFunded == s && !expired && violated) {                           // 4.5
             setState(poolIndex, S5_ViolatedFunded);
-        } else if (S1_Initialized == s && (timedout || violated)          // 1.5
-            || S2_NotViolatedUnderfunded == s && expiredTwice             // 2.14a
-            || S4_NotViolatedFunded == s && expiredTwice) {               // 4.8
+        } else if (S1_Initialized == s && (timedout || violated)               // 1.5
+            || S2_NotViolatedUnderfunded == s && expiredTwice                  // 2.14a
+            || S4_NotViolatedFunded == s && expiredTwice) {                    // 4.8
             setState(poolIndex, S6_Cancelled);
-        } else if (S2_NotViolatedUnderfunded && expired && !expiredTwice  // 2.15
-            || S4_NotViolatedFunded == s && expired && !expiredTwice) {   // 4.10
+        } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice  // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {        // 4.10
             setState(poolIndex, S7_PolicyExpired);
         }
     }
