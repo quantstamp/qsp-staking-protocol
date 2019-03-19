@@ -314,6 +314,7 @@ contract QuantstampStaking is Ownable {
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
     function stakeFunds(uint poolIndex, uint amountQspWei) public {
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
         bool funded = data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex);
         bool expired = isExpired(poolIndex);
         bool expiredTwice = isExpiredTwice(poolIndex);
@@ -321,7 +322,6 @@ contract QuantstampStaking is Ownable {
         bool timedout = S1_Initialized == s
             && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
         bool maxStakeReached = wasMaxStakeReached(poolIndex);
-        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
 
         // Guard: Reject in 2.20, 3.2, 4.13, 5.2, 6.2, 7.7
         require(S1_Initialized == s                             // 1.2, 1.3, 1.4, 1.5 (never rejects)
@@ -685,7 +685,7 @@ contract QuantstampStaking is Ownable {
     function adjustStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        if (max == 0) {
+        if (max == 0 || current.add(amountQspWei) <= max) {
             return amountQspWei;
         } else if (current.add(amountQspWei) > max) {
             return max.sub(current);
