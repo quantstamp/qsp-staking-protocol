@@ -304,7 +304,12 @@ contract QuantstampStaking is Ownable {
         emit ClaimWithdrawn(poolIndex, total);
     }
 
-    /** Transfers an amount of QSP from the staker to the pool
+    /* solhint-disable code-complexity */
+    /**
+    * 
+    * NOTE: Solhint code complexity disabled due to cyclomatic complexity being 8 (more than 7)
+    * 
+    * Transfers an amount of QSP from the staker to the pool
     * @param poolIndex - the index of the pool where the funds are transferred to
     * @param amountQspWei - the amount of QSP Wei that is transferred
     */
@@ -330,7 +335,7 @@ contract QuantstampStaking is Ownable {
         if (S1_Initialized == s && !(timedout || violated)      // 1.2, 1.3, 1.4 (not in 1.5)
             || S2_NotViolatedUnderfunded == s 
                 && !expired && !violated && !maxStakeReached    // 2.3
-            || S4_NotViolatedFunded == s && 
+            || S4_NotViolatedFunded == s 
                 && !expired && !violated && !maxStakeReached) { // 4.1
             stakeFundsEffect(poolIndex, amountQspWei);
         }
@@ -356,47 +361,7 @@ contract QuantstampStaking is Ownable {
             setState(poolIndex, S7_PolicyExpired);
         }
     }
-
-    /** Transfers an amount of QSP from the staker to the pool
-    * @param poolIndex - the index of the pool where the funds are transferred to
-    * @param amountQspWei - the amount of QSP Wei that is transferred
-    */
-    function stakeFunds(uint poolIndex, uint amountQspWei) public whenNotViolated(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        require((state == QuantstampStakingData.PoolState.Initialized) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded), 
-                "Pool is not in the right state when staking funds.");
-        // Check if pool can be switched from the initialized state to another state
-        if ((state == QuantstampStakingData.PoolState.Initialized) &&
-            // then timeout has occured and stakes are not allowed
-            (data.getPoolTimeoutInBlocks(poolIndex) <= block.number.sub(data.getPoolTimeOfStateInBlocks(poolIndex)))) {
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-            return;
-        }
-        uint adjustedAmountQspWei = adjustStakeAmount(poolIndex, amountQspWei);
-        // If policy is not violated then transfer the stake
-        safeTransferToDataContract(msg.sender, adjustedAmountQspWei);
-
-        uint stakeIndex = data.createStake(poolIndex, msg.sender,
-            adjustedAmountQspWei, block.number, block.number, isExpert(msg.sender));
-
-        data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).add(
-            calculateStakeAmountWithBonuses(poolIndex, msg.sender, stakeIndex)));
-            
-        // Check if there are enough stakes in the pool
-        if (data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex)) {
-            // Minimum staking value was reached
-            if (data.getPoolDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
-                // The pool is funded by enough to pay stakers
-                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
-            } else {
-                // The pool is does not have enough funds to pay stakers
-                setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
-            }
-        }
-        emit StakePlaced(poolIndex, msg.sender, adjustedAmountQspWei);
-    }
+    /* solhint-enable code-complexity */
 
     /** Computes the un-normalized payout amount for experts (including bonuses) and non-experts
     * @param poolIndex - the index of the pool for which the payout needs to be computed
@@ -706,10 +671,10 @@ contract QuantstampStaking is Ownable {
     /** Checks if the maximum pool stake was reached
      * @param poolIndex - the index of the pool to check
      */
-    function wasMaxStakeReached(uint poolIndex) interna view returns(bool) {
+    function wasMaxStakeReached(uint poolIndex) internal view returns(bool) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        return max != 0 && current > max);
+        return max != 0 && current > max;
     }
 
     /** Returns the maximum statke that can be placed in a pool
