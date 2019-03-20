@@ -158,7 +158,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
     it("5.2 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
-        Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
+        await Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
@@ -172,7 +172,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
      */
     it("5.2 call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -187,7 +187,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
     it("5.2 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
   });
@@ -201,7 +201,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
      */
     it("5.2 call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
       }
     );
   });
@@ -215,7 +215,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
      */
     it("5.2 call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.withdrawInterest(poolId, {from : staker}));
       }
     );
   });
@@ -227,7 +227,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
     it("5.2 fails loud when not violated",
       async function() {
         await policy.updateStatus(false);
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
 
@@ -235,7 +235,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when adjusted
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
   });

@@ -54,7 +54,7 @@ contract('QuantstampStakingData', function(accounts) {
     });
 
     it("should not create a pool if caller is not whitelisted", async function() {
-      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+      await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
     });    
@@ -62,7 +62,7 @@ contract('QuantstampStakingData', function(accounts) {
     it("should not create a pool if caller was whitelisted but no is longer whitelisted", async function() {
       await quantstampStakingData.setWhitelistAddress(qspb.address);
       await quantstampStakingData.clearWhitelistAddress();
-      Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+      await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
     });
