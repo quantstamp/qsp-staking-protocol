@@ -77,7 +77,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
 
   describe("withdrawDeposit", async function() {
     it("should fail for non-owner", async function() {
-      Util.assertTxFail(qspb.withdrawDeposit(0, {from: adversary}));
+      await Util.assertTxFail(qspb.withdrawDeposit(0, {from: adversary}));
     });
 
     it("should succeed for the owner", async function() {
@@ -170,7 +170,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
     const totalExpectedDepositAmount = Util.toQsp(300);
     it("should fail for non-owner", async function() {
       await quantstampToken.transfer(adversary, addedDepositAmount, {from : owner});
-      Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: adversary}));
+      await Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: adversary}));
     });
 
     it("should succeed for the owner", async function() {
@@ -192,7 +192,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       assert.equal(await quantstampToken.balanceOf(poolOwner), addedDepositAmount);
       assert.equal(await quantstampStakingData.getPoolDepositQspWei(0), initialDepositQspWei);
 
-      Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
+      await Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });
 
     it("should not deposit any funds if the pool is in a Violated state and should be Cancelled", async function() {
@@ -210,7 +210,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       await qspb.depositFunds(0, addedDepositAmount, {from: poolOwner});
       await qspb.withdrawDeposit(0, {from: poolOwner});
       assert.equal((await qspb.getPoolState(0)).toNumber(), PoolState.Cancelled);
-      Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
+      await Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });
   });
 });

@@ -414,7 +414,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
     assert.isTrue(currentBlock.lt(orangePoolParams.timeOfStateInBlocks.plus(orangePoolParams.payPeriodInBlocks)));
     // staker1 wants to withdraw his payout before the pay period has passed and gets rejected
-    Util.assertTxFail(qspb.withdrawInterest(orangePoolParams.index, {from : staker1}));
+    await Util.assertTxFail(qspb.withdrawInterest(orangePoolParams.index, {from : staker1}));
     // check that all pool properties are as expected
     await assertEntirePoolState(orangePoolParams, balanceOfQspb);
   });
@@ -496,7 +496,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // check that the pool is in the NotViolatedFunded state
     assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedFunded);
     // try to withdraw stake
-    Util.assertTxFail(qspb.withdrawStake(orangePoolParams.index, {from : staker1}));
+    await Util.assertTxFail(qspb.withdrawStake(orangePoolParams.index, {from : staker1}));
     // check that all pool properties are as expected
     await assertEntirePoolState(orangePoolParams, balanceOfQspb);
   });
@@ -651,9 +651,9 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await qspb.withdrawStake(orangePoolParams.index, {from : staker4});
     await qspb.withdrawStake(orangePoolParams.index, {from : staker5});
     // it should not allow a different stakeholder to withdraw the deposit
-    Util.assertTxFail(qspb.withdrawDeposit(orangePoolParams.index, {from : stakeholder2}));
+    await Util.assertTxFail(qspb.withdrawDeposit(orangePoolParams.index, {from : stakeholder2}));
     // the owner of the orange pool (stakeholder 1) can no longer deposit funds
-    Util.assertTxFail(qspb.depositFunds(orangePoolParams.index, oneHundredQsp, {from : stakeholder1}));
+    await Util.assertTxFail(qspb.depositFunds(orangePoolParams.index, oneHundredQsp, {from : stakeholder1}));
     // the balance of the Assurance contract should be decreased
     balanceOfQspb = balanceOfQspb.minus(orangePoolParams.totalStakeQspWei).minus(orangePoolParams.depositQspWei);
     // the owner of the orange pool withdraws his/her funds
@@ -928,7 +928,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     // check that the pool is in the NotViolatedUnderfunded state
     assert.equal((await qspb.getPoolState(bluePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     // try to withdraw claim
-    Util.assertTxFail(qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2}));
+    await Util.assertTxFail(qspb.withdrawClaim(bluePoolParams.index, {from : stakeholder2}));
     // check that all pool properties are the same as before
     await assertEntirePoolState(bluePoolParams, balanceOfQspb);
   });
@@ -940,9 +940,9 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await purplePoolParams.candidateContract.transferOwnership(orangePoolParams.owner, {from : stakeholder3});
     assert.isTrue(await purplePoolParams.contractPolicy.isViolated(purplePoolParams.candidateContract.address));
     // should not allow stakeholder2 who is not the owner of this pool to withdraw the claim
-    Util.assertTxFail(qspb.withdrawClaim(purplePoolParams.index, {from : stakeholder2}));
+    await Util.assertTxFail(qspb.withdrawClaim(purplePoolParams.index, {from : stakeholder2}));
     // should not allow staker4 to withdraw their stake after the policy is violated
-    Util.assertTxFail(qspb.withdrawStake(purplePoolParams.index, {from : staker4}));
+    await Util.assertTxFail(qspb.withdrawStake(purplePoolParams.index, {from : staker4}));
     // should allow stakeholder3 who is the owner of the pool to withdraw the claim
     await qspb.withdrawClaim(purplePoolParams.index, {from : stakeholder3});
     // the balance of the Assurance contract should be reduced
