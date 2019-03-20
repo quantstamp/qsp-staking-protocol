@@ -419,7 +419,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.8 call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
+        await Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
       }
     );
   });
@@ -436,7 +436,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.9 call is not allowed when timeout did not happen and policy is not violated",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(firstPoolId, {from : stakeholder}));
       }
     );
 
@@ -487,7 +487,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.10 if policy is not violated, fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(firstPoolId, {from : staker}));
       }
     );
   });

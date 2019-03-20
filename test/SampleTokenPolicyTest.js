@@ -27,7 +27,7 @@ contract('CandidateToken', function(accounts) {
 
   describe('TotalSupplyNotExceededPolicy', () => {
     it("should not matter when the total supply policy is checked with a non-token address", async function() {
-      Util.assertTxFail(totalSupplyPolicy.isViolated(owner));
+      await Util.assertTxFail(totalSupplyPolicy.isViolated(owner));
     });
 
     it("should not initially violate minted tokens policy (no tokens minted yet)", async function() {
@@ -46,7 +46,7 @@ contract('CandidateToken', function(accounts) {
     });
 
     it("should throw an exception on OwnerNotChangedPolicy if the address is not compatible with Candidate Token", async function() {
-      Util.assertTxFail(ownerNotChangedPolicy.isViolated(totalSupplyPolicy.address));
+      await Util.assertTxFail(ownerNotChangedPolicy.isViolated(totalSupplyPolicy.address));
     });
 
     it("should violate the OwnerNotChangedPolicy if the owner has changed", async function() {
@@ -109,7 +109,7 @@ contract('CandidateToken', function(accounts) {
     });
 
     it("should fail  when the TCR policy is checked with a non-TCR address as an argument for the policy", async function() {
-      Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
+      await Util.assertTxFail(tcrOpinionPolicy.isViolated(owner));
     });
 
 

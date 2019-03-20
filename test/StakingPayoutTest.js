@@ -189,7 +189,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
       // even though the necessary amount of blocks have passed, it should still not give a payout
-      Util.assertTxFail(qspb.withdrawInterest(currentPoolIndex, {from: staker1}));
+      await Util.assertTxFail(qspb.withdrawInterest(currentPoolIndex, {from: staker1}));
     });
 
     it("should reject requests made before the necessary amount of blocks have passed", async function() {

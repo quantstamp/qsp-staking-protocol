@@ -693,7 +693,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.17 if not expired and the policy is not violated, fail",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -752,7 +752,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         // todo(mderka): uncomment when fixed
         // await qspb.checkPolicy(poolId, {from : staker});
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -775,7 +775,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.17 if not expired and the policy is not violated, stay in this state and fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
   });
@@ -814,7 +814,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         // test starts here
         const toStake = 14;
         await token.approve(qspb.address, toStake, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
 

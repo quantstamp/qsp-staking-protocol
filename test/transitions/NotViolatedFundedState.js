@@ -320,7 +320,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.11 if not expired and not violated, fail",
       async function() {
-        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
 
@@ -399,7 +399,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.11 if not expired and not violated, fail transaction",
       async function() {
-        Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.withdrawStake(poolId, {from : staker}));
       }
     );
 
@@ -629,7 +629,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
      */
     it("4.11 if not expired and not violated, fail",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
 
@@ -686,7 +686,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         // todo(mderka): uncomment when this does not fail
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -710,7 +710,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.11 if not expired and not violated, stay in this state",
       async function() {
         // todo(mderka): uncomment when the transition bug fixed
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -895,7 +895,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         // test case
         const toStake = 14;
         await token.approve(qspb.address, toStake, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
 
