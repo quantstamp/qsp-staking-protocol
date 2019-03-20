@@ -195,7 +195,7 @@ contract('QuantstampStaking: stakeholder deposits and withdrawals', function(acc
       await Util.assertTxFail(qspb.depositFunds(0, addedDepositAmount, {from: poolOwner}));
     });
 
-    it("should deposit funds if the poolicy is violated and should be Cancelled", async function() {
+    it("should deposit funds if the policy is violated and should be Cancelled", async function() {
       await candidateContract.withdraw(await candidateContract.balance.call());
       const balance = await qspb.getBalanceQspWei();
       await quantstampToken.transfer(poolOwner, addedDepositAmount, {from : owner});
