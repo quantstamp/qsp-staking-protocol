@@ -182,7 +182,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.5 edge case timeout for switching the pool to cancelled state",
       async function() {
-        await mineUntilTimeout(firstPoolId, -1);
+        await mineUntilTimeout(firstPoolId, -2);
         await qspb.depositFunds(firstPoolId, 0, {from : stakeholder});
         await assertPoolState(firstPoolId, PoolState.Initialized);
 
