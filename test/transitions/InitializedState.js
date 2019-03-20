@@ -165,13 +165,13 @@ contract('InitializedState.js: check transitions', function(accounts) {
         await token.approve(qspb.address, leftToDeposit.times(3), {from : stakeholder});
 
         await qspb.depositFunds(firstPoolId + 1, leftToDeposit.sub(1), {from : stakeholder});
-        assert.equal(await Util.getState(qspb, firstPoolId + 1), PoolState.Cancelled);
+        await assertPoolState(firstPoolId + 1, PoolState.Cancelled);
 
         await qspb.depositFunds(firstPoolId + 2, leftToDeposit, {from : stakeholder});
-        assert.equal(await Util.getState(qspb, firstPoolId + 2), PoolState.Cancelled);
+        await assertPoolState(firstPoolId, + 2, PoolState.Cancelled);
 
         await qspb.depositFunds(firstPoolId + 3, leftToDeposit.add(1), {from : stakeholder});
-        assert.equal(await Util.getState(qspb, firstPoolId + 3), PoolState.Cancelled);
+        await assertPoolState(firstPoolId + 3, PoolState.Cancelled);
       }
     );
 
