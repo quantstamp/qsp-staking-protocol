@@ -283,25 +283,50 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the claim will be withdrawn
     */
     function withdrawClaim(uint poolIndex) public onlyPoolOwner(poolIndex) {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        // allowed IFF the pool is in the not violated state (yet) but the policy has been violated
-        // or the pool is in ViolatedFunded state already
-        require(
-            (state == QuantstampStakingData.PoolState.ViolatedFunded) ||
-            (state == QuantstampStakingData.PoolState.NotViolatedFunded && isViolated(poolIndex))
-        );
+        // Gather conditions
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        bool violated = isViolated(poolIndex);
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+        bool timedout = S1_Initialized == s 
+            && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
 
-        // claim all stakes
-        uint total = data.getPoolDepositQspWei(poolIndex).add(data.getPoolTotalStakeQspWei(poolIndex));
-        data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
-        
-        data.setPoolDepositQspWei(poolIndex, 0);
-        data.setPoolTotalStakeQspWei(poolIndex, 0);
-        data.setPoolSizeQspWei(poolIndex, 0);
+        // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
+        require(S1_Initialized == s && (timedout || violated)   // 1.5
+            || S2_NotViolatedUnderfunded == s && (
+                !expired && violated                            // 2.8
+                || expired && !expiredTwice                     // 2.15
+                || expiredTwice                                 // 2.14a
+            ) 
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                            // 4.4
+                || expired && !expiredTwice                     // 4.10
+                || expiredTwice                                 // 4.8
+            )
+            || S5_ViolatedFunded == s                           // 5.1
+            || S7_PolicyExpired == s && expiredTwice,           // 7.4
+            "The pool is in a state that does not allow withdrawing a claim");
 
-        setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
-        safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
-        emit ClaimWithdrawn(poolIndex, total);
+        // Effect: No effect in 1.5, 2.8, 2.14a, 2.15, 4.8, 4.10, 7.4
+        if (S4_NotViolatedFunded == s && !expired && violated   // 4.4
+            || S5_ViolatedFunded == s) {                        // 5.1
+            withdrawClaimEffect(poolIndex);
+        }
+
+        // Transition: Retain state in 5.1 (plus when rejecting the transaction)
+        if (S2_NotViolatedUnderfunded == s && !expired && violated) {         // 2.8
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) {       // 4.4
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S1_Initialized == s && (timedout || violated)              // 1.5
+            || S2_NotViolatedUnderfunded == s && expiredTwice                 // 2.14a
+            || S4_NotViolatedFunded == s && expiredTwice                      // 4.8
+            || S7_PolicyExpired == s && expiredTwice) {                       // 7.4
+            setState(poolIndex, S6_Cancelled);
+        } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {       // 4.10
+            setState(poolIndex, S7_PolicyExpired);
+        }
     }
 
     /* solhint-disable code-complexity */
@@ -712,6 +737,24 @@ contract QuantstampStaking is Ownable {
     function safeTransferToDataContract(address _from, uint256 amountQspWei) internal {
         require(token.transferFrom(_from, address(data), amountQspWei),
             "Token transfer to data contract did not succeed");
+    }
+
+    /**
+    * @dev Used to transfer the claim from the pool to the stakeholder after the checks in withdrawClaim
+    * @param poolIndex The index of the pool from which claim should be withdrawn
+    */
+    function withdrawClaimEffect(uint poolIndex) internal {
+        uint total = data.getPoolDepositQspWei(poolIndex).add(data.getPoolTotalStakeQspWei(poolIndex));
+        if (total > 0) { // then claim all stakes
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(total));
+            
+            data.setPoolDepositQspWei(poolIndex, 0);
+            data.setPoolTotalStakeQspWei(poolIndex, 0);
+            data.setPoolSizeQspWei(poolIndex, 0);
+
+            safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
+            emit ClaimWithdrawn(poolIndex, total);
+        }
     }
 
     /**

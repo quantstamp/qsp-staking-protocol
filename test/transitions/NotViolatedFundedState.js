@@ -581,9 +581,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.10 if expired once and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -595,9 +594,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -608,9 +606,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.8 if expired twice and not violated, move to state 6",
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -622,9 +619,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.withdrawClaim(poolId, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawClaim(poolId, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -648,7 +644,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
-
   });
 
 
