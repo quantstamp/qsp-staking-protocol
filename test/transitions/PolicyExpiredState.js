@@ -293,7 +293,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.5 checks that before the minStakingTime passes twice and there still are stakes, the call is not allowed",
       async function() {
         assert.isTrue((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).gt(0));
-        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -335,7 +335,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      */
     it("7.6 checks that calling this function before the minStakingTime passes twice is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -350,7 +350,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.7 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
   });
@@ -363,13 +363,13 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when fixed
-        // Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+        // await Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
 
     it("7.7 if policy is not violated, fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
   });
