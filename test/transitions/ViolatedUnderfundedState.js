@@ -139,7 +139,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
     it("3.2 call not allowed",
       async function() {
         await token.approve(qspb.address, pool.depositQspWei, {from : stakeholder});
-        Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
+        await Util.assertTxFail(qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder}));
       }
     );
   });
@@ -150,7 +150,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   describe("withdrawDeposit", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -190,7 +190,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
   describe("withdrawClaim", async function() {
     it("3.2 call not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -202,7 +202,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
     it("3.2 fails loud when not violated",
       async function() {
         await policy.updateStatus(false);
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -210,7 +210,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when fixed
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
   });
@@ -224,7 +224,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
       async function() {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
   });
