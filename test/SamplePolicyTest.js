@@ -15,6 +15,7 @@ const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy'
 const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
 const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
+const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
@@ -39,6 +40,7 @@ contract('CandidateContract', function(accounts) {
   let alwaysViolatedPolicy;
   let neverViolatedPolicy;
   let upgradeablePolicy;
+  let valueNotChangedPolicy;
   let qaPolicy;
   let qspb;
   let quantstampStakingData;
@@ -55,6 +57,7 @@ contract('CandidateContract', function(accounts) {
     stateNoteChangedPolicy = await StateNotChangedPolicy.new(0);
     alwaysViolatedPolicy = await AlwaysViolatedPolicy.new(candidateContract.address);
     neverViolatedPolicy = await NeverViolatedPolicy.new(candidateContract.address);
+    valueNotChangedPolicy = await ValueNotChangedPolicy.new(candidateContract.address);
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
@@ -152,6 +155,21 @@ contract('CandidateContract', function(accounts) {
       await upgradeablePolicy.changePolicyLogic(Util.ZERO_ADDRESS, {from : owner});
       await Util.assertTxFail(upgradeablePolicy.isViolated(candidateContract.address));
     });
+  });
+  describe('ValueNotChangedPolicy', () => {
+    it("should not matter when the policy is checked with a non-CandidateContract address", async function() {
+      Util.assertTxFail(valueNotChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not initially be violated", async function() {
+      assert.isFalse(await valueNotChangedPolicy.isViolated(candidateContract.address));
+    });
+
+    it("should be violated after the balance changes", async function() {
+      await candidateContract.withdraw(1);
+      assert.isTrue(await valueNotChangedPolicy.isViolated(candidateContract.address));
+    });
+
   });
 
   describe('ZeroBalancePolicy', () => {
