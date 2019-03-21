@@ -168,7 +168,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
         await assertPoolState(firstPoolId + 1, PoolState.Cancelled);
 
         await qspb.depositFunds(firstPoolId + 2, leftToDeposit, {from : stakeholder});
-        await assertPoolState(firstPoolId, + 2, PoolState.Cancelled);
+        await assertPoolState(firstPoolId, + 2 PoolState.Cancelled);
 
         await qspb.depositFunds(firstPoolId + 3, leftToDeposit.add(1), {from : stakeholder});
         await assertPoolState(firstPoolId + 3, PoolState.Cancelled);
