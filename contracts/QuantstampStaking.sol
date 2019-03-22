@@ -149,8 +149,7 @@ contract QuantstampStaking is Ownable {
         } else if (S4_NotViolatedFunded == s && !expired && violated) {                 // 4.6
             setState(poolIndex, S5_ViolatedFunded);
         } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice           // 2.15
-            // || S4_NotViolatedFunded == s && expired && !expiredTwice && !violated) {    // 4.9
-            || S4_NotViolatedFunded == s && expired && !expiredTwice) {    // 4.9, todo(mderka): requested adjustment
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {                 // 4.9
             setState(poolIndex, S7_PolicyExpired);
         } else if (S1_Initialized == s && (timedout || violated)                        // 1.5
             || S2_NotViolatedUnderfunded == s && expiredTwice                           // 2.14a
