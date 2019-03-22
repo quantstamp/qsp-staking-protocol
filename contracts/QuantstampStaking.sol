@@ -211,63 +211,72 @@ contract QuantstampStaking is Ownable {
         }
     }
 
+    /* solhint-disable code-complexity */
+    /* solhint-disable function-max-lines */
     /** In case the pool is not violated and the payPeriod duration has passed, it computes the payout of the staker
     * (defined by msg.sender),
     * and if the payout value is positive it transfers the corresponding amout from the pool to the staker.
     * @param poolIndex - the index of the pool from which the staker wants to receive a payout
     */
-    function withdrawInterest(uint poolIndex) external whenNotViolated(poolIndex) {
-        // update the state of the pool if necessary
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        // check that the state of the pool
-        require(state == QuantstampStakingData.PoolState.NotViolatedFunded ||
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired,
-            "The state of the pool is not as expected.");
-        // check that enough time (blocks) has passed since the pool has collected stakes totaling
-        // at least minStakeQspWei
-        require(block.number > (data.getPoolPayPeriodInBlocks(poolIndex)
-            .add(data.getPoolMinStakeStartBlock(poolIndex))),
-            "Not enough time has passed since the pool is active or the stake was placed.");
-        // compute payout due to be payed to the staker
-        uint payout = computePayout(poolIndex, msg.sender);
-        if (payout == 0) // no need to transfer anything
-            return;
-        // check if the are enough funds in the pool deposit
-        if (data.getPoolDepositQspWei(poolIndex) >= payout) { // transfer the funds
-            data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).sub(payout));
-            data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
-            for (uint i = 0; i < data.getStakeCount(poolIndex, msg.sender); i++) {
-                uint m = Math.max(
-                    data.getStakeBlockPlaced(poolIndex, msg.sender, i),
-                    data.getPoolTimeOfStateInBlocks(poolIndex)
-                );
-                data.setStakeBlockPlaced(poolIndex, msg.sender, i, m);
+    function withdrawInterest(uint poolIndex) external {
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        uint deposit = data.getPoolDepositQspWei(poolIndex);
+        uint maxPayout = data.getPoolMaxPayoutQspWei(poolIndex);
+        bool violated = isViolated(poolIndex);
+        uint earnedInterest = computePayout(poolIndex, msg.sender);
+        // Guard: Reject in 1.8, 5.2, 6.2
+        require(
+            S2_NotViolatedUnderfunded == s // 2.1, 2.6, 2.12, 2.14a, 2.16
+            || S3_ViolatedUnderfunded == s // 3.1
+            || S4_NotViolatedFunded == s   // 4.2, 4.3, 4.5, 4.7, 4.8, 4.10
+            || S7_PolicyExpired == s,      // 7.2, 7.4
+            "State does not allow to withdraw interest.");
 
-                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, msg.sender,
-                    data.getStakeBlockPlaced(poolIndex, msg.sender, i));
-
-                if (numberOfPayouts > 0) {
-                    data.setStakeLastPayoutBlock(poolIndex, msg.sender, i, block.number);
-                    emit LastPayoutBlockUpdate(poolIndex, msg.sender);
-                }
-            }
-            safeTransferFromDataContract(msg.sender, payout);
-            emit StakerReceivedPayout(poolIndex, msg.sender, payout);
-        } else if (state != QuantstampStakingData.PoolState.PolicyExpired) { // place the pool in a Cancelled state
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-            return;
+        // Effect: Skip in 4.5, 7.4
+        if (S2_NotViolatedUnderfunded == s && (
+                !expired // 2.1, 2.6, 2.12
+                || expiredTwice // 2.14a
+                || expired && !expiredTwice // 2.16
+            )
+            || S3_ViolatedUnderfunded == s // 3.1
+            || S4_NotViolatedFunded == s && (
+                !expired && !violated //4.2, 4.3, 4.7
+                || expiredTwice // 4.8
+                || expired && !expiredTwice // 4.10
+            )
+            || S7_PolicyExpired == s && !expiredTwice // 7.2
+        ) {
+            withdrawInterestEffect(poolIndex, msg.sender, earnedInterest);
         }
-        /* 
-         * todo(mderka): This is a necessary addition that allows for transition from state 4
-         * to state 2. This is necessary to activate the pool in test suites. Within SP-251,
-         * ensure absolute correctness of this addition.
-         */
-        if (data.getPoolState(poolIndex) == QuantstampStakingData.PoolState.NotViolatedFunded &&
-            data.getPoolDepositQspWei(poolIndex) < data.getPoolMaxPayoutQspWei(poolIndex)) {
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedUnderfunded);
+
+        // Transitions: retain state in 2.1, 3.1, 4.2, 7.2
+        if (S2_NotViolatedUnderfunded == s && !expired && violated) { // 2.6
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (
+            S2_NotViolatedUnderfunded == s && (
+                (!expired && !violated && deposit < earnedInterest) // 2.12
+                || expiredTwice) //2.14a
+            || S4_NotViolatedFunded == s && (
+                (!expired && !violated && deposit >= earnedInterest && (deposit - earnedInterest < maxPayout)) // 4.3
+                || (!expired && !violated && deposit < earnedInterest) // 4.7
+                || expiredTwice // 4.8
+            )
+            || S7_PolicyExpired == s && expiredTwice // 7.4
+        ) {
+            setState(poolIndex, S6_Cancelled);
+        } else if (
+            S2_NotViolatedUnderfunded == s && expired && !expiredTwice //2.16
+            || S4_NotViolatedFunded == s && expired && !expiredTwice // 4.10
+        ) {
+            setState(poolIndex, S7_PolicyExpired);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) { // 4.5
+            setState(poolIndex, S5_ViolatedFunded);
         }
     }
+    /* solhint-enable code-complexity */
+    /* solhint-enable function-max-lines */
 
     /** Checks if the given address is a staker of the given pool index
     * @param poolIndex - the index of the pool where to check for stakers
@@ -692,7 +701,47 @@ contract QuantstampStaking is Ownable {
         }
         return adjustedAmountQspWei;
     }
-    
+
+    /**
+    * @dev Used to transfer the earned interest from the pool
+    * @param poolIndex The index of the pool from which the interest will be withdrawn.
+    * @param staker The user attempting to withdraw interest
+    * @param requestedPayout The computed interest requested to be paid out
+    */
+    function withdrawInterestEffect(uint poolIndex, address staker, uint requestedPayout) internal {
+        if (requestedPayout == 0) {
+            return; // no need to transfer anything
+        }
+
+        uint deposit = data.getPoolDepositQspWei(poolIndex);
+        uint payout = requestedPayout;
+        if (payout < deposit) {
+            payout = deposit; // withdraw the remaining deposit
+        }
+
+        if (payout >= 0) { // transfer the funds
+            data.setDepositQspWei(poolIndex, deposit.sub(payout));
+            data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
+            for (uint i = 0; i < data.getStakeCount(poolIndex, staker); i++) {
+                uint max = Math.max(
+                    data.getStakeBlockPlaced(poolIndex, staker, i),
+                    data.getPoolMinStakeStartBlock(poolIndex)
+                );
+                data.setStakeBlockPlaced(poolIndex, staker, i, max);
+
+                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, staker,
+                    data.getStakeBlockPlaced(poolIndex, staker, i));
+
+                if (numberOfPayouts > 0) {
+                    data.setStakeLastPayoutBlock(poolIndex, staker, i, block.number);
+                    emit LastPayoutBlockUpdate(poolIndex, staker);
+                }
+            }
+            safeTransferFromDataContract(staker, payout);
+            emit StakerReceivedPayout(poolIndex, staker, payout);
+        }
+    }
+
     /**
     * @dev Used to transfer funds stored in the data contract to a given address.
     * @param _to The address to transfer funds.

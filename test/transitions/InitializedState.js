@@ -419,7 +419,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
      */
     it("1.8 call is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
+        await Util.assertTxFail(qspb.withdrawInterest(firstPoolId, {from : staker}));
       }
     );
   });
