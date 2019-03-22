@@ -126,7 +126,7 @@ contract QuantstampStaking is Ownable {
             || S2_NotViolatedUnderfunded == s // 2.2, 2.8, 2.10, 2.14a, 2.15
             || S4_NotViolatedFunded == s      // 4.1a, 4.6, 4.8, 4.9
             || S7_PolicyExpired == s,         // 7.1, 7.3
-            "Pool is not in the right state to stake funds.");
+            "Pool is not in the right state to deposit funds.");
 
         /* solhint-disable no-empty-blocks */
         // Effect: Skip in 2.8
