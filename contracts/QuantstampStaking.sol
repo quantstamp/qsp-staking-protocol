@@ -225,12 +225,14 @@ contract QuantstampStaking is Ownable {
             || S7_PolicyExpired == s,         // 7.1, 7.4
             "Pool is not in the right state to withdraw stake.");
 
+        /* solhint-disable no-empty-blocks */
         // Effect: No effect in 4.5
         if (S4_NotViolatedFunded == s && !expired && violated) { // 4.5
             // no effect in 4.5
         } else {
             withdrawStakeEffect(poolIndex); // 1.1, 1.5, 2.4, 2.7, 2.13, 2.14a, 2.15, 3.1, 4.8, 4.10, 6.1, 7.2, 7.4
         }
+        /* solhint-enable no-empty-blocks */
         
         // Additional condition
         bool enoughStake = data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex);
