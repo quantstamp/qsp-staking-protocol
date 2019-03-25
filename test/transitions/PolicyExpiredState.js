@@ -167,8 +167,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        //await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -181,12 +180,10 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // withdraw all stakes from the pool
         await qspb.withdrawStake(poolId, {from : staker});
         assert.equal((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).toNumber(), 0);
-        // todo (sebi): Uncomment when implementation is finished
-        //await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
         // try to deposit funds again
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        //await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });

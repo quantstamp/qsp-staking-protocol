@@ -112,23 +112,51 @@ contract QuantstampStaking is Ownable {
     function depositFunds(
         uint poolIndex,
         uint depositQspWei
-    ) external onlyPoolOwner(poolIndex) whenNotViolated(poolIndex) {
-        address poolOwner = data.getPoolOwner(poolIndex);
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized ||
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.NotViolatedFunded ||
-            state == QuantstampStakingData.PoolState.PolicyExpired);
-        safeTransferToDataContract(poolOwner, depositQspWei);
-        data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
-        data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
+    ) external onlyPoolOwner(poolIndex) {
+        // Gather conditions
+        bool violated = isViolated(poolIndex);
+        bool timedout = isTimedOut(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        bool funded = data.getPoolDepositQspWei(poolIndex).add(depositQspWei) >= data.getPoolMaxPayoutQspWei(poolIndex);
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
 
-        if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded
-                && data.getDepositQspWei(poolIndex) >= data.getPoolMaxPayoutQspWei(poolIndex)) {
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+        // Guard: Reject in 3.2, 5.2, 6.2
+        require(S1_Initialized == s           // 1.1, 1.5
+            || S2_NotViolatedUnderfunded == s // 2.2, 2.8, 2.10, 2.14a, 2.15
+            || S4_NotViolatedFunded == s      // 4.1a, 4.6, 4.8, 4.9
+            || S7_PolicyExpired == s,         // 7.1, 7.3
+            "Pool is not in the right state to deposit funds.");
+
+        /* solhint-disable no-empty-blocks */
+        // Effect: Skip in 2.8
+        if (S2_NotViolatedUnderfunded == s && !expired && violated) {
+            // pass on the effect in 2.8
+        } else {
+            // 1.1, 1.5, 2.2, 2.10, 2.14a, 2.15, 4.1a, 4.6, 4.8, 4.9, 7.1, 7.3
+            depositFundsEffect(poolIndex, depositQspWei); 
         }
+        /* solhint-enable no-empty-blocks */
 
-        emit DepositMade(poolIndex, poolOwner, depositQspWei);
+        // Additional condition
+        bool stakesExist = data.getPoolTotalStakeQspWei(poolIndex) > 0;
+
+        // Transition: Retains state in 1.1, 2.2, 4.1a, 7.1
+        if (S2_NotViolatedUnderfunded == s && !expired && violated) {                   // 2.8
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (S2_NotViolatedUnderfunded == s && !expired && !violated && funded) { // 2.10
+            setState(poolIndex, S4_NotViolatedFunded);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) {                 // 4.6
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice           // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {                 // 4.9
+            setState(poolIndex, S7_PolicyExpired);
+        } else if (S1_Initialized == s && (timedout || violated)                        // 1.5
+            || S2_NotViolatedUnderfunded == s && expiredTwice                           // 2.14a
+            || S4_NotViolatedFunded == s && expiredTwice                                // 4.8
+            || S7_PolicyExpired == s && (expiredTwice || !stakesExist)) {               // 7.3
+            setState(poolIndex, S6_Cancelled);
+        }
     }
 
     /** Allows the stakeholder to withdraw their entire deposits from the contract
@@ -288,8 +316,7 @@ contract QuantstampStaking is Ownable {
         bool expiredTwice = isExpiredTwice(poolIndex);
         bool violated = isViolated(poolIndex);
         QuantstampStakingData.PoolState s = getPoolState(poolIndex);
-        bool timedout = S1_Initialized == s 
-            && data.getPoolTimeoutInBlocks(poolIndex).add(data.getPoolTimeOfStateInBlocks(poolIndex)) <= block.number;
+        bool timedout = isTimedOut(poolIndex);
 
         // Guard: Reject in 1.9, 2.17, 3.2, 4.11, 6.2, 7.6
         require(S1_Initialized == s && (timedout || violated)   // 1.5
@@ -584,6 +611,21 @@ contract QuantstampStaking is Ownable {
         return IPolicy(poolPolicy).isViolated(candidateContract);
     }
 
+    /** Returns true if the pool timed out in state 1. The time out concept is undefined
+    * for all other states.
+    * @param poolIndex - the index of the pool to check
+    */
+    function isTimedOut(uint poolIndex) internal view returns (bool) {
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+        if (S1_Initialized != s) {
+            return false;
+        } else {
+            uint startBlock = data.getPoolTimeOfStateInBlocks(poolIndex);
+            uint expirationBlock = data.getPoolTimeoutInBlocks(poolIndex).add(startBlock);
+            return block.number >= expirationBlock;
+        }
+    }
+
     /** Returns true if the pool expired. Expiration occurs if minStakingTime elapses since the
     * block when pool enters state 4 (NotViolatedFunded).
     * @param poolIndex - the index of the pool to check
@@ -745,5 +787,17 @@ contract QuantstampStaking is Ownable {
         address poolOwner = data.getPoolOwner(poolIndex);
         safeTransferFromDataContract(poolOwner, withdrawalAmountQspWei);
         emit DepositWithdrawn(poolIndex, poolOwner, withdrawalAmountQspWei);
+    }
+
+    /**
+    * @dev Used to deposit the funds from the caller to the pool after the checks in depositFunds
+    * @param poolIndex The index of the pool in which the funds should be deposited
+    */
+    function depositFundsEffect(uint poolIndex, uint depositQspWei) internal {
+        address poolOwner = data.getPoolOwner(poolIndex);
+        safeTransferToDataContract(poolOwner, depositQspWei);
+        data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
+        data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
+        emit DepositMade(poolIndex, poolOwner, depositQspWei);
     }
 }

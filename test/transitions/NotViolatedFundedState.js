@@ -193,8 +193,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // todo(mderka): uncomment when implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -219,9 +218,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toDeposit = 11;
         await policy.updateStatus(true);
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
 
@@ -235,9 +233,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -251,9 +248,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
