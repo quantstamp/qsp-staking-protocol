@@ -233,7 +233,7 @@ contract QuantstampStaking is Ownable {
         }
         
         // Additional condition
-        bool enoughStake = data.getPoolMinStakeQspWei(poolIndex) > data.getPoolTotalStakeQspWei(poolIndex);
+        bool enoughStake = data.getPoolMinStakeQspWei(poolIndex) >= data.getPoolTotalStakeQspWei(poolIndex);
 
         // Transition: Retains state in 1.1, 2.4, 3.1, 6.1, 7.2
         if (S2_NotViolatedUnderfunded == s && !expired && violated && enoughStake) {    // 2.7
