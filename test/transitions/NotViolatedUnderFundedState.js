@@ -18,7 +18,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract.only('NotViolatedUnderfundedState.js: check transitions', function(accounts) {
+contract('NotViolatedUnderfundedState.js: check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
