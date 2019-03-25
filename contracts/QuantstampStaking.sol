@@ -502,7 +502,7 @@ contract QuantstampStaking is Ownable {
                 || expiredTwice && violated         // 2.14b 
                 || expired && !expiredTwice)        // 2.15
             || S4_NotViolatedFunded == s && !(      // 4.4, 4.8a, 4.10
-                expired && !violated                // (not 4.12)
+                expiredTwice && !violated                // (not 4.12)
             ),
             "The state of the pool does not allow to check and update policy.");
 

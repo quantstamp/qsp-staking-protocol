@@ -740,7 +740,6 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.19 if expired twice and the policy is not violated, fail",
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        await qspb.checkPolicy(poolId, {from : staker});
         await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
