@@ -283,9 +283,8 @@ contract QuantstampStaking is Ownable {
         // Transitions: retain state in 2.1, 3.1, 4.2, 7.2
         if (S2_NotViolatedUnderfunded == s && !expired && violated) {  // 2.6
             setState(poolIndex, S3_ViolatedUnderfunded);
-        } else if (
-            S4_NotViolatedFunded == s && !expired && !violated && deposit >= earnedInterest 
-                && (deposit - earnedInterest < maxPayout)) { // 4.3
+        } else if (S4_NotViolatedFunded == s && !expired && !violated && deposit >= earnedInterest
+            && (deposit - earnedInterest < maxPayout)) { // 4.3
             setState(poolIndex, S2_NotViolatedUnderfunded);
         } else if (
             S2_NotViolatedUnderfunded == s && (

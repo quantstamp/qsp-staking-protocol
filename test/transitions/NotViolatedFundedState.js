@@ -110,7 +110,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
   async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
     // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
     let depositLeft = await data.getPoolDepositQspWei(poolId);
-    let payout = await qspb.computePayout(poolId, staker);
     await Util.mineNBlocks(pool.payPeriodInBlocks);
     while (depositLeft.gte(balance)) {
       await qspb.withdrawInterest(poolId, {from : staker});
