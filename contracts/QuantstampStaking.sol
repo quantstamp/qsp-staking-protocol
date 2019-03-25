@@ -700,12 +700,7 @@ contract QuantstampStaking is Ownable {
         QuantstampStakingData.PoolState poolState = data.getPoolState(poolIndex);
         if (poolState != newState) {
             data.setState(poolIndex, newState); // set the state
-            /* Don't update the time of the stake if the policy expired because payouts still need to be awarded
-               accoring to the time of the NonViolatedFunded state */
-            // if (newState != QuantstampStakingData.PoolState.PolicyExpired) {
-            //     data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
-            // }
-
+            data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
             if (newState == QuantstampStakingData.PoolState.NotViolatedFunded
                 && data.getPoolMinStakeStartBlock(poolIndex) == 0) {
                 data.setPoolMinStakeStartBlock(poolIndex, block.number);
