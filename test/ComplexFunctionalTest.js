@@ -65,7 +65,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(poolParams.stakeCount.toNumber(), (await quantstampStakingData.getPoolStakeCount(poolParams.index)).toNumber());
     assert.equal(poolParams.poolName, await quantstampStakingData.getPoolName(poolParams.index));
     assert.equal(poolParams.maxTotalStake, (await quantstampStakingData.getPoolMaxTotalStakeQspWei(poolParams.index)).toNumber());
-    assert.equal(balanceOfQspb.toNumber(), (await quantstampStakingData.balanceQspWei.call()));
+    assert.equal(balanceOfQspb.toNumber(), (await quantstampStakingData.balanceQspWei.call()).toNumber());
     return true;
   }
 
@@ -610,7 +610,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await assertEntirePoolState(orangePoolParams, balanceOfQspb);
   });
 
-  it("should not be able to payout staker4 from the orange pool due to inssuficient funds, orange pool should then be cancelled", async function() {
+  it("should payout to staker4 the remaining deposit from the orange pool due to inssuficient funds, orange pool should then be cancelled", async function() {
     // check that the pool is in the NotViolatedUnderfunded state
     assert.equal((await qspb.getPoolState(orangePoolParams.index)).toNumber(), PoolState.NotViolatedUnderfunded);
     const currentBlock = new BigNumber((await web3.eth.getBlock("latest")).number);
@@ -623,10 +623,13 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(payoutStaker4.toNumber(), (await qspb.computePayout(orangePoolParams.index, staker4)).toNumber());
     assert.isTrue(payoutStaker4.gt(orangePoolParams.depositQspWei), "Deposit of orange pool is enough to payout staker4 " + orangePoolParams.depositQspWei + " > " + payoutStaker4);
     await qspb.withdrawInterest(orangePoolParams.index, {from : staker4});
-    // the balance of staker 4 should have stayed the same
-    assert.equal(balanceOfStaker4.toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
+    // the balance of staker 4 should increase by precisely the deposit amount
+    assert.equal(balanceOfStaker4.plus(orangePoolParams.depositQspWei).toNumber(), (await quantstampToken.balanceOf(staker4)).toNumber());
     // the state of the orange pool needs to be updated
     orangePoolParams.state = PoolState.Cancelled;
+    // the deposit must be set to 0 because the remaining deposit has all been paid out
+    balanceOfQspb = balanceOfQspb.minus(orangePoolParams.depositQspWei);
+    orangePoolParams.depositQspWei = new BigNumber(0);
     orangePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that all pool properties are as expected
     await assertEntirePoolState(orangePoolParams, balanceOfQspb);
@@ -967,6 +970,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.equal(payoutStaker5.toNumber(), (await qspb.computePayout(grayPoolParams.index, staker5)).toNumber());
     // staker 5 gets payout
     await qspb.withdrawInterest(grayPoolParams.index, {from : staker5});
+    grayPoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     grayPoolParams.state = PoolState.PolicyExpired;
     grayPoolParams.depositQspWei = grayPoolParams.depositQspWei.minus(payoutStaker5);
     // the balance of the assrunce contract should be reduced
