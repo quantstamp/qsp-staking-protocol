@@ -111,13 +111,18 @@ contract.only('NotViolatedFundedState.js: check transitions', function(accounts)
     // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
     let depositLeft = await data.getPoolDepositQspWei(poolId);
     console.log('========depositLeft 1:', depositLeft.toNumber());
+    let payout = await qspb.computePayout(poolId, staker);
+    console.log("payout", payout.toNumber()); 
     await Util.mineNBlocks(pool.payPeriodInBlocks);
     while (depositLeft.gte(balance)) {
       console.log('========depositLeft 2:', depositLeft.toNumber());
+      console.log("payout", payout.toNumber()); 
       await qspb.withdrawInterest(poolId, {from : staker});
       console.log('========depositLeft 3:', depositLeft.toNumber());
+      console.log("payout", payout.toNumber()); 
       depositLeft = await data.getPoolDepositQspWei(poolId);
       console.log('========depositLeft 4:', depositLeft.toNumber());
+      console.log("payout", payout.toNumber()); 
     }
   }
 

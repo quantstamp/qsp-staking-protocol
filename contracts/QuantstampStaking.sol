@@ -226,6 +226,7 @@ contract QuantstampStaking is Ownable {
         uint maxPayout = data.getPoolMaxPayoutQspWei(poolIndex);
         bool violated = isViolated(poolIndex);
         uint earnedInterest = computePayout(poolIndex, msg.sender);
+
         // Guard: Reject in 1.8, 5.2, 6.2
         require(
             S2_NotViolatedUnderfunded == s // 2.1, 2.6, 2.12, 2.14a, 2.16
@@ -252,15 +253,18 @@ contract QuantstampStaking is Ownable {
         }
 
         // Transitions: retain state in 2.1, 3.1, 4.2, 7.2
-        if (S2_NotViolatedUnderfunded == s && !expired && violated) { // 2.6
+        if (S2_NotViolatedUnderfunded == s && !expired && violated) {  // 2.6
             setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (
+            S4_NotViolatedFunded == s && !expired && !violated && deposit >= earnedInterest 
+                && (deposit - earnedInterest < maxPayout)) { // 4.3
+            setState(poolIndex, S2_NotViolatedUnderfunded);
         } else if (
             S2_NotViolatedUnderfunded == s && (
                 (!expired && !violated && deposit < earnedInterest) // 2.12
                 || expiredTwice) //2.14a
             || S4_NotViolatedFunded == s && (
-                (!expired && !violated && deposit >= earnedInterest && (deposit - earnedInterest < maxPayout)) // 4.3
-                || (!expired && !violated && deposit < earnedInterest) // 4.7
+                (!expired && !violated && deposit < earnedInterest) // 4.7
                 || expiredTwice // 4.8
             )
             || S7_PolicyExpired == s && expiredTwice // 7.4
@@ -656,9 +660,9 @@ contract QuantstampStaking is Ownable {
             data.setState(poolIndex, newState); // set the state
             /* Don't update the time of the stake if the policy expired because payouts still need to be awarded
                accoring to the time of the NonViolatedFunded state */
-            if (newState != QuantstampStakingData.PoolState.PolicyExpired) {
-                data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
-            }
+            // if (newState != QuantstampStakingData.PoolState.PolicyExpired) {
+            //     data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
+            // }
 
             if (newState == QuantstampStakingData.PoolState.NotViolatedFunded
                 && data.getPoolMinStakeStartBlock(poolIndex) == 0) {
@@ -715,7 +719,7 @@ contract QuantstampStaking is Ownable {
 
         uint deposit = data.getPoolDepositQspWei(poolIndex);
         uint payout = requestedPayout;
-        if (payout < deposit) {
+        if (payout > deposit) {
             payout = deposit; // withdraw the remaining deposit
         }
 
