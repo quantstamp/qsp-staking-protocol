@@ -15,6 +15,7 @@ const StateNotChangedPolicy = artifacts.require('policies/StateNotChangedPolicy'
 const AlwaysViolatedPolicy = artifacts.require('policies/AlwaysViolatedPolicy');
 const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
+const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
@@ -39,6 +40,7 @@ contract('CandidateContract', function(accounts) {
   let alwaysViolatedPolicy;
   let neverViolatedPolicy;
   let upgradeablePolicy;
+  let valueNotChangedPolicy;
   let qaPolicy;
   let qspb;
   let quantstampStakingData;
@@ -55,6 +57,7 @@ contract('CandidateContract', function(accounts) {
     stateNoteChangedPolicy = await StateNotChangedPolicy.new(0);
     alwaysViolatedPolicy = await AlwaysViolatedPolicy.new(candidateContract.address);
     neverViolatedPolicy = await NeverViolatedPolicy.new(candidateContract.address);
+    valueNotChangedPolicy = await ValueNotChangedPolicy.new(candidateContract.address);
     upgradeablePolicy = await UpgradeablePolicy.new(candidateContract.address, owner, neverViolatedPolicy.address);
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     const whitelistExpertRegistry = await WhitelistExpertRegistry.new();
@@ -65,12 +68,12 @@ contract('CandidateContract', function(accounts) {
 
   describe('QuantstampAssurancePolicy', () => {
     it("should fail when attempted to be initialized with a non-assurance address", async function() {
-      Util.assertTxFail(QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS, Util.ZERO_ADDRESS));
+      await Util.assertTxFail(QuantstampAssurancePolicy.new(Util.ZERO_ADDRESS, Util.ZERO_ADDRESS));
     });
 
 
     it("should throw an exception when the policy is checked with a different contract address", async function() {
-      Util.assertTxFail(qaPolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(qaPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should initially be violated", async function() {
@@ -136,7 +139,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('UpgradeablePolicy', () => {
     it("should throw an exception when the policy is checked with a different contract address", async function() {
-      Util.assertTxFail(upgradeablePolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(upgradeablePolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should not initially be violated", async function() {
@@ -150,8 +153,23 @@ contract('CandidateContract', function(accounts) {
 
     it("should throw an error when queried after upgrading to a non-policy address", async function() {
       await upgradeablePolicy.changePolicyLogic(Util.ZERO_ADDRESS, {from : owner});
-      Util.assertTxFail(upgradeablePolicy.isViolated(candidateContract.address));
+      await Util.assertTxFail(upgradeablePolicy.isViolated(candidateContract.address));
     });
+  });
+  describe('ValueNotChangedPolicy', () => {
+    it("should not matter when the policy is checked with a non-CandidateContract address", async function() {
+      Util.assertTxFail(valueNotChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not initially be violated", async function() {
+      assert.isFalse(await valueNotChangedPolicy.isViolated(candidateContract.address));
+    });
+
+    it("should be violated after the balance changes", async function() {
+      await candidateContract.withdraw(1);
+      assert.isTrue(await valueNotChangedPolicy.isViolated(candidateContract.address));
+    });
+
   });
 
   describe('ZeroBalancePolicy', () => {
@@ -165,7 +183,7 @@ contract('CandidateContract', function(accounts) {
     });
 
     it("should throw an error", async function() {
-      Util.assertTxFail(zeroBalancePolicy.isViolated(accounts[0]));
+      await Util.assertTxFail(zeroBalancePolicy.isViolated(accounts[0]));
     });
   });
 
@@ -182,7 +200,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('TCRContainsEntryPolicy', () => {
     it("should not matter when the TCR entry policy is checked with a non-TCR address", async function() {
-      Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(tcrContainsEntryPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should initially violate the TCR entry policy (entry missing)", async function() {
@@ -211,7 +229,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('DemocraticViolationPolicy', () => {
     it("should not matter when the democratic opinion policy is checked with the wrong address", async function() {
-      Util.assertTxFail(democraticPolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(democraticPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should not initially violate the democratic policy", async function() {
@@ -220,7 +238,7 @@ contract('CandidateContract', function(accounts) {
 
     it("should not have its status voted on by the same address more than once", async function() {
       await democraticPolicy.vote(1, {from: accounts[1]});
-      Util.assertTxFail(democraticPolicy.vote(1, {from: accounts[1]}));
+      await Util.assertTxFail(democraticPolicy.vote(1, {from: accounts[1]}));
     });
 
     it("should violate the democratic policy after some people vote for violation", async function() {
@@ -232,7 +250,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('TrustedOpinionPolicy', () => {
     it("should not matter when the trusted opinion policy is checked with the wrong address", async function() {
-      Util.assertTxFail(trustedOpinionPolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(trustedOpinionPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should not initially violate the trusted opinion policy", async function() {
@@ -250,7 +268,7 @@ contract('CandidateContract', function(accounts) {
 
   describe('StateNotChangedPolicy', () => {
     it("should not matter when the State Not Changed Policy is checked with a non-CandidateContract address", async function() {
-      Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
+      await Util.assertTxFail(stateNoteChangedPolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
     it("should not initially violate the State Not Changed Policy", async function() {

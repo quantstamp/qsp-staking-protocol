@@ -213,9 +213,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
         await policy.updateStatus(true);
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
 
@@ -229,9 +228,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         assert.isTrue(pool.maxPayoutQspWei.gt(pool.depositQspWei.add(toDeposit)));
         await policy.updateStatus(true);
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
 
@@ -259,9 +257,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -273,8 +270,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
-        // todo(mderka): Uncomment when implemented
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -288,8 +284,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // todo(mderka): Uncomment when implemented
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -303,9 +298,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         const toDeposit = 13;
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncommented when the modifier in the smart contract is removed
-        // await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -317,8 +311,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, 0, {from : stakeholder});
-        // todo(mderka): Uncomment when implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -332,8 +325,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await token.approve(qspb.address, toDeposit, {from : stakeholder});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
-        // todo(mderka): Uncomment when implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
@@ -693,7 +685,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.17 if not expired and the policy is not violated, fail",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -752,7 +744,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         // todo(mderka): uncomment when fixed
         // await qspb.checkPolicy(poolId, {from : staker});
-        // Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -775,7 +767,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
      */
     it("2.17 if not expired and the policy is not violated, stay in this state and fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
   });
@@ -815,7 +807,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         const toStake = 14;
         await token.approve(qspb.address, toStake, {from : staker});
         // todo(mderka): uncomment when implemented
-        // Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
+        // await Util.assertTxFail(qspb.stakeFunds(poolId, toStake, {from : staker}));
       }
     );
 

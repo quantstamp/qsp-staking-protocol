@@ -167,8 +167,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        //await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -181,12 +180,10 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // withdraw all stakes from the pool
         await qspb.withdrawStake(poolId, {from : staker});
         assert.equal((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).toNumber(), 0);
-        // todo (sebi): Uncomment when implementation is finished
-        //await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
         // try to deposit funds again
         await qspb.depositFunds(poolId, pool.maxPayoutQspWei, {from : stakeholder});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        //await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
@@ -293,7 +290,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.5 checks that before the minStakingTime passes twice and there still are stakes, the call is not allowed",
       async function() {
         assert.isTrue((await data.getPoolTotalStakeQspWei(poolId, {from : owner})).gt(0));
-        Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawDeposit(poolId, {from : stakeholder}));
       }
     );
   });
@@ -335,7 +332,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
      */
     it("7.6 checks that calling this function before the minStakingTime passes twice is not allowed",
       async function() {
-        Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
+        await Util.assertTxFail(qspb.withdrawClaim(poolId, {from : stakeholder}));
       }
     );
   });
@@ -350,7 +347,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.7 call is not allowed",
       async function() {
         await token.approve(qspb.address, pool.minStakeQspWei, {from : staker});
-        Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+        await Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
   });
@@ -363,13 +360,13 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         // todo(mderka): uncomment when fixed
-        // Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
+        // await Util.assertTxFail(qspb.stakeFunds(poolId, pool.minStakeQspWei, {from : staker}));
       }
     );
 
     it("7.7 if policy is not violated, fail loud",
       async function() {
-        Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
   });
