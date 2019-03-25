@@ -18,7 +18,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract('InitializedState.js: check transitions', function(accounts) {
+contract.only('InitializedState.js: check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -469,7 +469,7 @@ contract('InitializedState.js: check transitions', function(accounts) {
   /*
    * Tests for function checkPolicy
    */
-  describe("checkPolicy", async function() {
+  describe.only("checkPolicy", async function() {
 
     /*
      * Violates the policy and checks that the pool gets cancelled.

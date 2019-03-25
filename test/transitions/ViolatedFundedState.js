@@ -234,8 +234,7 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedFundedState.js: policy.
     it("5.2 fails when policy is violated",
       async function() {
         await policy.updateStatus(true);
-        // todo(mderka): uncomment when adjusted
-        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : owner}));
       }
     );
   });
