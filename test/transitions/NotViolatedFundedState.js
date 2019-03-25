@@ -18,7 +18,7 @@ const PoolState = Object.freeze({
 });
 
 
-contract.only('NotViolatedFundedState.js: check transitions', function(accounts) {
+contract('NotViolatedFundedState.js: check transitions', function(accounts) {
 
   const owner = accounts[0];
   const staker = accounts [1];
@@ -110,19 +110,11 @@ contract.only('NotViolatedFundedState.js: check transitions', function(accounts)
   async function mineAndWithdrawUntilDepositLeftLessThan(poolId, balance) {
     // note: this can make the method behave flaky if more than 1 pay periods are to be paid out
     let depositLeft = await data.getPoolDepositQspWei(poolId);
-    console.log('========depositLeft 1:', depositLeft.toNumber());
     let payout = await qspb.computePayout(poolId, staker);
-    console.log("payout", payout.toNumber()); 
     await Util.mineNBlocks(pool.payPeriodInBlocks);
     while (depositLeft.gte(balance)) {
-      console.log('========depositLeft 2:', depositLeft.toNumber());
-      console.log("payout", payout.toNumber()); 
       await qspb.withdrawInterest(poolId, {from : staker});
-      console.log('========depositLeft 3:', depositLeft.toNumber());
-      console.log("payout", payout.toNumber()); 
       depositLeft = await data.getPoolDepositQspWei(poolId);
-      console.log('========depositLeft 4:', depositLeft.toNumber());
-      console.log("payout", payout.toNumber()); 
     }
   }
 
@@ -537,7 +529,7 @@ contract.only('NotViolatedFundedState.js: check transitions', function(accounts)
      * Without violating the policy or reaching the maximum staking time, it withdraws the
      * insterest and verifies the the pool remained in NonViolatedFunded state.
      */
-    it.only("4.3 not expired, not violated, enough to pay but dips below maxPayout, go to 2",
+    it("4.3 not expired, not violated, enough to pay but dips below maxPayout, go to 2",
       async function() {
         // Keep withdrawing until there is not enough deposit left to for 2 maximum payouts.
         // The payout for the only single staker (as is in this case) is exactly maxPayoutQspWei per period.
@@ -547,9 +539,7 @@ contract.only('NotViolatedFundedState.js: check transitions', function(accounts)
         // validation the precondition
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
-        console.log('========deposit left', depositLeft.toNumber());
         const payout = await qspb.computePayout(poolId, staker);
-        console.log('========payout', payout.toNumber());
         assert.isTrue(depositLeft.gte(payout));
         assert.isFalse(depositLeft.sub(payout).gte(pool.maxPayoutQspWei));
         // the follwoing is the assumption of the test case
