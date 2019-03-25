@@ -699,7 +699,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("4.11 if not expired and not violated, stay in this state",
+    it("4.11 if not expired and not violated, fail transaction",
       async function() {
         await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }

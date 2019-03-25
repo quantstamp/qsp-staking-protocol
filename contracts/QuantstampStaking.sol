@@ -495,14 +495,16 @@ contract QuantstampStaking is Ownable {
         bool expiredTwice = isExpiredTwice(poolIndex);
         QuantstampStakingData.PoolState s = data.getPoolState(poolIndex);
 
-        // Guard: Reject in 1.10, 2.17, 2.19, 3.2, 4.12, 5.2, 6.2, 7.7
+        // Guard: Reject in 1.10, 2.17, 2.19, 3.2, 4.12, 4.11, 5.2, 6.2, 7.7
         require(S1_Initialized == s && violated     // 1.7
             || S2_NotViolatedUnderfunded == s && (
                 !expired && violated                // 2.9
                 || expiredTwice && violated         // 2.14b 
                 || expired && !expiredTwice)        // 2.15
-            || S4_NotViolatedFunded == s && !(      // 4.4, 4.8a, 4.10
-                expiredTwice && !violated                // (not 4.12)
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                // 4.4
+                || expiredTwice && violated         // 4.8a
+                || expired && !expiredTwice         // 4.10
             ),
             "The state of the pool does not allow to check and update policy.");
 
