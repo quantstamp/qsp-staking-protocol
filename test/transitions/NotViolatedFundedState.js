@@ -649,9 +649,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.10 if expired once and not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when fixed
-        // await qspb.checkPolicy(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.checkPolicy(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -664,8 +663,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.checkPolicy(poolId, {from : staker});
-        // todo(mderka): uncomment when the transition bug fixed
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -675,8 +673,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.12 if expired twice and not violated, fail",
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -688,19 +685,17 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.checkPolicy(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.checkPolicy(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
     /*
      * Tests that there is a loud fail when the pool is not violated.
      */
-    it("4.11 if not expired and not violated, stay in this state",
+    it("4.11 if not expired and not violated, fail transaction",
       async function() {
-        // todo(mderka): uncomment when the transition bug fixed
-        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 

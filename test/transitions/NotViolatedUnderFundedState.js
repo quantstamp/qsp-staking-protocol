@@ -709,9 +709,8 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.15 if expired once and the policy is not violated, move to state 7",
       async function() {
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when fixed
-        // await qspb.checkPolicy(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.checkPolicy(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -724,8 +723,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
         await qspb.checkPolicy(poolId, {from : staker});
-        // todo(mderka): uncomment when the transition bug fixed
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -736,9 +734,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     it("2.19 if expired twice and the policy is not violated, fail",
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when fixed
-        // await qspb.checkPolicy(poolId, {from : staker});
-        // await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
+        await Util.assertTxFail(qspb.checkPolicy(poolId, {from : staker}));
       }
     );
 
@@ -751,8 +747,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.checkPolicy(poolId, {from : staker});
-        // todo(mderka): uncomment when the transition bug fixed
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
