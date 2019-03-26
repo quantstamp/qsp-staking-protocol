@@ -3,7 +3,6 @@ pragma solidity 0.4.24;
 /// @title QuantstampStaking - is the smart contract representing the core of the Staking Protocol
 /// @author Quantstamp
 
-import {Registry} from "./test/Registry.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -507,16 +506,37 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool for which the state is changed
     */
     function checkPolicy(uint poolIndex) public {
-        // fail loud if the policy has not been violated
-        require(isViolated(poolIndex));
+        // Gather conditions
+        bool violated = isViolated(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        QuantstampStakingData.PoolState s = data.getPoolState(poolIndex);
 
-        QuantstampStakingData.PoolState state = data.getPoolState(poolIndex);
-        if (state == QuantstampStakingData.PoolState.Initialized) {
-            setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedUnderfunded) {
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedUnderfunded);
-        } else if (state == QuantstampStakingData.PoolState.NotViolatedFunded) {
-            setState(poolIndex, QuantstampStakingData.PoolState.ViolatedFunded);
+        // Guard: Reject in 1.10, 2.17, 2.19, 3.2, 4.12, 4.11, 5.2, 6.2, 7.7
+        require(S1_Initialized == s && violated     // 1.7
+            || S2_NotViolatedUnderfunded == s && (
+                !expired && violated                // 2.9
+                || expiredTwice && violated         // 2.14b 
+                || expired && !expiredTwice)        // 2.15
+            || S4_NotViolatedFunded == s && (
+                !expired && violated                // 4.4
+                || expiredTwice && violated         // 4.8a
+                || expired && !expiredTwice         // 4.10
+            ),
+            "The state of the pool does not allow to check and update policy.");
+
+        // In this case, the effect is the transition
+        if (S1_Initialized == s && violated                                   // 1.7
+            || S2_NotViolatedUnderfunded == s && expiredTwice && violated     // 2.14b
+            || S4_NotViolatedFunded == s && expiredTwice && violated) {       // 4.8a
+            setState(poolIndex, S6_Cancelled);
+        } else if (S2_NotViolatedUnderfunded == s && !expired && violated) {  // 2.9
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) {       // 4.4
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {       // 4.10
+            setState(poolIndex, S7_PolicyExpired);
         }
     }
 
