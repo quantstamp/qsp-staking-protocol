@@ -176,9 +176,8 @@ policyStatuses.forEach(policyStatus => contract(`ViolatedUnderfundedState.js: po
 
     it("3.1 remains in the same state",
       async function() {
-        // TODO(amurashkin): uncomment once implemented
-        //await qspb.withdrawInterest(poolId, {from : staker});
-        //await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.ViolatedUnderfunded);
       }
     );
   });

@@ -439,9 +439,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when fixed
-        // await qspb.withdrawInterest(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -453,8 +452,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawInterest(poolId, {from : staker});
-        // todo(mderka): uncomment when implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -466,9 +464,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
       async function() {
         await policy.updateStatus(true);
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when fixed
-        // await qspb.withdrawInterest(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -534,7 +531,6 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         // The other maxPayoutQspWei is needed to pay the other stakers as per specification.
         // Therefore, we need less than maxPayoutQspWei + maxPayoutQspWei.
         await mineAndWithdrawUntilDepositLeftLessThan(poolId, pool.maxPayoutQspWei.times(2));
-        
         // validation the precondition
         await assertPoolState(poolId, PoolState.NotViolatedFunded);
         const depositLeft = await data.getPoolDepositQspWei(poolId);
@@ -545,8 +541,7 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         assert.isTrue(payout.eq(pool.maxPayoutQspWei)); 
 
         await qspb.withdrawInterest(poolId, {from : staker});
-        // todo(mderka) uncomment when fixed
-        // await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
+        await assertPoolState(poolId, PoolState.NotViolatedUnderfunded);
       }
     );
 
@@ -557,9 +552,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
     it("4.5 if not expired and violated, move to state 5",
       async function() {
         await policy.updateStatus(true);
-        // todo(mderka): uncomment when fixed
-        // await qspb.withdrawInterest(poolId, {from : staker});
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await qspb.withdrawInterest(poolId, {from : staker});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });

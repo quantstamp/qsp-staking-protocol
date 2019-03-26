@@ -230,8 +230,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
     it("7.2 checks that before the minStakingTime passes twice, the pool stays in the same state",
       async function() {
         await qspb.withdrawInterest(poolId, {from : staker});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -244,8 +243,7 @@ contract('PolicyExpiredState.js: check transitions', function(accounts) {
         // wait until minStakingTime passes twice
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
         await qspb.withdrawInterest(poolId, {from : staker});
-        // todo (sebi): uncomment assert after the FSM is implemented
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
   });
