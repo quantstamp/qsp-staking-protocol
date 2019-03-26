@@ -205,6 +205,9 @@ contract QuantstampStaking is Ownable {
         }
     }
 
+    event T(uint x);
+    event P(bool x);
+
     /** Allows the staker to withdraw all their stakes from the pool.
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
@@ -215,6 +218,13 @@ contract QuantstampStaking is Ownable {
         bool expired = isExpired(poolIndex);
         bool expiredTwice = isExpiredTwice(poolIndex);
         QuantstampStakingData.PoolState s = getPoolState(poolIndex);
+
+        emit P(violated);
+        emit P(timedout);
+        emit P(expired);
+        emit P(expiredTwice);
+        emit T(block.number);
+        emit T(poolIndex);
 
         // Guard: Reject in 4.11, 5.2
         require(S1_Initialized == s           // 1.1, 1.5
