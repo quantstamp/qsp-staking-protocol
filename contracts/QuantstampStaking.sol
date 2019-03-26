@@ -235,6 +235,8 @@ contract QuantstampStaking is Ownable {
         /* solhint-enable no-empty-blocks */
         
         // Additional condition
+        /* This is collected after executing the effect, so this 
+           is equivalent to SUM(stakes) - withdrawal */
         bool enoughStake = data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex);
 
         // Transition: Retains state in 1.1, 2.4, 3.1, 6.1, 7.2
