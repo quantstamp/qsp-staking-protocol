@@ -797,12 +797,13 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex), 0);
     });
 
-    it("should not withdraw stake when state is NotViolatedFunded and policy is violated", async function() {
+    it("should not withdraw stake and not fail when state is NotViolatedFunded and policy is violated", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
       await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei, {from: poolOwner});
       await candidateContract.withdraw(await candidateContract.balance());
-      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.NotViolatedFunded);
-      await Util.assertTxFail(qspb.withdrawStake(currentPoolIndex, {from: staker}));
+      assert.equal((await quantstampStakingData.getPoolState(currentPoolIndex)).toNumber(), PoolState.NotViolatedFunded);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker});
+      assert.equal((await quantstampStakingData.getPoolState(currentPoolIndex)).toNumber(), PoolState.ViolatedFunded);
       assert.equal(depositQspWei.plus(minStakeQspWei).plus(maxPayoutQspWei).toNumber(), (await qspb.getBalanceQspWei()).toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber());
       assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex)).toNumber());
