@@ -284,7 +284,10 @@ contract QuantstampStaking is Ownable {
         if (S2_NotViolatedUnderfunded == s && !expired && violated) {  // 2.6
             setState(poolIndex, S3_ViolatedUnderfunded);
         } else if (S4_NotViolatedFunded == s && !expired && !violated && deposit >= earnedInterest
-            && (deposit < maxPayout.add(earnedInterest))) { // 4.3
+            // SafeMath is not needed here, because the condition "deposit >= earnedInterest" is evaluated first
+            // and will be false if deposit < earnedInterest, so we do not have to worry about the underflow on
+            // the next line:
+            && (deposit - earnedInterest < maxPayout)) { // 4.3
             setState(poolIndex, S2_NotViolatedUnderfunded);
         } else if (
             S2_NotViolatedUnderfunded == s && (
