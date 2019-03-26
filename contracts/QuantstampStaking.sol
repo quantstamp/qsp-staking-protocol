@@ -208,33 +208,50 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool from which the stake is withdrawn
     */
     function withdrawStake(uint poolIndex) external {
-        QuantstampStakingData.PoolState state = updatePoolState(poolIndex);
-        require(state == QuantstampStakingData.PoolState.Initialized ||
-            state == QuantstampStakingData.PoolState.NotViolatedUnderfunded ||
-            state == QuantstampStakingData.PoolState.Cancelled ||
-            state == QuantstampStakingData.PoolState.PolicyExpired,
-            "Pool is not in the right state when withdrawing stake.");
+        // Gather conditions
+        bool violated = isViolated(poolIndex);
+        bool timedout = isTimedOut(poolIndex);
+        bool expired = isExpired(poolIndex);
+        bool expiredTwice = isExpiredTwice(poolIndex);
+        QuantstampStakingData.PoolState s = getPoolState(poolIndex);
 
-        uint totalQspWeiTransfer = data.getTotalStakes(poolIndex, msg.sender);
+        // Guard: Reject in 4.11, 5.2
+        require(S1_Initialized == s           // 1.1, 1.5
+            || S2_NotViolatedUnderfunded == s // 2.4, 2.7, 2.13, 2.14a, 2.15
+            || S3_ViolatedUnderfunded == s    // 3.1
+            || S4_NotViolatedFunded == s && !(!expired && !violated)     // 4.5, 4.8, 4.10 (not 4.11)
+            || S6_Cancelled == s              // 6.1
+            || S7_PolicyExpired == s,         // 7.1, 7.4
+            "Pool is not in the right state to withdraw stake.");
 
-        if (totalQspWeiTransfer > 0) { // transfer the stake back
-            uint stakeCount = data.getStakeCount(poolIndex, msg.sender);
-            uint totalSizeChangeQspWei = 0;
-            for (uint i = 0; i < stakeCount; i++) {
-                totalSizeChangeQspWei = totalSizeChangeQspWei.add(
-                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
-            }
-            data.removeStake(poolIndex, msg.sender);
-            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).sub(totalSizeChangeQspWei));
+        /* solhint-disable no-empty-blocks */
+        // Effect: No effect in 4.5
+        if (S4_NotViolatedFunded == s && !expired && violated) { // 4.5
+            // no effect in 4.5
+        } else {
+            withdrawStakeEffect(poolIndex); // 1.1, 1.5, 2.4, 2.7, 2.13, 2.14a, 2.15, 3.1, 4.8, 4.10, 6.1, 7.2, 7.4
+        }
+        /* solhint-enable no-empty-blocks */
+        
+        // Additional condition
+        /* This is collected after executing the effect, so this 
+           is equivalent to SUM(stakes) - withdrawal */
+        bool enoughStake = data.getPoolTotalStakeQspWei(poolIndex) >= data.getPoolMinStakeQspWei(poolIndex);
 
-            // actual transfer
-            safeTransferFromDataContract(msg.sender, totalQspWeiTransfer);
-            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
-            // update the pool state if necessary
-            if (state != QuantstampStakingData.PoolState.PolicyExpired &&
-                data.getPoolMinStakeQspWei(poolIndex) > data.getPoolTotalStakeQspWei(poolIndex)) {
-                setState(poolIndex, QuantstampStakingData.PoolState.Cancelled);
-            }
+        // Transition: Retains state in 1.1, 2.4, 3.1, 6.1, 7.2
+        if (S2_NotViolatedUnderfunded == s && !expired && violated && enoughStake) {    // 2.7
+            setState(poolIndex, S3_ViolatedUnderfunded);
+        } else if (S4_NotViolatedFunded == s && !expired && violated) {                 // 4.5
+            setState(poolIndex, S5_ViolatedFunded);
+        } else if (S2_NotViolatedUnderfunded == s && expired && !expiredTwice           // 2.15
+            || S4_NotViolatedFunded == s && expired && !expiredTwice) {                 // 4.10
+            setState(poolIndex, S7_PolicyExpired);
+        } else if (S1_Initialized == s && (timedout || violated)                        // 1.5
+            || S2_NotViolatedUnderfunded == s && expiredTwice                           // 2.14a
+            || S2_NotViolatedUnderfunded == s && !expired && !enoughStake               // 2.13
+            || S4_NotViolatedFunded == s && expiredTwice                                // 4.8
+            || S7_PolicyExpired == s && expiredTwice) {                                 // 7.4
+            setState(poolIndex, S6_Cancelled);
         }
     }
 
@@ -869,5 +886,28 @@ contract QuantstampStaking is Ownable {
         data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
         data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
+    }
+
+    /** Allows the staker to withdraw all their stakes from the pool.
+    * @param poolIndex - the index of the pool from which the stake is withdrawn
+    */
+    function withdrawStakeEffect(uint poolIndex) internal {
+
+        uint totalQspWeiTransfer = data.getTotalStakes(poolIndex, msg.sender);
+
+        if (totalQspWeiTransfer > 0) { // transfer the stake back
+            uint stakeCount = data.getStakeCount(poolIndex, msg.sender);
+            uint totalSizeChangeQspWei = 0;
+            for (uint i = 0; i < stakeCount; i++) {
+                totalSizeChangeQspWei = totalSizeChangeQspWei.add(
+                    calculateStakeAmountWithBonuses(poolIndex, msg.sender, i));
+            }
+            data.removeStake(poolIndex, msg.sender);
+            data.setPoolSizeQspWei(poolIndex, data.getPoolSizeQspWei(poolIndex).sub(totalSizeChangeQspWei));
+
+            // actual transfer
+            safeTransferFromDataContract(msg.sender, totalQspWeiTransfer);
+            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
+        }
     }
 }
