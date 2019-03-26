@@ -941,15 +941,17 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     assert.isTrue(await purplePoolParams.contractPolicy.isViolated(purplePoolParams.candidateContract.address));
     // should not allow stakeholder2 who is not the owner of this pool to withdraw the claim
     await Util.assertTxFail(qspb.withdrawClaim(purplePoolParams.index, {from : stakeholder2}));
-    // should not allow staker4 to withdraw their stake after the policy is violated
-    await Util.assertTxFail(qspb.withdrawStake(purplePoolParams.index, {from : staker4}));
+    // should not allow staker4 to withdraw their stake after the policy is violated, but should not fail
+    // should change status to ViolatedFunded
+    await qspb.withdrawStake(purplePoolParams.index, {from : staker4});
+    assert.equal((await qspb.getPoolState(purplePoolParams.index)).toNumber(), PoolState.ViolatedFunded);
+    purplePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // should allow stakeholder3 who is the owner of the pool to withdraw the claim
     await qspb.withdrawClaim(purplePoolParams.index, {from : stakeholder3});
     // the balance of the Assurance contract should be reduced
     balanceOfQspb = balanceOfQspb.minus(purplePoolParams.depositQspWei).minus(purplePoolParams.totalStakeQspWei);
     // the pool should be set in the violatedFunded state and the deposit and stakes should be set to 0
     purplePoolParams.state = PoolState.ViolatedFunded;
-    purplePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     purplePoolParams.depositQspWei = new BigNumber(0);
     purplePoolParams.totalStakeQspWei = new BigNumber(0);
     purplePoolParams.poolSizeQspWei = new BigNumber(0);
