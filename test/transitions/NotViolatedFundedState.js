@@ -727,9 +727,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -743,9 +742,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 31; 
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -758,9 +756,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -774,9 +771,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 31;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -794,9 +790,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -815,9 +810,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 31;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, 0);
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.PolicyExpired);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.PolicyExpired);
       }
     );
 
@@ -835,9 +829,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 27;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when this does not fail
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -856,9 +849,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         const toStake = 31;
         await token.approve(qspb.address, toStake, {from : staker});
         await mineUntilMinStakingTime(poolId, pool.minStakeTimeInBlocks);
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.Cancelled);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.Cancelled);
       }
     );
 
@@ -901,9 +893,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await policy.updateStatus(true);
         const toStake = 6;
         await token.approve(qspb.address, toStake, {from : staker});
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
 
@@ -921,9 +912,8 @@ contract('NotViolatedFundedState.js: check transitions', function(accounts) {
         await policy.updateStatus(true);
         const toStake = 6;
         await token.approve(qspb.address, toStake, {from : staker});
-        // todo(mderka): uncomment when the modifier is removed
-        // await qspb.stakeFunds(poolId, toStake, {from : staker});
-        // await assertPoolState(poolId, PoolState.ViolatedFunded);
+        await qspb.stakeFunds(poolId, toStake, {from : staker});
+        await assertPoolState(poolId, PoolState.ViolatedFunded);
       }
     );
   });

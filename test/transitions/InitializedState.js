@@ -510,10 +510,9 @@ contract('InitializedState.js: check transitions', function(accounts) {
     it("1.5 cancel if policy is violated",
       async function() {
         await policy.updateStatus(true);
-        // todo(mderka): uncomment when the modifier is removed
-        // await token.approve(qspb.address, 7, {from : staker});
-        // await qspb.stakeFunds(firstPoolId, 7, {from : staker});
-        // await assertPoolState(firstPoolId, PoolState.Cancelled);
+        await token.approve(qspb.address, 7, {from : staker});
+        await qspb.stakeFunds(firstPoolId, 7, {from : staker});
+        await assertPoolState(firstPoolId, PoolState.Cancelled);
       }
     );
 
