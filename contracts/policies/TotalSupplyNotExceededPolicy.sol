@@ -5,23 +5,17 @@ import "../test/CandidateToken.sol";
 
 
 /// @title TotalSupplyNotExceededPolicy - the policy is violated if too many coins are minted
-
 contract TotalSupplyNotExceededPolicy is IPolicy {
-
     uint256 public maximumSupply;
 
     constructor(
-      uint256 max
+        uint256 max
     ) public {
-      maximumSupply =  max;
+        maximumSupply = max;
     }
 
     function isViolated(address contractAddress) external view returns(bool) {
-      CandidateToken candidateToken = CandidateToken(contractAddress);
-      if (candidateToken.totalSupply() > maximumSupply) {
-          return true;
-      } else {
-          return false;
-      }
+        CandidateToken candidateToken = CandidateToken(contractAddress);
+        return candidateToken.totalSupply() > maximumSupply;
     }
 }
