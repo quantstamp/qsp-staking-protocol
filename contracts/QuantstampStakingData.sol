@@ -51,7 +51,7 @@ contract QuantstampStakingData is Ownable {
         PoolState state; // the current state of the pool
         uint totalStakeQspWei; // total amount of stake contributed so far
         uint poolSizeQspWei; // the size of all stakes in this pool together with the bonuses awarded for experts
-        uint stakeCount; // the total number of stakes in the pool
+        uint stakeCount; // the total number of stakes ever made in the pool, including stakes that have been withdrawn
         string poolName; // an alphanumeric string defined by the pool owner
         uint maxTotalStakeQspWei; // The maximum amount that can be staked in this pool
         uint minStakeStartBlock; // The block number since which the pool has been active
