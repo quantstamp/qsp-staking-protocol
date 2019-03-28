@@ -8,7 +8,6 @@ const QuantstampParameterizer = artifacts.require('test/Parameterizer');
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const ZeroBalancePolicy = artifacts.require('ZeroBalancePolicy');
 const CandidateContract = artifacts.require('CandidateContract');
-const CandidateAndPolicyContract = artifacts.require('CandidateAndPolicyContract');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require('./util.js');
@@ -728,21 +727,6 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(await quantstampStakingData.getPoolTotalStakeQspWei(currentPoolIndex-2), 0);
       assert.equal(await quantstampStakingData.getPoolStakeCount(currentPoolIndex-2), 0);
       assert.equal(await quantstampStakingData.getPoolSizeQspWei(currentPoolIndex-2), 0);
-    });
-
-    it("should allow staking in a pool when candidate contract and policy contract have the same address", async function () {
-      const candidateAndPolicyContract = await CandidateAndPolicyContract.new(quantstampStakingData.address);
-      await qspb.createPool(candidateAndPolicyContract.address, candidateAndPolicyContract.address, maxPayoutQspWei, minStakeQspWei,
-        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, yetAnotherLimitedPoolName, maxStakeQspWei, {from: poolOwner});
-      currentPoolNumber = await quantstampStakingData.getPoolsLength();
-      currentPoolIndex = currentPoolNumber - 1;
-      const balanceOfStakerOneBeforeStake = await Util.balanceOf(quantstampToken, staker);
-      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker});
-      const balanceOfStakerOneAfterStake = await Util.balanceOf(quantstampToken, staker);
-      const expectedBalanceOfStaker = (new BigNumber(balanceOfStakerOneBeforeStake)).sub(minStakeQspWei);
-      assert.isTrue((new BigNumber(expectedBalanceOfStaker)).eq(new BigNumber(balanceOfStakerOneAfterStake)));
-      assert.equal((await quantstampStakingData.getPoolTotalStakeQspWei(currentPoolIndex)).toNumber(), minStakeQspWei);
     });
   });
 
