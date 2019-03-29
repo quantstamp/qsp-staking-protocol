@@ -6,8 +6,8 @@ pragma solidity 0.4.24;
 }
 
 */
-contract Staking {
-    function getPoolState(uint256) external view returns(uint256) { return 15; }
+interface Staking {
+    function getPoolState(uint256) external view returns(uint256);// { return 15; }
 }
 
 
