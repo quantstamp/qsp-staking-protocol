@@ -1,26 +1,26 @@
 pragma solidity 0.4.24;
 
 
-interface IPolicy {
+/*interface IPolicy {
     function isViolated(address contractAddress) external view returns(bool);
 }
 
 
 interface Staking {
     function getPoolState(uint256) external view returns(uint256);
-}
+}*/
 
 
-contract CandidateAndPolicyContract is IPolicy {
-    uint256 public constant CANCELLED = 6;  // the pool state corresponding to "Cancelled"
+contract CandidateAndPolicyContract {
+    //uint256 public constant CANCELLED = 6;  // the pool state corresponding to "Cancelled"
     address quantstamp_staking;
-    uint256 insuredPool = 0;
+    //uint256 insuredPool = 0;
 
     constructor(address addr) public { 
         quantstamp_staking = addr;
     }
 
-    function checkPolicyStatus(uint policyId) public view returns (uint256) {
+    /* function checkPolicyStatus(uint policyId) public view returns (uint256) {
         return Staking(quantstamp_staking).getPoolState(policyId);
     }
 
@@ -31,5 +31,5 @@ contract CandidateAndPolicyContract is IPolicy {
 
     function isViolated(address contractAddress) public view returns (bool) {
         return checkIfPoolCancelled(insuredPool);
-    }
+    }*/
 }
