@@ -80,7 +80,7 @@ function dec2bin(dec){
 var World = function() {
   this.agents = [];
   this.clock = 0;
-}
+};
 
 World.prototype = {
   tick: async function() {
@@ -115,12 +115,12 @@ World.prototype = {
     }
     
     // let the agents behave in the world based on their input
-    for (var i = 0, n = this.agents.length; i < n; i++) {
+    for (i = 0; i < this.agents.length; i++) {
       await this.agents[i].forward();
     }
 
     // apply outputs of agents on evironment
-    for (var i = 0, n = this.agents.length; i < n; i++) {
+    for (i = 0; i < this.agents.length; i++) {
       var a = this.agents[i];
       var tmp = a.action % numberOfMultipliers;
       var pool = Math.floor(tmp/numberOfMethods);
@@ -156,7 +156,7 @@ World.prototype = {
     }
     
     // agents are given the opportunity to learn based on feedback of their action on environment
-    for (var i = 0, n = this.agents.length; i < n; i++) {
+    for (i = 0; i < this.agents.length; i++) {
       await this.agents[i].backward();
     }
 
@@ -166,7 +166,7 @@ World.prototype = {
     }
     console.error(csv_row);
   }
-}
+};
 
 // Eye sensor senses pools based on index
 var Eye = function(quantstampStakingData, poolIndex) {
@@ -179,7 +179,7 @@ var Eye = function(quantstampStakingData, poolIndex) {
     this.minStakeTimeInBlocks = (await quantstampStakingData.getPoolMinStakeTimeInBlocks(poolIndex)).toNumber();
     return this;
   })();
-}
+};
 
 // A single agent
 var Agent = function(id, stakerAddress, budget, eyes) {
@@ -197,7 +197,7 @@ var Agent = function(id, stakerAddress, budget, eyes) {
   // This also means that if in the World we have 5 pools there are 2^5-1 possible states.
   this.state = 0;
   this.numberOfStates = 2**numberOfPools;
-}
+};
 
 Agent.prototype = {
 
@@ -245,15 +245,15 @@ Agent.prototype = {
     for (var i = 0; i < numberOfPools; i++) {
       csv_head += " WithdrawInterestAgent" + this.id + " PoolId";
       try {
-          if (eyes[i].minStakeStartBlock > 0
-            && (eyes[i].state == PoolState.NotViolatedFunded
-            || eyes[i].state == PoolState.NotViolatedUnderfunded)) {
-            await qspb.withdrawInterest(i, {from : this.address});
-            console.log("Agent " + this.id + " withdrew interest from pool " + i);
-            csv_row += " 1 " + i;
-          } else {
-            csv_row += " 0 " + i;
-          }
+        if (eyes[i].minStakeStartBlock > 0
+          && (eyes[i].state == PoolState.NotViolatedFunded
+          || eyes[i].state == PoolState.NotViolatedUnderfunded)) {
+          await qspb.withdrawInterest(i, {from : this.address});
+          console.log("Agent " + this.id + " withdrew interest from pool " + i);
+          csv_row += " 1 " + i;
+        } else {
+          csv_row += " 0 " + i;
+        }
       } catch (err) {
         console.log("Agent " + this.id + " cannot withdraw interest from pool " + i + " " + err.message);
         csv_row += " -1 " + i;
@@ -284,7 +284,7 @@ Agent.prototype = {
     this.brain.learn(reward - this.last_reward);
     this.last_reward = reward; // for visualization
   }
-}
+};
 
 contract('QuantstampStaking: complex functional test', function(accounts) {
   async function instantiatePool(qspb, poolParams) {
@@ -345,10 +345,10 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   const stakeholder3 = accounts[3]; // purple pool
   const qspAdmin = accounts[4]; // QSP token owner
   const staker = [accounts[5], // expert staker
-                  accounts[6], // expert staker
-                  accounts[7], // non-expert staker
-                  accounts[8], // non-expert staker
-                  accounts[9]]; // expert staker
+    accounts[6], // expert staker
+    accounts[7], // non-expert staker
+    accounts[8], // non-expert staker
+    accounts[9]]; // expert staker
   // The following values are random, but large enough for the simulation to run numberOfIterations.
   const stakeholder1Budget = new BigNumber(Util.toQsp(154531));
   const stakeholder2Budget = new BigNumber(Util.toQsp(543213));
@@ -366,10 +366,10 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
   const staker5StakeWhitePool = new BigNumber(Util.toQsp(296));
   
   const stakerBudget = [staker1StakeOrangePool.plus(staker1StakeWhitePool).plus(staker1StakeBluePool).plus(minDeposit),
-                        staker2StakeOrangePool.plus(staker2StakePurplePool).plus(minDeposit),
-                        staker3StakeGrayPool,
-                        staker4StakeOrangePool.plus(staker4StakePurplePool),
-                        staker5StakeOrangePool.plus(staker5StakeGrayPool).plus(staker5StakeWhitePool).plus(minDeposit)];
+    staker2StakeOrangePool.plus(staker2StakePurplePool).plus(minDeposit),
+    staker3StakeGrayPool,
+    staker4StakeOrangePool.plus(staker4StakePurplePool),
+    staker5StakeOrangePool.plus(staker5StakeGrayPool).plus(staker5StakeWhitePool).plus(minDeposit)];
   
   // Orange Pool params
   let orangePoolParams = {
@@ -504,7 +504,7 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
     await quantstampParameterizer.init(quantstampToken.address, voting.address, TCRUtil.parameters);
     quantstampRegistry = await QuantstampStakingRegistry.new();
     await quantstampRegistry.init(quantstampToken.address, voting.address, quantstampParameterizer.address, 'QSPtest');
-    wrapper = await RegistryWrapper.new(quantstampRegistry.address);
+    const wrapper = await RegistryWrapper.new(quantstampRegistry.address);
     // enable transfers before any payments are allowed
     await quantstampToken.enableTransfer({from : owner});
     // award budget to staker1
@@ -659,17 +659,16 @@ contract('QuantstampStaking: complex functional test', function(accounts) {
       eyes.push(await new Eye(quantstampStakingData, k)); 
     }
     // The world contains agents which interact with the protocol
-    w = new World();
+    var w = new World();
     w.agents = [];
-    for(var k = 0; k < numberOfAgents; k++) {
+    for(k = 0; k < numberOfAgents; k++) {
       var a = new Agent(k, staker[k], stakerBudget[k], eyes);
-      env = a;
       // Termporal-Difference Reinforcement Learning
-      a.brain = new RL.TDSolver(env, opt);
+      a.brain = new RL.TDSolver(a, opt);
       w.agents.push(a);
     }
     // Each agent in the world can do one protocol interaction per iteration
-    for (var k = 0; k < numberOfIterations; k++) {
+    for (k = 0; k < numberOfIterations; k++) {
       await w.tick();
     }
   });
