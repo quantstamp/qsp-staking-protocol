@@ -189,7 +189,7 @@ var Agent = function(id, stakerAddress, budget, eyes) {
   this.balance = budget;
   // set from outside
   this.brain = null; 
-  this.last_reward = 0;
+  this.last_balance = 0;
   this.action = -1;
   // A state encoded as a binary number with the number of bits equal to the number of pools, 
   // indicates if the agent (staker) has placed a stake in a pool or not based on the bit's index. 
@@ -261,28 +261,21 @@ Agent.prototype = {
     }
   },
   backward: async function() {
+    // Reward function. This should be adapted to an accurate model of incentives
+    var reward = 0;
     this.balance = await Util.balanceOf(quantstampToken, this.address);
-    var investment = 0;
-    var num_eyes = this.eyes.length;
-    for(var i = 0; i < num_eyes; i++) {
-      console.log("\t Agent " + this.id + " pool " + i + " condition " + ((this.state & (1 << i)) != 0) + " AND " + (this.state & (1 << i)));
-      if ((this.state & (1 << i)) != 0) {
-        var e = this.eyes[i];
-        console.log("\t Agent " + this.id + " pool " + i + " maxPayoutQspWei " + e.maxPayoutQspWei);
-        console.log("\t Agent " + this.id + " pool " + i + " stakeCount " + e.stakeCount);
-        console.log("\t Agent " + this.id + " pool " + i + " payPeriodInBlocks " + e.payPeriodInBlocks);
-        console.log("\t Agent " + this.id + " pool " + i + " bonusExpertFactor " + e.bonusExpertFactor);
-        // Reward function part 1. This can be tuned according to whatever incentive model is more appropriate.
-        investment += (((e.maxPayoutQspWei/(e.stakeCount+1))/e.payPeriodInBlocks)*(100+e.bonusExpertFactor))/100;
-      }
+
+    if (this.action % numberOfMethods == 0) { // action was stakeFunds
+      var e = this.eyes[(this.action % numberOfMultipliers) / numberOfMethods];
+      reward = (((e.maxPayoutQspWei/(e.stakeCount+1))/e.payPeriodInBlocks)*(100+e.bonusExpertFactor))/100;
+    } else { // action was withdrawStake
+      reward = this.balance - this.last_balance;
     }
-    // Reward function continued (part 2)
-    var reward = this.balance + investment;
-    console.log("Agent " + this.id + " gets reward: " + (reward - this.last_reward));
-    csv_row += " " + (reward - this.last_reward) + " " + this.balance;
+    console.log("Agent " + this.id + " gets reward: " + reward);
+    csv_row += " " + reward + " " + this.balance;
     csv_head += " RewardAgent" + this.id + " BalanceAgent" + this.id;
-    this.brain.learn(reward - this.last_reward);
-    this.last_reward = reward; // for visualization
+    this.brain.learn(reward);
+    this.last_balance = this.balance;
   }
 };
 
