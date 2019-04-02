@@ -14,6 +14,7 @@
     "ethjs-rpc": "0.2.0",
     "ganache-cli": "6.2.3",
     "openzeppelin-solidity": "2.0.0",
+    "reinforce-js": "1.5.1",
     "sol-tcr": "0.0.2",
     "solidity-coverage": "0.5.11",
     "truffle": "4.1.11",
