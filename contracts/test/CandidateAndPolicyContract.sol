@@ -10,23 +10,16 @@ interface Staking {
 
 contract CandidateAndPolicyContract is IPolicy {
     uint256 public constant CANCELLED = 6;  // the pool state corresponding to "Cancelled"
-    Staking quantstamp_staking;
-    uint256 insuredPool = 0;
+    Staking quantstampStaking;
+    uint256 poolId;
 
-    constructor(address addr) public { 
-        quantstamp_staking = Staking(addr);
-    }
-
-    function checkPolicyStatus(uint policyId) public view returns (uint256) {
-        return quantstamp_staking.getPoolState(policyId);
-    }
-
-    function checkIfPoolCancelled(uint policyId) public view returns (bool) {
-        uint256 poolState = checkPolicyStatus(policyId);
-        return poolState == CANCELLED;
+    constructor(address addr, uint256 id) public { 
+        quantstampStaking = Staking(addr);
+        poolId = id;
     }
 
     function isViolated(address contractAddress) public view returns (bool) {
-        return checkIfPoolCancelled(insuredPool);
+        uint256 poolState = quantstampStaking.getPoolState(poolId);
+        return poolState == CANCELLED;
     }
 }

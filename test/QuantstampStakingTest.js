@@ -731,7 +731,7 @@ contract('QuantstampStaking', function(accounts) {
     });
 
     it("should allow staking in a pool when candidate contract and policy contract have the same address", async function () {
-      const candidateAndPolicyContract = await CandidateAndPolicyContract.new(quantstampStakingData.address);
+      const candidateAndPolicyContract = await CandidateAndPolicyContract.new(quantstampStakingData.address, 0);
       await qspb.createPool(candidateAndPolicyContract.address, candidateAndPolicyContract.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, yetAnotherLimitedPoolName, maxStakeQspWei, {from: poolOwner});
