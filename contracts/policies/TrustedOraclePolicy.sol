@@ -28,7 +28,7 @@ contract TrustedOraclePolicy is IPolicy {
 
     /** This function can only be called by the trusted oracle and it shold only be called
      * when a policy violation occured.
-     * @param contractAddress - The address of the contract for which the policy violation occured.
+     * @param _contractAddress - The address of the contract for which the policy violation occured.
      */
     function triggerViolation(address _contractAddress) external onlyTrustedOracle() {
         policyViolated[_contractAddress] = true;
@@ -38,7 +38,7 @@ contract TrustedOraclePolicy is IPolicy {
      * If the given contract address is not being monitored by the trusted oracle in this policy,
      * then this function will always return false even if the policy is violated. It is the responsibility
      * of the pool owner to make sure that this contract address is being monitored by the oracle.
-     * @param contractAddress - The address of the contract for which the policy status is to be checked.
+     * @param _contractAddress - The address of the contract for which the policy status is to be checked.
      * @return True if the policy is violated, false otherwise.
      */
     function isViolated(address _contractAddress) external view returns(bool) {
