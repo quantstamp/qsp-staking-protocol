@@ -41,9 +41,6 @@ contract QuantstampStaking is Ownable {
     // Signals that a stakeholder has withdrawn the deposit
     event DepositWithdrawn(uint poolIndex, address actor, uint amountQspWei);
 
-    // Signals that a staker has claimed a refund
-    event StakerRefundClaimed(uint poolIndex, address staker, uint amountQspWei);
-
     // Signals that a stakeholder has withdrawn a claim
     event ClaimWithdrawn(uint poolId, uint balanceQspWei);
 
@@ -58,9 +55,6 @@ contract QuantstampStaking is Ownable {
 
     // Signals that the state of the pool has changed
     event StateChanged(uint poolIndex, QuantstampStakingData.PoolState state);
-
-    // Signals that the payout block was updated
-    event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
     // Indicates registry update
     event RegistryUpdated(address newRegistry);
@@ -839,7 +833,6 @@ contract QuantstampStaking is Ownable {
 
                 if (numberOfPayouts > 0) {
                     data.setStakeLastPayoutBlock(poolIndex, staker, i, block.number);
-                    emit LastPayoutBlockUpdate(poolIndex, staker);
                 }
             }
             safeTransferFromDataContract(staker, payout);
