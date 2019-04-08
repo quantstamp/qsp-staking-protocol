@@ -20,7 +20,9 @@ change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json
     - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-1-meta.json
     - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-1-abi.json
 
-To access other contracts, substitute the corresponding contract name in the URLs above. For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract , where `{address}` is `contractAddress` copied from the corresponding metadata file.
+To access other contracts, substitute the corresponding contract name in the URLs above.
+
+For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract , where `{address}` is `contractAddress` copied from the corresponding metadata file.
 
 ## Run locally
 ### Requirements
