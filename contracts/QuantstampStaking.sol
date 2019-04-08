@@ -41,26 +41,20 @@ contract QuantstampStaking is Ownable {
     // Signals that a stakeholder has withdrawn the deposit
     event DepositWithdrawn(uint poolIndex, address actor, uint amountQspWei);
 
-    // Signals that a staker has claimed a refund
-    event StakerRefundClaimed(uint poolIndex, address staker, uint amountQspWei);
-
     // Signals that a stakeholder has withdrawn a claim
-    event ClaimWithdrawn(uint poolId, uint balanceQspWei);
+    event ClaimWithdrawn(uint poolIndex, address actor, uint amountQspWei);
 
     // Signals that staker has staked amountQspWei at poolIndex
     event StakePlaced(uint poolIndex, address staker, uint amountQspWei);
 
     // Signals that a stake has been withdrawn
-    event StakeWithdrawn(uint poolIndex, address staker, uint amountWithdrawnQspWei);
+    event StakeWithdrawn(uint poolIndex, address staker, uint amountQspWei);
 
     // Signals that a staker has received a payout
-    event StakerReceivedPayout(uint poolIndex, address staker, uint amount);
+    event StakerReceivedPayout(uint poolIndex, address staker, uint amountQspWei);
 
     // Signals that the state of the pool has changed
     event StateChanged(uint poolIndex, QuantstampStakingData.PoolState state);
-
-    // Signals that the payout block was updated
-    event LastPayoutBlockUpdate(uint poolIndex, address staker);
 
     // Indicates registry update
     event RegistryUpdated(address newRegistry);
@@ -839,12 +833,11 @@ contract QuantstampStaking is Ownable {
 
                 if (numberOfPayouts > 0) {
                     data.setStakeLastPayoutBlock(poolIndex, staker, i, block.number);
-                    emit LastPayoutBlockUpdate(poolIndex, staker);
                 }
             }
             safeTransferFromDataContract(staker, payout);
-            emit StakerReceivedPayout(poolIndex, staker, payout);
         }
+        emit StakerReceivedPayout(poolIndex, staker, payout);
     }
 
     /**
@@ -882,8 +875,8 @@ contract QuantstampStaking is Ownable {
             data.setPoolSizeQspWei(poolIndex, 0);
 
             safeTransferFromDataContract(data.getPoolOwner(poolIndex), total);
-            emit ClaimWithdrawn(poolIndex, total);
         }
+        emit ClaimWithdrawn(poolIndex, msg.sender, total);
     }
 
     /**
@@ -950,7 +943,7 @@ contract QuantstampStaking is Ownable {
 
             // actual transfer
             safeTransferFromDataContract(msg.sender, totalQspWeiTransfer);
-            emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
         }
+        emit StakeWithdrawn(poolIndex, msg.sender, totalQspWeiTransfer);
     }
 }
