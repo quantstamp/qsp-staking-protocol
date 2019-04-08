@@ -24,7 +24,7 @@ module.exports = {
     dev: { // deploys to Ropsten (Dev stage)
       provider: function() {
         const credentials = require("./credentials.js");
-        return new HDWalletProvider(credentials.mnemonic, `https://ropsten.infura.io/v3${credentials.infura_apikey}`);
+        return new HDWalletProvider(credentials.mnemonic, `https://ropsten.infura.io/v3/${credentials.infura_apikey}`);
       },
       network_id: 3,
       gas: 6712388,
