@@ -280,48 +280,6 @@ Agent.prototype = {
 };
 
 contract('QuantstampStaking: simulation script using smart agents', function(accounts) {
-  async function instantiatePool(qspb, poolParams) {
-    await qspb.createPool(poolParams.candidateContract.address,
-      poolParams.contractPolicy.address,
-      poolParams.maxPayoutQspWei,
-      poolParams.minStakeQspWei,
-      poolParams.depositQspWei,
-      poolParams.bonusExpertFactor,
-      poolParams.bonusFirstExpertFactor,
-      poolParams.payPeriodInBlocks,
-      poolParams.minStakeTimeInBlocks,
-      poolParams.timeoutInBlocks,
-      poolParams.urlOfAuditReport,
-      poolParams.poolName,
-      poolParams.maxTotalStake,
-      {from: poolParams.owner});
-  }
-
-  async function assertEntirePoolState(poolParams, balanceOfQspb) {
-    assert.equal(poolParams.candidateContract.address, await quantstampStakingData.getPoolCandidateContract(poolParams.index));
-    assert.equal(poolParams.contractPolicy.address, await quantstampStakingData.getPoolContractPolicy(poolParams.index));
-    assert.equal(poolParams.owner, await quantstampStakingData.getPoolOwner(poolParams.index));
-    assert.equal(poolParams.maxPayoutQspWei.toNumber(), (await quantstampStakingData.getPoolMaxPayoutQspWei(poolParams.index)).toNumber());
-    assert.equal(poolParams.minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolMinStakeQspWei(poolParams.index)).toNumber());
-    assert.equal(poolParams.depositQspWei.toNumber(), (await quantstampStakingData.getPoolDepositQspWei(poolParams.index)).toNumber());
-    assert.equal(poolParams.bonusExpertFactor.toNumber(), (await quantstampStakingData.getPoolBonusExpertFactor(poolParams.index)).toNumber());
-    assert.equal(poolParams.bonusFirstExpertFactor.toNumber(), (await quantstampStakingData.getPoolBonusFirstExpertFactor(poolParams.index)).toNumber());
-    assert.equal(poolParams.firstExpertStaker, await quantstampStakingData.getPoolFirstExpertStaker(poolParams.index));
-    assert.equal(poolParams.payPeriodInBlocks.toNumber(), (await quantstampStakingData.getPoolPayPeriodInBlocks(poolParams.index)).toNumber());
-    assert.equal(poolParams.minStakeTimeInBlocks.toNumber(), (await quantstampStakingData.getPoolMinStakeTimeInBlocks(poolParams.index)).toNumber());
-    assert.equal(poolParams.timeoutInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeoutInBlocks(poolParams.index)).toNumber());
-    assert.equal(poolParams.timeOfStateInBlocks.toNumber(), (await quantstampStakingData.getPoolTimeOfStateInBlocks(poolParams.index)).toNumber());
-    assert.equal(poolParams.urlOfAuditReport, await quantstampStakingData.getPoolUrlOfAuditReport(poolParams.index));
-    assert.equal(poolParams.state, await quantstampStakingData.getPoolState(poolParams.index));
-    assert.equal(poolParams.totalStakeQspWei.toNumber(), (await quantstampStakingData.getPoolTotalStakeQspWei(poolParams.index)).toNumber());
-    assert.equal(poolParams.poolSizeQspWei.toNumber(), (await quantstampStakingData.getPoolSizeQspWei(poolParams.index)).toNumber());
-    assert.equal(poolParams.stakeCount.toNumber(), (await quantstampStakingData.getPoolStakeCount(poolParams.index)).toNumber());
-    assert.equal(poolParams.poolName, await quantstampStakingData.getPoolName(poolParams.index));
-    assert.equal(poolParams.maxTotalStake, (await quantstampStakingData.getPoolMaxTotalStakeQspWei(poolParams.index)).toNumber());
-    assert.equal(balanceOfQspb.toNumber(), (await quantstampStakingData.balanceQspWei.call()));
-    return true;
-  }
-
   let quantstampRegistry;
   let quantstampParameterizer;
   let voting;
@@ -555,7 +513,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // quick check that balance is zero
     assert.equal(balanceOfQspb.toNumber(), (await qspb.getBalanceQspWei()));
     // create orange pool
-    await instantiatePool(qspb, orangePoolParams);
+    await Util.instantiatePool(qspb, orangePoolParams);
     // update the time when the status of the pool changed
     orangePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that the current number of pools is one
@@ -565,7 +523,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // the balance of the Assurance contract should be increased by the amount deposited in the orange pool
     balanceOfQspb = balanceOfQspb.plus(orangePoolParams.depositQspWei);
     // check that all pool properties are as expected
-    await assertEntirePoolState(orangePoolParams, balanceOfQspb);
+    await Util.assertEntirePoolState(orangePoolParams, balanceOfQspb, quantstampStakingData);
   });
 
   it("should create the Gray Pool according to the specified parameters", async function() {
@@ -576,7 +534,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     await quantstampToken.transfer(grayPoolParams.owner, stakeholder2Budget, {from : owner});
     await quantstampToken.approve(qspb.address, stakeholder2Budget, {from : grayPoolParams.owner});
     // create pool
-    await instantiatePool(qspb, grayPoolParams);
+    await Util.instantiatePool(qspb, grayPoolParams);
     // update the time when the status of the pool changed
     grayPoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that the current number of pools is one
@@ -586,7 +544,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // the balance of the Assurance contract should be increased by the amount deposited in the gray pool
     balanceOfQspb = balanceOfQspb.plus(grayPoolParams.depositQspWei);
     // check that all pool properties are as expected
-    await assertEntirePoolState(grayPoolParams, balanceOfQspb);
+    await Util.assertEntirePoolState(grayPoolParams, balanceOfQspb, quantstampStakingData);
   });
 
   it("should create the White Pool according to the specified parameters", async function() {
@@ -594,7 +552,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     whitePoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : whitePoolParams.owner});
     whitePoolParams.contractPolicy = await OwnerNotChangedPolicy.new(whitePoolParams.owner);
     // create pool
-    await instantiatePool(qspb, whitePoolParams);
+    await Util.instantiatePool(qspb, whitePoolParams);
     // update the time when the status of the pool changed
     whitePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that the current number of pools is one
@@ -604,7 +562,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // the balance of the Assurance contract should be increased by the amount deposited in the white pool
     balanceOfQspb = balanceOfQspb.plus(whitePoolParams.depositQspWei);
     // check that all pool properties are as expected
-    await assertEntirePoolState(whitePoolParams, balanceOfQspb);
+    await Util.assertEntirePoolState(whitePoolParams, balanceOfQspb, quantstampStakingData);
   });
 
   it("should create the Purple Pool according to the specified parameters", async function() {
@@ -615,7 +573,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     await quantstampToken.transfer(purplePoolParams.owner, stakeholder3Budget, {from : owner});
     await quantstampToken.approve(qspb.address, stakeholder3Budget, {from : purplePoolParams.owner});
     // create pool
-    await instantiatePool(qspb, purplePoolParams);
+    await Util.instantiatePool(qspb, purplePoolParams);
     // update the time when the status of the pool changed
     purplePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that the current number of pools is one
@@ -625,7 +583,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // the balance of the Assurance contract should be increased by the amount deposited in the purple pool
     balanceOfQspb = balanceOfQspb.plus(purplePoolParams.depositQspWei);
     // check that all pool properties are as expected
-    await assertEntirePoolState(purplePoolParams, balanceOfQspb);
+    await Util.assertEntirePoolState(purplePoolParams, balanceOfQspb, quantstampStakingData);
   });
 
   it("should create the Blue Pool according to the specified parameters", async function() {
@@ -633,7 +591,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     bluePoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : bluePoolParams.owner});
     bluePoolParams.contractPolicy = await OwnerNotChangedPolicy.new(bluePoolParams.owner);
     // create pool
-    await instantiatePool(qspb, bluePoolParams);
+    await Util.instantiatePool(qspb, bluePoolParams);
     // update the time when the status of the pool changed
     bluePoolParams.timeOfStateInBlocks = new BigNumber((await web3.eth.getBlock("latest")).number);
     // check that the current number of pools is one
@@ -643,10 +601,11 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // the balance of the Assurance contract should be increased by the amount deposited in the blue pool
     balanceOfQspb = balanceOfQspb.plus(bluePoolParams.depositQspWei);
     // check that all pool properties are as expected
-    await assertEntirePoolState(bluePoolParams, balanceOfQspb);
+    await Util.assertEntirePoolState(bluePoolParams, balanceOfQspb, quantstampStakingData);
   });
 
   it("should do the simulation", async function() {
+    this.timeout(1000000000)
     // The eyes are the sensors which observe the parameters of all pools
     for(var k = 0; k < numberOfPools; k++) { 
       eyes.push(await new Eye(quantstampStakingData, k)); 
