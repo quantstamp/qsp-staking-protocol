@@ -279,7 +279,7 @@ Agent.prototype = {
   }
 };
 
-contract('QuantstampStaking: complex functional test', function(accounts) {
+contract('QuantstampStaking: simulation script using smart agents', function(accounts) {
   async function instantiatePool(qspb, poolParams) {
     await qspb.createPool(poolParams.candidateContract.address,
       poolParams.contractPolicy.address,
