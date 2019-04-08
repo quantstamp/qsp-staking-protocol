@@ -292,7 +292,7 @@ contract('CandidateContract', function(accounts) {
     });
 
     it("should not allow anyone other than the trusted oracle to trigger a violation", async function() {
-      assert.isTrue(trustedOracle != accounts[1]);
+      assert.notEqual(trustedOracle, accounts[1]);
       await Util.assertTxFail(trustedOraclePolicy.triggerViolation(candidateContract.address, {from: accounts[1]}));
     });
 
