@@ -17,6 +17,7 @@ const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
 const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
+const BitcoinPricePolicy = artifacts.require('policies/BitcoinPricePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
@@ -41,6 +42,7 @@ contract('CandidateContract', function(accounts) {
   let neverViolatedPolicy;
   let upgradeablePolicy;
   let valueNotChangedPolicy;
+  let bitcoinPricePolicy;
   let qaPolicy;
   let qspb;
   let quantstampStakingData;
@@ -281,4 +283,19 @@ contract('CandidateContract', function(accounts) {
     });
   });
 
+  describe('BitcoinPricePolicy', () => {
+    it("should not be violated if the price is lower than 1.000.000 USD", async function() {
+      const thresholdPriceUSCents = 100000000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
+      await bitcoinPricePolicy.getAllPrices();
+      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not be violated if the price is higher than 1.000 USD", async function() {
+      const thresholdPriceUSCents = 100000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
+      await bitcoinPricePolicy.getAllPrices();
+      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+  });
 });
