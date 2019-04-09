@@ -16,9 +16,12 @@ change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json
 1. Staking contract:
     - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-meta.json
     - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-abi.json
-1. TCR contract:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-1-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-1-abi.json
+1. Staking data contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-abi.json
+1. Security expert whitelist:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-abi.json
 
 To access other contracts, substitute the corresponding contract name in the URLs above.
 
