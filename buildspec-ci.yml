@@ -9,6 +9,7 @@ phases:
       - echo $PATH
       - truffle version
       - truffle install
+      - truffle install oraclize-api
   build:
     commands:
       - npm run lint
