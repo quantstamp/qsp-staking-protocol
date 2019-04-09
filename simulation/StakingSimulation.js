@@ -605,7 +605,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   });
 
   it("should do the simulation", async function() {
-    this.timeout(1000000000)
+    this.timeout(1000000000);
     // The eyes are the sensors which observe the parameters of all pools
     for(var k = 0; k < numberOfPools; k++) { 
       eyes.push(await new Eye(quantstampStakingData, k)); 
