@@ -56,6 +56,13 @@ const numberOfMultipliers = 10;
 const numberOfActions = 99;
 // Allowed range is 0 to infinity. The number of steps that the simulation is executed before it stops.
 const numberOfIterations = 200;
+// Allowed range is 0 to 1.000.000. The rate at which QSP is seen with respect to a ficticious currency. It can go up/down
+var qspPriceRate = 1000;
+// Allowed range for list values is 1 to numberOfIterations.
+var qspPriceChange = {
+  50 : 100,
+  150 : 10000};
+
 // Modify the following parameters only if you know what you are doing.
 const opt = new RL.TDOpt();
 opt.setUpdate('qlearn'); // or 'sarsa'
@@ -125,8 +132,9 @@ World.prototype = {
       var a = this.agents[i];
       var tmp = a.action % numberOfMultipliers;
       var pool = Math.floor(tmp/numberOfMethods);
-      var amount = (await quantstampStakingData.getPoolMinStakeQspWei(pool)).
+      eyes[pool].lastAmountStaked = (await quantstampStakingData.getPoolMinStakeQspWei(pool)).
         times(Math.floor(a.action / numberOfMultipliers)).toNumber();
+      var amount = eyes[pool].lastAmountStaked;
       csv_head += " Method" + i + " Amount" + i + " PoolId" + i + " Error" + i;
       // execute agent's desired action
       if (tmp % numberOfMethods === 0) { // stakeFunds
@@ -269,14 +277,16 @@ Agent.prototype = {
     if (this.action % numberOfMethods == 0) { // action was stakeFunds
       const poolIndex = (this.action % numberOfMultipliers) / numberOfMethods;
       var e = this.eyes[poolIndex];
-      reward = (((e.maxPayoutQspWei/(e.stakeCount+1))/e.payPeriodInBlocks)*(100+e.bonusExpertFactor))/100;
+      reward = (((e.maxPayoutQspWei / (e.stakeCount + 1)) / e.payPeriodInBlocks) * (100 + e.bonusExpertFactor)) / 100;
       // take risk into account
-      reward = (reward * (100 - poolList[poolIndex].risk))/100;
+      reward = (reward * (100 - poolList[poolIndex].risk) - e.lastAmountStaked * poolList[poolIndex].risk)/100;
       // add bribe
       reward += poolList[poolIndex].bribe;
     } else { // action was withdrawStake
       reward = this.balance - this.last_balance;
     }
+    // apply QSP price rate
+    reward *= qspPriceRate;
     console.log("Agent " + this.id + " gets reward: " + reward);
     csv_row += " " + reward + " " + this.balance;
     csv_head += " RewardAgent" + this.id + " BalanceAgent" + this.id;
@@ -646,20 +656,44 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       w.agents.push(a);
     }
 
-    // Each agent in the world can do one protocol interaction per iteration
-    for (k = 1; k < numberOfIterations; k++) {
+    sortedIterations = [1];
+    // add all keys (representing iterations) in the list
+    for (var i in qspPriceChange) {
+      sortedIterations.push(i);
+    }
+    // add pool violation iterations
+    for (var i = 0; i < numberOfPools; i++) {
+      sortedIterations.push(poolList[i].iterationViolated);
+    }
+    sortedIterations.push(numberOfIterations);
+    // only keep unique elements from list
+    sortedIterations = [...new Set(sortedIterations)];
+    // sort iterations in chronological order
+    sortedIterations = sortedIterations.sort(function(a, b){return a-b});
+    console.log("Sorted List of iterations: " + sortedIterations);
+
+    for (var i = 1; i <= sortedIterations.length; i++) {
+      // Each agent in the world can do one protocol interaction per iteration
+      for (k = sortedIterations[i-1]; k <= sortedIterations[i]; k++) {
+        await w.tick();
+      }
       // Check if any of the pool policies needs to be violated at this iteration
-      for (var i = 0; i < numberOfPools; i++) {
-        if (k == poolList[i].iterationViolated) {
-          await poolList[i].contractPolicy.updateStatus(true);
+      for(var l = 0; l < numberOfPools; l++) {
+        if (sortedIterations[i] == poolList[l].iterationViolated) {
+          await poolList[l].contractPolicy.updateStatus(true);
           // Set the state of the agents such that they don't see their stake in the violated pool anymore
           for (var j = 0; j < w.agents.length; j++) {
             const a = w.agents[j];
-            a.state &= (a.numberOfStates ^ (1 << i));
+            a.state &= (a.numberOfStates ^ (1 << l));
           }
         }
       }
-      await w.tick();
+      // Check if there are any changes in the price of QSP
+      for (l in qspPriceChange) {
+        if (sortedIterations[i] == l) {
+          qspPriceChange = qspPriceChange[l];
+        }
+      }
     }
   });
 });
