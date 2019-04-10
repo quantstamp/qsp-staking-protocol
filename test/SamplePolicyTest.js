@@ -299,7 +299,7 @@ contract('CandidateContract', function(accounts) {
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
       await bitcoinPricePolicy.getAllPrices();
       assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
-	});
+    });
   });
 
   describe('TrustedOraclePolicy', () => {
