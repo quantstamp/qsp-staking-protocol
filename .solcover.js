@@ -1,5 +1,6 @@
 module.exports = {
     port: 7545,
-    copyPackages: ['openzeppelin-solidity'],
+    testCommand: 'ethereum-bridge -H localhost:7545 -a 1 && mocha --timeout 5000',
+    copyPackages: ['openzeppelin-solidity', 'oraclize-api'],
     skipFiles: ['test/Registry.sol', 'test/Parameterizer.sol', 'test/QuantstampToken.sol', 'test/CandidateToken.sol', 'test/CandidateAndPolicyContract.sol']
 };
