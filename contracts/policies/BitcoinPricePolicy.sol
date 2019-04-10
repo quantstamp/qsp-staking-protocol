@@ -1,9 +1,10 @@
 pragma solidity 0.4.24;
 import "oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract BitcoinPricePolicy is usingOraclize {
+contract BitcoinPricePolicy is usingOraclize, Ownable {
     
     using SafeMath for uint256;
 
@@ -58,6 +59,10 @@ contract BitcoinPricePolicy is usingOraclize {
     function () payable {
     }
     /* solhint-enable no-empty-blocks */
+
+	function withdraw() public onlyOwner {
+		msg.sender.transfer(address(this).balance);
+	}
     
     /** This function returns true if the policy is violated and false otherwise.
      * @param candidateContract - An arbitrary address. This parameter is not used.
