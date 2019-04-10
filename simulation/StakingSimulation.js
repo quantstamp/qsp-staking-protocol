@@ -7,8 +7,7 @@
  */
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampStakingData = artifacts.require('QuantstampStakingData');
-const ZeroBalancePolicy = artifacts.require('policies/ZeroBalancePolicy');
-const OwnerNotChangedPolicy = artifacts.require('policies/OwnerNotChangedPolicy');
+const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
 const CandidateContract = artifacts.require('CandidateContract');
 const CandidateToken = artifacts.require('CandidateToken');
 const QuantstampToken = artifacts.require('QuantstampToken');
@@ -34,6 +33,8 @@ const PoolState = Object.freeze({
   PolicyExpired: 7
 });
 
+// list where we will insert pools once they are created
+let poolList = [];
 let qspb;
 let quantstampStakingData;
 let quantstampToken;
@@ -87,8 +88,8 @@ World.prototype = {
     // tick the environment
     this.clock++;
     // one row in the output CSV file
-    csv_row = this.clock;
-    csv_head = "Tick";
+    csv_row = this.clock + " " + (await web3.eth.getBlock("latest")).number;
+    csv_head = "Tick Block";
     console.log("=============== At clock tick: " + this.clock + " ==============");
     // fix input to all agents based on environment
     for (var i = 0; i < numberOfPools; i++) {
@@ -266,8 +267,13 @@ Agent.prototype = {
     this.balance = await Util.balanceOf(quantstampToken, this.address);
 
     if (this.action % numberOfMethods == 0) { // action was stakeFunds
-      var e = this.eyes[(this.action % numberOfMultipliers) / numberOfMethods];
+      const poolIndex = (this.action % numberOfMultipliers) / numberOfMethods;
+      var e = this.eyes[poolIndex];
       reward = (((e.maxPayoutQspWei/(e.stakeCount+1))/e.payPeriodInBlocks)*(100+e.bonusExpertFactor))/100;
+      // take risk into account
+      reward = (reward * (100 - poolList[poolIndex].risk))/100;
+      // add bribe
+      reward += poolList[poolIndex].bribe;
     } else { // action was withdrawStake
       reward = this.balance - this.last_balance;
     }
@@ -321,7 +327,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     staker3StakeGrayPool,
     staker4StakeOrangePool.plus(staker4StakePurplePool),
     staker5StakeOrangePool.plus(staker5StakeGrayPool).plus(staker5StakeWhitePool).plus(minDeposit)];
-  
+
   // Orange Pool params
   let orangePoolParams = {
     'candidateContract' : Util.ZERO_ADDRESS,
@@ -329,7 +335,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'owner' : stakeholder1,
     'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
     'minStakeQspWei' : new BigNumber(Util.toQsp(40)),
-    'depositQspWei' : new BigNumber(Util.toQsp(150)),
+    'depositQspWei' : new BigNumber(Util.toQsp(15000)),
     'bonusExpertFactor' : new BigNumber(0),
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
@@ -344,7 +350,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Orange Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(0))
+    'maxTotalStake' : new BigNumber(Util.toQsp(0)),
+    'risk': 20,
+    'bribe': 0,
+    'iterationViolated': 0
   };
 
   // Gray Pool params
@@ -369,7 +378,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Gray Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(0))
+    'maxTotalStake' : new BigNumber(Util.toQsp(0)),
+    'risk': 20,
+    'bribe': 1,
+    'iterationViolated': 0
   };
 
   // White Pool params
@@ -394,7 +406,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "White Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(0))
+    'maxTotalStake' : new BigNumber(Util.toQsp(0)),
+    'risk': 0,
+    'bribe': 0,
+    'iterationViolated': 100
   };
 
   // Purple Pool params
@@ -419,7 +434,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Purple Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(0))
+    'maxTotalStake' : new BigNumber(Util.toQsp(0)),
+    'risk': 50,
+    'bribe': 0,
+    'iterationViolated': 0
   };
   // Blue Pool params
   let bluePoolParams = {
@@ -428,7 +446,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'owner' : stakeholder2,
     'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
     'minStakeQspWei' : new BigNumber(Util.toQsp(50)),
-    'depositQspWei' : new BigNumber(Util.toQsp(10)),
+    'depositQspWei' : new BigNumber(Util.toQsp(10000)),
     'bonusExpertFactor' : new BigNumber(0),
     'bonusFirstExpertFactor' : new BigNumber(0),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
@@ -443,7 +461,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'stakeCount' : new BigNumber(0),
     'index' : -1,
     'poolName' : "Blue Pool",
-    'maxTotalStake' : new BigNumber(Util.toQsp(0))
+    'maxTotalStake' : new BigNumber(Util.toQsp(0)),
+    'risk': 0,
+    'bribe': 10,
+    'iterationViolated': 100
   };
 
   it("should instantiate the Security Expert TCR and add staker1 before the Assurance Contract is created", async function() {
@@ -506,7 +527,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   it("should create the Orange Pool according to the specified parameters", async function() {
     // instantiate candidate contract and its policy for the orange pool
     orangePoolParams.candidateContract = await CandidateContract.new(candidateContractBalance);
-    orangePoolParams.contractPolicy = await ZeroBalancePolicy.new();
+    orangePoolParams.contractPolicy = await TrivialBackdoorPolicy.new(orangePoolParams.candidateContract.address);
     // award budget to stakeholder 1 and approve transfers to the Assurance Protocol contract
     await quantstampToken.transfer(orangePoolParams.owner, stakeholder1Budget, {from : owner});
     await quantstampToken.approve(qspb.address, stakeholder1Budget, {from : orangePoolParams.owner});
@@ -520,6 +541,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     currentPoolNumber = await quantstampStakingData.getPoolsLength();
     assert.equal(currentPoolNumber, 1);
     orangePoolParams.index = 0;
+    poolList.push(orangePoolParams);
     // the balance of the Assurance contract should be increased by the amount deposited in the orange pool
     balanceOfQspb = balanceOfQspb.plus(orangePoolParams.depositQspWei);
     // check that all pool properties are as expected
@@ -529,7 +551,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   it("should create the Gray Pool according to the specified parameters", async function() {
     // instantiate candidate contract and its policy for the gray pool
     grayPoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : grayPoolParams.owner});
-    grayPoolParams.contractPolicy = await OwnerNotChangedPolicy.new(grayPoolParams.owner);
+    grayPoolParams.contractPolicy = await TrivialBackdoorPolicy.new(grayPoolParams.candidateContract.address);
     // award budget to stakeholder2 and approve transfers to the Assurance Protocol contract
     await quantstampToken.transfer(grayPoolParams.owner, stakeholder2Budget, {from : owner});
     await quantstampToken.approve(qspb.address, stakeholder2Budget, {from : grayPoolParams.owner});
@@ -541,6 +563,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     currentPoolNumber = await quantstampStakingData.getPoolsLength();
     assert.equal(currentPoolNumber, 2);
     grayPoolParams.index = 1;
+    poolList.push(grayPoolParams);
     // the balance of the Assurance contract should be increased by the amount deposited in the gray pool
     balanceOfQspb = balanceOfQspb.plus(grayPoolParams.depositQspWei);
     // check that all pool properties are as expected
@@ -550,7 +573,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   it("should create the White Pool according to the specified parameters", async function() {
     // instantiate candidate contract and its policy for the white pool
     whitePoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : whitePoolParams.owner});
-    whitePoolParams.contractPolicy = await OwnerNotChangedPolicy.new(whitePoolParams.owner);
+    whitePoolParams.contractPolicy = await TrivialBackdoorPolicy.new(whitePoolParams.candidateContract.address);
     // create pool
     await Util.instantiatePool(qspb, whitePoolParams);
     // update the time when the status of the pool changed
@@ -559,6 +582,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     currentPoolNumber = await quantstampStakingData.getPoolsLength();
     assert.equal(currentPoolNumber, 3);
     whitePoolParams.index = 2;
+    poolList.push(whitePoolParams);
     // the balance of the Assurance contract should be increased by the amount deposited in the white pool
     balanceOfQspb = balanceOfQspb.plus(whitePoolParams.depositQspWei);
     // check that all pool properties are as expected
@@ -568,7 +592,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   it("should create the Purple Pool according to the specified parameters", async function() {
     // instantiate candidate contract and its policy for the purple pool
     purplePoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : purplePoolParams.owner});
-    purplePoolParams.contractPolicy = await OwnerNotChangedPolicy.new(purplePoolParams.owner);
+    purplePoolParams.contractPolicy = await TrivialBackdoorPolicy.new(purplePoolParams.candidateContract.address);
     // award budget to stakeholder 3 and approve transfers to the Assurance Protocol contract
     await quantstampToken.transfer(purplePoolParams.owner, stakeholder3Budget, {from : owner});
     await quantstampToken.approve(qspb.address, stakeholder3Budget, {from : purplePoolParams.owner});
@@ -580,6 +604,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     currentPoolNumber = await quantstampStakingData.getPoolsLength();
     assert.equal(currentPoolNumber, 4);
     purplePoolParams.index = 3;
+    poolList.push(purplePoolParams);
     // the balance of the Assurance contract should be increased by the amount deposited in the purple pool
     balanceOfQspb = balanceOfQspb.plus(purplePoolParams.depositQspWei);
     // check that all pool properties are as expected
@@ -589,7 +614,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   it("should create the Blue Pool according to the specified parameters", async function() {
     // instantiate candidate contract and its policy for the blue pool
     bluePoolParams.candidateContract = await CandidateToken.new(candidateContractBalance, {from : bluePoolParams.owner});
-    bluePoolParams.contractPolicy = await OwnerNotChangedPolicy.new(bluePoolParams.owner);
+    bluePoolParams.contractPolicy = await TrivialBackdoorPolicy.new(bluePoolParams.candidateContract.address);
     // create pool
     await Util.instantiatePool(qspb, bluePoolParams);
     // update the time when the status of the pool changed
@@ -598,6 +623,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     currentPoolNumber = await quantstampStakingData.getPoolsLength();
     assert.equal(currentPoolNumber, 5);
     bluePoolParams.index = 4;
+    poolList.push(bluePoolParams);
     // the balance of the Assurance contract should be increased by the amount deposited in the blue pool
     balanceOfQspb = balanceOfQspb.plus(bluePoolParams.depositQspWei);
     // check that all pool properties are as expected
@@ -619,8 +645,20 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       a.brain = new RL.TDSolver(a, opt);
       w.agents.push(a);
     }
+
     // Each agent in the world can do one protocol interaction per iteration
-    for (k = 0; k < numberOfIterations; k++) {
+    for (k = 1; k < numberOfIterations; k++) {
+      // Check if any of the pool policies needs to be violated at this iteration
+      for (var i = 0; i < numberOfPools; i++) {
+        if (k == poolList[i].iterationViolated) {
+          await poolList[i].contractPolicy.updateStatus(true);
+          // Set the state of the agents such that they don't see their stake in the violated pool anymore
+          for (var j = 0; j < w.agents.length; j++) {
+            const a = w.agents[j];
+            a.state &= (a.numberOfStates ^ (1 << i));
+          }
+        }
+      }
       await w.tick();
     }
   });
