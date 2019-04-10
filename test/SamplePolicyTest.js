@@ -18,6 +18,7 @@ const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
 const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const BitcoinPricePolicy = artifacts.require('policies/BitcoinPricePolicy');
+const TrustedOraclePolicy = artifacts.require('policies/TrustedOraclePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
@@ -44,6 +45,7 @@ contract('CandidateContract', function(accounts) {
   let valueNotChangedPolicy;
   let bitcoinPricePolicy;
   let qaPolicy;
+  let trustedOraclePolicy;
   let qspb;
   let quantstampStakingData;
 
@@ -66,6 +68,7 @@ contract('CandidateContract', function(accounts) {
     qspb = await QuantstampStaking.new(quantstampToken.address, whitelistExpertRegistry.address, quantstampStakingData.address);
     await quantstampStakingData.setWhitelistAddress(qspb.address);
     qaPolicy = await QuantstampAssurancePolicy.new(qspb.address, quantstampToken.address);
+    trustedOraclePolicy = await TrustedOraclePolicy.new(owner);
   });
 
   describe('QuantstampAssurancePolicy', () => {
@@ -296,6 +299,26 @@ contract('CandidateContract', function(accounts) {
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
       await bitcoinPricePolicy.getAllPrices();
       assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+
+  describe('TrustedOraclePolicy', () => {
+    let trustedOracle;
+
+    beforeEach("when using TrustedOraclePolicy", async function() {
+      trustedOracle = await trustedOraclePolicy.getOracleAddress();
+    });
+
+    it("should not allow anyone other than the trusted oracle to trigger a violation", async function() {
+      assert.notEqual(trustedOracle, accounts[1]);
+      await Util.assertTxFail(trustedOraclePolicy.triggerViolation(candidateContract.address, {from: accounts[1]}));
+    });
+
+    it("should not be violated by default", async function() {
+      assert.isFalse(await trustedOraclePolicy.isViolated(candidateContract.address));
+    });
+
+    it("should allow the trusted oracle to trigger a violation", async function() {
+      await trustedOraclePolicy.triggerViolation(candidateContract.address, {from: trustedOracle});
+      assert.isTrue(await trustedOraclePolicy.isViolated(candidateContract.address));
     });
   });
 });

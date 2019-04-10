@@ -7,18 +7,23 @@ Quantstamp Assurance Protocol contract.
 
 ## Access deployed contracts
 
-Below is the list of urls associated with version _V0_ of the contract. To retrieve the minor versions, replace the major version with a full 
-version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v0.1.0_, 
-change `QuantstampStaking-v-0-meta.json` to `QuantstampStaking-v-0.1.0-meta.json` in the corresponding url.
+Below is the list of urls associated with version _V1_ of the contract. To retrieve the minor versions, replace the major version with a full
+version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v1.1.0_,
+change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json` in the corresponding url.
 
 ### Dev (Ropsten)
 
 1. Staking contract:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-0-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-0-abi.json
-1. TCR contract:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-0-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/Registry-v-0-abi.json
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-abi.json
+1. Staking data contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-abi.json
+1. Security expert whitelist:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-abi.json
+
+To access other contracts, substitute the corresponding contract name in the URLs above.
 
 For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract , where `{address}` is `contractAddress` copied from the corresponding metadata file.
 
