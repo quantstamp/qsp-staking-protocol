@@ -56,12 +56,17 @@ const numberOfMultipliers = 10;
 const numberOfActions = 99;
 // Allowed range is 0 to infinity. The number of steps that the simulation is executed before it stops.
 const numberOfIterations = 200;
-// Allowed range is 0 to 1.000.000. The rate at which QSP is seen with respect to a ficticious currency. It can go up/down
+// Allowed range is 1 to 1.000.000. The rate at which QSP is seen with respect to a ficticious currency. It can go up/down
 var qspPriceRate = 1000;
-// Allowed range for list values is 1 to numberOfIterations.
+// Allowed range for list keys is 1 to numberOfIterations and for list values it is 1 to 1000.000.
 var qspPriceChange = {
   50 : 100,
   150 : 10000};
+// Allowed range for list keys is 1 to numberOfIterations and for list values it is 1 to numberOfAgents. Add minus in front to remove from list.
+var expertListChange = {
+  50 : [1, 3],
+  100 : [-1, 4]
+}
 
 // Modify the following parameters only if you know what you are doing.
 const opt = new RL.TDOpt();
@@ -495,9 +500,12 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     await quantstampToken.transfer(staker[2], stakerBudget[2], {from : owner});
     await quantstampToken.transfer(staker[3], stakerBudget[3], {from : owner});
     await quantstampToken.transfer(staker[4], stakerBudget[4], {from : owner});
-    // add staker1 to Security Expert TCR
-    await quantstampToken.approve(quantstampRegistry.address, minDeposit, {from : staker[0]});
-    await TCRUtil.addToWhitelist(staker[0], TCRUtil.minDep, staker[0], quantstampRegistry);
+    // allow stakers to be added to the whitelist
+    await quantstampToken.approve(quantstampRegistry.address, minDeposit.times(100), {from : staker[0]});
+    await quantstampToken.approve(quantstampRegistry.address, minDeposit.times(100), {from : staker[1]});
+    await quantstampToken.approve(quantstampRegistry.address, minDeposit.times(100), {from : staker[2]});
+    await quantstampToken.approve(quantstampRegistry.address, minDeposit.times(100), {from : staker[3]});
+    await quantstampToken.approve(quantstampRegistry.address, minDeposit.times(100), {from : staker[4]});
     // instantiate Assurance Protocol Data contract
     quantstampStakingData = await QuantstampStakingData.new(quantstampToken.address);
     // instantiate Assurance Protocol contract
@@ -505,33 +513,12 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       quantstampStakingData.address, {from: owner});
     await quantstampStakingData.setWhitelistAddress(qspb.address);
 
-    // check if staker1 is considered a security expert from the point of view of the Assurnace Protocol contract
-    assert.isTrue(await qspb.isExpert(staker[0]));
     // allow the Assurance protocol to transfer funds from all stakers
     await quantstampToken.approve(qspb.address, stakerBudget[0], {from : staker[0]});
     await quantstampToken.approve(qspb.address, stakerBudget[1], {from : staker[1]});
     await quantstampToken.approve(qspb.address, stakerBudget[2], {from : staker[2]});
     await quantstampToken.approve(qspb.address, stakerBudget[3], {from : staker[3]});
     await quantstampToken.approve(qspb.address, stakerBudget[4], {from : staker[4]});
-  });
-
-  it("should not make any difference if staker2 and staker5 are added to the TCR after the Assrunce contract was instantiated", async function() {
-    // award budget to staker2
-    await quantstampToken.transfer(staker[1], stakerBudget[1], {from : owner});
-    // check if staker2 is not considered a security expert from the point of view of the Assurnace Protocol contract
-    assert.isFalse(await qspb.isExpert(staker[1]));
-    // add staker2 to Security Expert TCR
-    await quantstampToken.approve(quantstampRegistry.address, minDeposit, {from : staker[1]});
-    await TCRUtil.addToWhitelist(staker[1], TCRUtil.minDep, staker[1], quantstampRegistry);
-    // check if staker2 is considered a security expert from the point of view of the Assurnace Protocol contract
-    assert.isTrue(await qspb.isExpert(staker[1]));
-    // award budget to staker5
-    await quantstampToken.transfer(staker[4], stakerBudget[4], {from : owner});
-    // add staker5 to Security Expert TCR
-    await quantstampToken.approve(quantstampRegistry.address, minDeposit, {from : staker[4]});
-    await TCRUtil.addToWhitelist(staker[4], TCRUtil.minDep, staker[4], quantstampRegistry);
-    // check if staker5 is considered a security expert from the point of view of the Assurnace Protocol contract
-    assert.isTrue(await qspb.isExpert(staker[4]));
   });
 
   it("should create the Orange Pool according to the specified parameters", async function() {
@@ -694,6 +681,20 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
           qspPriceChange = qspPriceChange[l];
         }
       }
-    }
+      // Check if some experts need to be added or removed from the whitelist
+      for (l in expertListChange) {
+        if (sortedIterations[i] == l) {
+          for (j in expertListChange[l]) {
+            if (expertListChange[l][j] > 0) {
+              const index = expertListChange[l][j] - 1;
+              await TCRUtil.addToWhitelist(staker[index], TCRUtil.minDep, staker[index], quantstampRegistry);
+            } else {
+              const index = Math.abs(expertListChange[l][j]) - 1;
+              await TCRUtil.removeFromWhitelist(staker[index], staker[index], quantstampRegistry);
+            }
+          }
+        }
+      } // end for (l in expertListChange)
+    } // end for (var i = 1; i <= sortedIterations.length; i++)
   });
 });
