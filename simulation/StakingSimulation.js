@@ -66,7 +66,7 @@ var qspPriceChange = {
 var expertListChange = {
   50 : [1, 3],
   100 : [-1, 4]
-}
+};
 
 // Modify the following parameters only if you know what you are doing.
 const opt = new RL.TDOpt();
@@ -643,23 +643,23 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       w.agents.push(a);
     }
 
-    sortedIterations = [1];
+    var sortedIterations = [1];
     // add all keys (representing iterations) in the list
     for (var i in qspPriceChange) {
       sortedIterations.push(i);
     }
     // add pool violation iterations
-    for (var i = 0; i < numberOfPools; i++) {
+    for (i = 0; i < numberOfPools; i++) {
       sortedIterations.push(poolList[i].iterationViolated);
     }
     sortedIterations.push(numberOfIterations);
     // only keep unique elements from list
     sortedIterations = [...new Set(sortedIterations)];
     // sort iterations in chronological order
-    sortedIterations = sortedIterations.sort(function(a, b){return a-b});
+    sortedIterations = sortedIterations.sort(function(a, b){return a-b;});
     console.log("Sorted List of iterations: " + sortedIterations);
 
-    for (var i = 1; i <= sortedIterations.length; i++) {
+    for (i = 1; i <= sortedIterations.length; i++) {
       // Each agent in the world can do one protocol interaction per iteration
       for (k = sortedIterations[i-1]; k <= sortedIterations[i]; k++) {
         await w.tick();
