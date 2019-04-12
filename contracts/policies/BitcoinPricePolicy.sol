@@ -131,31 +131,27 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
         data = _data;
         if (data.length == 0)
             return;
-        quickSort(data, 0, data.length - 1);
+        bubbleSort(data);
         return data;
     }
 
     /** A recursive quick-sort function that sorts an array in place.
      * @param arr - The array to be sorted.
-     * @param left - The lower index where sorting should start.
-     * @param right - The higher index where sorting should stop.
      */
-    function quickSort(uint[] storage arr, uint left, uint right) internal {
-        uint i = left;
-        uint j = right;
-        uint pivot = arr[left + (right - left) / 2];
-        while (i <= j) {
-            while (arr[i] < pivot) i++;
-            while (pivot < arr[j]) j--;
-            if (i <= j) {
-                (arr[i], arr[j]) = (arr[j], arr[i]);
-                i++;
-                j--;
+    function bubbleSort(uint[] storage arr) internal {
+        uint n = arr.length;
+        uint aux;
+        do {
+            bool swapped = false;
+            for (uint i = 1; i < n; i++) {
+                if (arr[i-1] > arr[i]) {
+                    aux = arr[i-1];
+                    arr[i-1] = arr[i];
+                    arr[i] = aux;
+                    swapped = true;
+                }
             }
-        }
-        if (left < j)
-            quickSort(arr, left, j);
-        if (i < right)
-            quickSort(arr, i, right);
+            n = n.sub(1);
+        } while (swapped);
     }
 }
