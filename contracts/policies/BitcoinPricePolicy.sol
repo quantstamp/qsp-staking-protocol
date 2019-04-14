@@ -65,7 +65,11 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
         }
         // if prices for all oracles are available, then compute median
         uint medianBtcUSCents = bitcoinPrices[oracleCount.div(2).add(1)];
-        return xor(medianBtcUSCents > priceThresholdInUSCents, isHigher);
+        if (isHigher) {
+            return medianBtcUSCents <= priceThresholdInUSCents;
+        } else {
+            return medianBtcUSCents > priceThresholdInUSCents;
+        }
     }
 
     /** Withdraws ETH from the contract. This function can only be called by the owner. */
@@ -120,14 +124,5 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
             pendingQueries[queryId] = true;
             emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..", _oracleIndex);
         }
-    }
-
-    /** XOR function built using AND and OR operators. Since there is no XOR operator in Solidity.
-     * @param a - Left-hand Boolean operand.
-     * @param b - Right-hand Boolean operand.
-     * @return A boolean value indicating the result of (a XOR b).
-     */
-    function xor(bool a, bool b) internal pure returns(bool) {
-        return a && !b || !a && b;
     }
 }
