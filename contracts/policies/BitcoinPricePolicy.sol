@@ -52,7 +52,7 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
     /** This fallback function allows sending ETH to this contract which is needed for submitting all queries
      * solhint-disable no-empty-blocks
      */ 
-    function () payable {
+    function () public payable {
     }
     /* solhint-enable no-empty-blocks */
 
