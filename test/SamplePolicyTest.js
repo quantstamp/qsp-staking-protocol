@@ -22,8 +22,6 @@ const TrustedOraclePolicy = artifacts.require('policies/TrustedOraclePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
-const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
 
 contract('CandidateContract', function(accounts) {
@@ -292,7 +290,7 @@ contract('CandidateContract', function(accounts) {
     it("should not be violated if the price is lower than 1.000.000 USD", async function() {
       const thresholdPriceUSCents = 100000000;
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
-      await bitcoinPricePolicy.send(web3.toWei(1, "ether"), {from: accounts[0]});
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
       while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
@@ -304,7 +302,7 @@ contract('CandidateContract', function(accounts) {
     it("should be violated if the price is lower than 1.000.000 USD", async function() {
       const thresholdPriceUSCents = 100000000;
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
-      await bitcoinPricePolicy.send(web3.toWei(1, "ether"), {from: accounts[0]});
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
       while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
@@ -316,7 +314,7 @@ contract('CandidateContract', function(accounts) {
     it("should not be violated if the price is higher than 1.000 USD", async function() {
       const thresholdPriceUSCents = 100000;
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
-      await bitcoinPricePolicy.send(web3.toWei(1, "ether"), {from: accounts[0]});
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
       while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
@@ -328,7 +326,7 @@ contract('CandidateContract', function(accounts) {
     it("should be violated if the price is higher than 1.000 USD", async function() {
       const thresholdPriceUSCents = 100000;
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
-      await bitcoinPricePolicy.send(web3.toWei(1, "ether"), {from: accounts[0]});
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
       while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
