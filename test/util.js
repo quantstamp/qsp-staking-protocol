@@ -7,7 +7,7 @@ function toEther (n) {
 }
 
 function daysToSeconds(n) {
-  return (new BigNumber(n)).mul(24).mul(3600);
+  return (new BigNumber(n)).times(24).times(3600);
 }
 
 async function assertTxFail (promise) {
