@@ -3,6 +3,9 @@ import "oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
+/// @title BitcoinPricePolicy - this policy is violated if the price of Bitcoin goes above/below a given threshold.
+/// WARNING: This policy uses 7 oracles. If the API of any oracle changes or is not available, the policy will not be 
+/// violated, even if based on the information from the orther oracles it should be.
 
 contract BitcoinPricePolicy is usingOraclize, Ownable {
     
