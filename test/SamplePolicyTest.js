@@ -287,21 +287,9 @@ contract('CandidateContract', function(accounts) {
   });
 
   describe('BitcoinPricePolicy', () => {
-    it("should not be violated if the price is lower than 1.000.000 USD", async function() {
-      const thresholdPriceUSCents = 100000000;
-      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
-      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
-      await bitcoinPricePolicy.getAllPrices();
-      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
-      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
-        await Util.sleep(10000);
-      }
-      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
-    });
-
     it("should be violated if the price is lower than 1.000.000 USD", async function() {
       const thresholdPriceUSCents = 100000000;
-      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
       await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
@@ -311,8 +299,8 @@ contract('CandidateContract', function(accounts) {
       assert.isTrue(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
     });
 
-    it("should not be violated if the price is higher than 1.000 USD", async function() {
-      const thresholdPriceUSCents = 100000;
+    it("should not be violated if the price is lower than 1.000.000 USD", async function() {
+      const thresholdPriceUSCents = 100000000;
       bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
       await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
@@ -325,7 +313,7 @@ contract('CandidateContract', function(accounts) {
 
     it("should be violated if the price is higher than 1.000 USD", async function() {
       const thresholdPriceUSCents = 100000;
-      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
       await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
       await bitcoinPricePolicy.getAllPrices();
       const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
@@ -333,6 +321,18 @@ contract('CandidateContract', function(accounts) {
         await Util.sleep(10000);
       }
       assert.isTrue(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not be violated if the price is higher than 1.000 USD", async function() {
+      const thresholdPriceUSCents = 100000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
+      await bitcoinPricePolicy.getAllPrices();
+      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
+      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
+        await Util.sleep(10000);
+      }
+      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
     });
   });
 

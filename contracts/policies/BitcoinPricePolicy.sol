@@ -3,7 +3,7 @@ import "oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-/// @title BitcoinPricePolicy - this policy is violated if the price of Bitcoin goes above/below a given threshold.
+/// @title BitcoinPricePolicy - this policy is violated if the price of Bitcoin goes above/belowOrEqual a threshold.
 /// WARNING: This policy uses 7 oracles. If the API of any oracle changes or is not available, the policy will not be 
 /// violated, even if based on the information from the orther oracles it should be.
 
@@ -13,8 +13,8 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
 
     // The price threshold in USD Cents.
     uint public priceThresholdInUSCents;
-    // When this flag is set to true, the policy will be violated when the median price goes above the threshold.
-    // When this flag is set to false, the policy will be violated when the median price goes below the threshold.
+    // When this flag is set to true, the policy is violated when the median price goes above the threshold.
+    // When this flag is set to false, the policy is violated when the median price is below or equal the threshold.
     bool public isHigher;
     // Queries to oracles that have not been answered yet will be set to true.
     mapping (bytes32 => bool) internal pendingQueries;
@@ -32,8 +32,9 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
 
     /** This policy monitors the price of Bitcoin using multiple well-known oracles.
      * @param _priceThresholdInUSCents - Is the threshold for the price of Bitcoin, set by the policy owner.
-     * @param _isHigher - A flag indicating the policy is violated if the actual price goes below the priceThreshold,
-     * or (if set to false) it means that the policy is violated if the actual price goes above the priceThreshold.
+     * @param _isHigher - When this flag is set to true, the policy is violated when the median price goes above the
+     * threshold. When this flag is set to false, the policy is violated when the median price is below or equal the
+     * threshold.
      */
     constructor(uint _priceThresholdInUSCents, bool _isHigher) public payable {
         priceThresholdInUSCents = _priceThresholdInUSCents;
@@ -69,9 +70,9 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
         // if prices for all oracles are available, then compute median
         uint medianBtcUSCents = bitcoinPrices[oracleCount.div(2).add(1)];
         if (isHigher) {
-            return medianBtcUSCents <= priceThresholdInUSCents;
-        } else {
             return medianBtcUSCents > priceThresholdInUSCents;
+        } else {
+            return medianBtcUSCents <= priceThresholdInUSCents;
         }
     }
 
@@ -85,7 +86,7 @@ contract BitcoinPricePolicy is usingOraclize, Ownable {
      * @param result - The current Bitcoin price given by the oracle.
      */
     function __callback(bytes32 myId, string result) public {
-        if (msg.sender != oraclize_cbAddress()) revert();
+        require(msg.sender == oraclize_cbAddress());
         require(pendingQueries[myId] == true);
         uint price = parseInt(result, 2);
         uint position = oracleIndex;
