@@ -7,7 +7,7 @@ function toEther (n) {
 }
 
 function daysToSeconds(n) {
-  return (new BigNumber(n)).mul(24).mul(3600);
+  return (new BigNumber(n)).times(24).times(3600);
 }
 
 async function assertTxFail (promise) {
@@ -52,6 +52,10 @@ async function getBlockNumber () {
   return await web3.eth.getBlockNumber();
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
@@ -63,5 +67,6 @@ module.exports = {
   mineNBlocks: mineNBlocks,
   balanceOf: balanceOf,
   balanceOfRaw: balanceOfRaw,
+  sleep: sleep,
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000'
 };

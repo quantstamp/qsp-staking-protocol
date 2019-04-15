@@ -17,6 +17,7 @@ const NeverViolatedPolicy = artifacts.require('policies/NeverViolatedPolicy');
 const UpgradeablePolicy = artifacts.require('policies/UpgradeablePolicy');
 const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy');
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
+const BitcoinPricePolicy = artifacts.require('policies/BitcoinPricePolicy');
 const TrustedOraclePolicy = artifacts.require('policies/TrustedOraclePolicy');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
@@ -42,6 +43,7 @@ contract('CandidateContract', function(accounts) {
   let neverViolatedPolicy;
   let upgradeablePolicy;
   let valueNotChangedPolicy;
+  let bitcoinPricePolicy;
   let qaPolicy;
   let trustedOraclePolicy;
   let qspb;
@@ -281,6 +283,56 @@ contract('CandidateContract', function(accounts) {
     it("should violate the State Not Changed Policy after the contract is locked", async function() {
       await candidateContract.lockContract();
       assert.isTrue(await stateNoteChangedPolicy.isViolated(candidateContract.address));
+    });
+  });
+
+  describe('BitcoinPricePolicy', () => {
+    it("should be violated if the price is lower than 1.000.000 USD", async function() {
+      const thresholdPriceUSCents = 100000000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
+      await bitcoinPricePolicy.getAllPrices();
+      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
+      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
+        await Util.sleep(10000);
+      }
+      assert.isTrue(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not be violated if the price is lower than 1.000.000 USD", async function() {
+      const thresholdPriceUSCents = 100000000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
+      await bitcoinPricePolicy.getAllPrices();
+      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
+      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
+        await Util.sleep(10000);
+      }
+      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should be violated if the price is higher than 1.000 USD", async function() {
+      const thresholdPriceUSCents = 100000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, true);
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
+      await bitcoinPricePolicy.getAllPrices();
+      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
+      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
+        await Util.sleep(10000);
+      }
+      assert.isTrue(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
+    });
+
+    it("should not be violated if the price is higher than 1.000 USD", async function() {
+      const thresholdPriceUSCents = 100000;
+      bitcoinPricePolicy = await BitcoinPricePolicy.new(thresholdPriceUSCents, false);
+      await bitcoinPricePolicy.send(Util.toEther(1), {from: accounts[0]});
+      await bitcoinPricePolicy.getAllPrices();
+      const nrOfEvents = (await bitcoinPricePolicy.oracleCount()).toNumber();
+      while ((await bitcoinPricePolicy.oracleIndex()).toNumber() < nrOfEvents) {
+        await Util.sleep(10000);
+      }
+      assert.isFalse(await bitcoinPricePolicy.isViolated(Util.ZERO_ADDRESS));
     });
   });
 
