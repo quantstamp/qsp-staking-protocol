@@ -50,7 +50,7 @@ contract('QuantstampStaking', function(accounts) {
   const limitedPoolName = "limtedPool";
   const anotherLimitedPoolName = "anotherLimtedPool";
   const yetAnotherLimitedPoolName = "yetAnotherLimtedPool";
-  const maxStakeQspWei = minStakeQspWei.mul(2);
+  const maxStakeQspWei = minStakeQspWei.times(2);
   const defaultMaxTotalStake = new BigNumber(Util.toQsp(100000));
 
   let quantstampStakingData;
@@ -700,7 +700,7 @@ contract('QuantstampStaking', function(accounts) {
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
       const balanceOfStakerOneBeforeStake = await Util.balanceOf(quantstampToken, staker);
-      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei.mul(3), {from: staker});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei.times(3), {from: staker});
       const balanceOfStakerOneAfterStake = await Util.balanceOf(quantstampToken, staker);
       const expectedBalanceOfStaker = (new BigNumber(balanceOfStakerOneBeforeStake)).sub(maxStakeQspWei);
       assert.isTrue((new BigNumber(expectedBalanceOfStaker)).eq(new BigNumber(balanceOfStakerOneAfterStake)));

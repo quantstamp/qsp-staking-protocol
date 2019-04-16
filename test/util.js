@@ -7,7 +7,7 @@ function toEther (n) {
 }
 
 function daysToSeconds(n) {
-  return (new BigNumber(n)).mul(24).mul(3600);
+  return (new BigNumber(n)).times(24).times(3600);
 }
 
 async function assertTxFail (promise) {
@@ -94,6 +94,10 @@ async function assertEntirePoolState(poolParams, balanceOfQspb, quantstampStakin
   return true;
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = {
   toEther : toEther,
   toQsp : toEther,
@@ -107,5 +111,6 @@ module.exports = {
   balanceOfRaw: balanceOfRaw,
   instantiatePool: instantiatePool,
   assertEntirePoolState: assertEntirePoolState,
+  sleep: sleep,
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000'
 };
