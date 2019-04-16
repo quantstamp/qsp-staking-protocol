@@ -19,7 +19,7 @@ const TCRUtil = require('../test/tcrutils.js');
 const Util = require("../test/util.js");
 const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
+const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:8545"));
 const RL = require('reinforce-js');
 
 const PoolState = Object.freeze({
@@ -50,8 +50,10 @@ const numberOfPools = 5;
 const numberOfAgents = 5;
 // KEEP FIXED: The methods that an agent can decide to call, i.e. stakeFunds or withdrawStake.
 const numberOfMethods = 2;
-// KEEP FIXED: This value is multiplied with the minimum stake amount in a pool.
+// KEEP FIXED: This value is multiplied with the stakeMultiplier amount in a pool.
 const numberOfMultipliers = 10;
+// Allowed range 1 to infinity. Represents the amount of QSP that will be staked in a pool after it is multiplied by the multiplier.
+const stakeMultiplier = 100;
 // KEEP FIXED: An action is a number that encompases the following information: method, poolId and multiplier for stake amount.
 const numberOfActions = 99;
 // Allowed range is 0 to infinity. The number of steps that the simulation is executed before it stops.
@@ -137,8 +139,7 @@ World.prototype = {
       var a = this.agents[i];
       var tmp = a.action % numberOfMultipliers;
       var pool = Math.floor(tmp/numberOfMethods);
-      eyes[pool].lastAmountStaked = (await quantstampStakingData.getPoolMinStakeQspWei(pool)).
-        times(Math.floor(a.action / numberOfMultipliers)).toNumber();
+      eyes[pool].lastAmountStaked = (Math.floor(a.action / numberOfMultipliers)+1)*stakeMultiplier;
       var amount = eyes[pool].lastAmountStaked;
       csv_head += " Method" + i + " Amount" + i + " PoolId" + i + " Error" + i;
       // execute agent's desired action
@@ -191,6 +192,7 @@ var Eye = function(quantstampStakingData, poolIndex) {
     this.bonusFirstExpertFactor = (await quantstampStakingData.getPoolBonusFirstExpertFactor(poolIndex)).toNumber();
     this.payPeriodInBlocks = (await quantstampStakingData.getPoolPayPeriodInBlocks(poolIndex)).toNumber();
     this.minStakeTimeInBlocks = (await quantstampStakingData.getPoolMinStakeTimeInBlocks(poolIndex)).toNumber();
+    this.lastAmountStaked = 0;
     return this;
   })();
 };
@@ -236,15 +238,17 @@ Agent.prototype = {
       if (eyes[i].state == PoolState.Initialized
         || eyes[i].state == PoolState.NotViolatedFunded
         || eyes[i].state == PoolState.NotViolatedUnderfunded) {
-        for (var j = 1; j < numberOfMultipliers; j++) {
-          if (this.balance >= j*eyes[i].minStakeQspWei) { // staking allowed only if enough funds available
+        for (var j = 0; j < numberOfMultipliers; j++) {
+          if (this.balance >= (j+1)*stakeMultiplier) { // staking allowed only if enough funds available
             actions.push(j*numberOfMultipliers+i*numberOfMethods);
           }
         }
       }
 
-      if ((s & (1 << i)) != 0 && eyes[i].state != PoolState.NotViolatedFunded) { // it means that this agent has a stake in pool i
-        actions.push(i*numberOfMethods+1); // allow the agent to withdraw stakes from pool i
+      if ((this.state & (1 << i)) != 0 && eyes[i].state != PoolState.NotViolatedFunded) { // it means that this agent has a stake in pool i
+        for (var j = 0; j < numberOfMultipliers; j++) {
+          actions.push(j*numberOfMultipliers+i*numberOfMethods+1); // allow the agent to withdraw stakes from pool i
+        }
       }
     }
     console.log(dec2bin(this.state) + " Agent " + this.id + " can do: " + actions.join(' '));
@@ -349,14 +353,14 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder1,
     'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(40)),
-    'depositQspWei' : new BigNumber(Util.toQsp(15000)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(2000)),
+    'depositQspWei' : new BigNumber(Util.toQsp(1500)),
     'bonusExpertFactor' : new BigNumber(0),
     'bonusFirstExpertFactor' : new BigNumber(100),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
-    'payPeriodInBlocks' : new BigNumber(20),
-    'minStakeTimeInBlocks' : new BigNumber(10000000),
-    'timeoutInBlocks' : new BigNumber(200000),
+    'payPeriodInBlocks' : new BigNumber(100),
+    'minStakeTimeInBlocks' : new BigNumber(3000),
+    'timeoutInBlocks' : new BigNumber(500),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "URL",
     'state' : PoolState.Initialized,
@@ -376,14 +380,14 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'candidateContract' : Util.ZERO_ADDRESS,
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder2,
-    'maxPayoutQspWei' : new BigNumber(Util.toQsp(2)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(20)),
+    'maxPayoutQspWei' : new BigNumber(Util.toQsp(5)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(2500)),
     'depositQspWei' : new BigNumber(Util.toQsp(20000)),
     'bonusExpertFactor' : new BigNumber(150),
     'bonusFirstExpertFactor' : new BigNumber(180),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
     'payPeriodInBlocks' : new BigNumber(40),
-    'minStakeTimeInBlocks' : new BigNumber(1600000),
+    'minStakeTimeInBlocks' : new BigNumber(2600),
     'timeoutInBlocks' : new BigNumber(500000),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "https://quantstamp.atlassian.net/wiki/spaces/QUAN/pages/35356673/Presentations+Repository",
@@ -404,15 +408,15 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'candidateContract' : Util.ZERO_ADDRESS,
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder1,
-    'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(50)),
+    'maxPayoutQspWei' : new BigNumber(Util.toQsp(20)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(5000)),
     'depositQspWei' : new BigNumber(Util.toQsp(10000)),
     'bonusExpertFactor' : new BigNumber(10),
     'bonusFirstExpertFactor' : new BigNumber(20),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
     'payPeriodInBlocks' : new BigNumber(150),
-    'minStakeTimeInBlocks' : new BigNumber(1000000),
-    'timeoutInBlocks' : new BigNumber(100000),
+    'minStakeTimeInBlocks' : new BigNumber(1500),
+    'timeoutInBlocks' : new BigNumber(300),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "White pool report",
     'state' : PoolState.Initialized,
@@ -432,15 +436,15 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'candidateContract' : Util.ZERO_ADDRESS,
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder3,
-    'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(20)),
+    'maxPayoutQspWei' : new BigNumber(Util.toQsp(7)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(2000)),
     'depositQspWei' : new BigNumber(Util.toQsp(5000)),
     'bonusExpertFactor' : new BigNumber(0),
     'bonusFirstExpertFactor' : new BigNumber(0),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
-    'payPeriodInBlocks' : new BigNumber(5),
-    'minStakeTimeInBlocks' : new BigNumber(1000000),
-    'timeoutInBlocks' : new BigNumber(500000),
+    'payPeriodInBlocks' : new BigNumber(60),
+    'minStakeTimeInBlocks' : new BigNumber(4000),
+    'timeoutInBlocks' : new BigNumber(500),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "Purple pool report",
     'state' : PoolState.Initialized,
@@ -459,15 +463,15 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     'candidateContract' : Util.ZERO_ADDRESS,
     'contractPolicy' : Util.ZERO_ADDRESS,
     'owner' : stakeholder2,
-    'maxPayoutQspWei' : new BigNumber(Util.toQsp(10)),
-    'minStakeQspWei' : new BigNumber(Util.toQsp(50)),
+    'maxPayoutQspWei' : new BigNumber(Util.toQsp(50)),
+    'minStakeQspWei' : new BigNumber(Util.toQsp(5000)),
     'depositQspWei' : new BigNumber(Util.toQsp(10000)),
     'bonusExpertFactor' : new BigNumber(0),
     'bonusFirstExpertFactor' : new BigNumber(0),
     'firstExpertStaker' : Util.ZERO_ADDRESS,
-    'payPeriodInBlocks' : new BigNumber(500),
-    'minStakeTimeInBlocks' : new BigNumber(10000000),
-    'timeoutInBlocks' : new BigNumber(500000),
+    'payPeriodInBlocks' : new BigNumber(100),
+    'minStakeTimeInBlocks' : new BigNumber(10000),
+    'timeoutInBlocks' : new BigNumber(500),
     'timeOfStateInBlocks' : new BigNumber(0),
     'urlOfAuditReport' : "Blue pool report",
     'state' : PoolState.Initialized,
