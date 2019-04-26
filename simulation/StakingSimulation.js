@@ -46,7 +46,7 @@ let params;
  * START of config parameters for simulation stript
 ***************************************************/
 // File containing the simulation configuration parameters
-const inputFile = "file:///home/sebi/bc/tmp3/qsp-staking-protocol/simulation/run24.txt";
+const inputFile = "file:///home/sebi/bc/tmp3/qsp-staking-protocol/simulation/input/run9.txt";
 // Allowed range for numberOfPools is 1 to 5.
 var numberOfPools = 5;
 // Allowed range for numberOfAgents is 1 to 5. For more you need to add more elements to staker and stakerBudget
@@ -171,6 +171,7 @@ World.prototype = {
     for (i = 0; i < this.agents.length; i++) {
       var a = this.agents[i];
       if (a.action == undefined) {
+        csv_row += " undefined 0 -1 1";
         continue;
       }
       var tmp = a.action % numberOfMultipliers;
