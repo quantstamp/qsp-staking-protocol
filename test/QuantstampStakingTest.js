@@ -154,14 +154,14 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.balanceQspWei()).toNumber());
     });
 
-    it("should not create a pool if specified policy is not compatible with IPolicy interface", async function() {
+    it("should not create a pool if violation status cannot be checked", async function() {
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       // transfer poolOwnerBudget QSP tokens to the poolOwner
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
-      // allow the qspb contract use up to 1000QSP
+      // allow the qspb contract use at least depositQspWei
       await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
-      // create pool
+      // create pool. Note: the second parameter is intentionally incompatible with IPolicy
       await Util.assertTxFail(qspb.createPool(candidateContract.address, candidateContract.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName + "2", defaultMaxTotalStake, {from: poolOwner}));
