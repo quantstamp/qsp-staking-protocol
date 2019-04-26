@@ -9,7 +9,6 @@ const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const TrivialBackdoorPolicy = artifacts.require('policies/TrivialBackdoorPolicy');
 const CandidateContract = artifacts.require('CandidateContract');
-const CandidateToken = artifacts.require('CandidateToken');
 const QuantstampToken = artifacts.require('QuantstampToken');
 const QuantstampStakingRegistry = artifacts.require('Registry');
 const RegistryWrapper = artifacts.require('TokenCuratedRegistry');
@@ -21,6 +20,7 @@ const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const RL = require('reinforce-js');
+const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 const PoolState = Object.freeze({
   None : 0,
@@ -46,7 +46,7 @@ let params;
  * START of config parameters for simulation stript
 ***************************************************/
 // File containing the simulation configuration parameters
-const inputFile = "file:///home/sebi/bc/tmp3/qsp-staking-protocol/simulation/run9.txt"
+const inputFile = "file:///home/sebi/bc/tmp3/qsp-staking-protocol/simulation/run24.txt";
 // Allowed range for numberOfPools is 1 to 5.
 var numberOfPools = 5;
 // Allowed range for numberOfAgents is 1 to 5. For more you need to add more elements to staker and stakerBudget
@@ -112,7 +112,7 @@ function readTextFile(file)
     } else {
       console.log("Not in ready state");
     }
-  }
+  };
   rawFile.send(null);
   return retVal;
 }
@@ -190,6 +190,7 @@ World.prototype = {
           console.log("Agent " + a.id + " could not stake " + amount/(10**18) + " in pool " + pool);
           console.log(err.message + " " + err.stack);
           csv_row += " 1";
+          a.action = -1;
         }
       } else if (tmp % numberOfMethods === 1) { // withdrawStake
         csv_row += " withdrawStake 0 " + pool;
@@ -202,6 +203,7 @@ World.prototype = {
           console.log("Agent " + a.id + " could not withdraw funds from pool " + pool);
           console.log(err.message + " " + err.stack);
           csv_row += " 1";
+          a.action = -1;
         }
       }
     }
@@ -274,14 +276,14 @@ Agent.prototype = {
   getMaxNumActions: function() {
     return numberOfActions;
   },
-  allowedActions: function(s) {
+  allowedActions: function() {
     var actions = [];
     for (var i = 0; i < numberOfPools; i++) {
       if ((eyes[i].state == PoolState.Initialized
         || eyes[i].state == PoolState.NotViolatedFunded
         || eyes[i].state == PoolState.NotViolatedUnderfunded) 
         && stakeMultiplier.lte(this.balance)) { // staking allowed only if enough funds available
-          actions.push(i*numberOfMethods);
+        actions.push(i*numberOfMethods);
       }
 
       if ((this.state & (1 << i)) != 0 // it means that this agent has a stake in pool i
@@ -326,8 +328,9 @@ Agent.prototype = {
     this.balance = new BigNumber((await Util.balanceOf(quantstampToken, this.address)).toString());
     this.allowance = await quantstampToken.allowance(this.address, qspb.address);
     
-
-    if (this.action % numberOfMethods == 0) { // action was stakeFunds
+    if (this.action == -1) { // action was not executed, because it threw an exection
+      reward = 0;
+    } else if (this.action % numberOfMethods == 0) { // action was stakeFunds
       const poolIndex = (this.action % numberOfMultipliers) / numberOfMethods;
       var e = this.eyes[poolIndex];
       reward = (((e.maxPayoutQspWei / (e.stakeCount**3 + 1)) / e.payPeriodInBlocks) * (100 + e.bonusExpertFactor)) / 100;
@@ -352,9 +355,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
   let quantstampRegistry;
   let quantstampParameterizer;
   let voting;
-  let currentPoolNumber;
-  let balanceOfQspb = new BigNumber(0);
-
+  
   const minDeposit = new BigNumber(Util.toQsp(TCRUtil.minDep));
   const oneHundredQsp = new BigNumber(Util.toQsp(100));
   const candidateContractBalance = oneHundredQsp;
@@ -380,8 +381,8 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     numberOfAgents = parseInt(params[2]);
     numberOfPools = parseInt(params[3]);
     qspPriceRate = parseInt(params[4]);
-    changeIteration = parseInt(params[5]);
-    newQspPrice = parseInt(params[6]);
+    const changeIteration = parseInt(params[5]);
+    const newQspPrice = parseInt(params[6]);
     qspPriceChange[changeIteration] = newQspPrice;
     // instantiate QSP Token
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
@@ -422,11 +423,11 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     }
     // initialize pools
     for(k = 0; k < numberOfPools; k++) {
-      var index = 27+k*13;
+      index = 7+numberOfAgents*4+k*13;
       pools.push({
         'candidateContract' : Util.ZERO_ADDRESS,
         'contractPolicy' : Util.ZERO_ADDRESS,
-        'owner' : stakeholder[parseInt(params[index])],
+        'owner' : stakeholder[parseInt(params[index])-1],
         'maxPayoutQspWei' : new BigNumber(Util.toQsp(parseInt(params[index+1]))),
         'minStakeQspWei' : new BigNumber(Util.toQsp(parseInt(params[index+2]))),
         'depositQspWei' : new BigNumber(Util.toQsp(parseInt(params[index+4]))),
@@ -443,7 +444,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
         'poolSizeQspWei' : new BigNumber(Util.toQsp(0)),
         'stakeCount' : new BigNumber(0),
         'index' : k,
-        'poolName' : "Orange Pool",
+        'poolName' : k.toString(),
         'maxTotalStake' : new BigNumber(Util.toQsp(parseInt(params[index+3]))),
         'risk': parseInt(params[index+10]),
         'bribe': parseInt(params[index+11]),
@@ -451,8 +452,8 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       });
       pools[k].candidateContract = await CandidateContract.new(candidateContractBalance);
       pools[k].contractPolicy = await TrivialBackdoorPolicy.new(pools[k].candidateContract.address);
-      await quantstampToken.transfer(pools[k].owner, stakeholderBudget[parseInt(params[index])], {from : owner});
-      await quantstampToken.approve(qspb.address, stakeholderBudget[parseInt(params[index])], {from : pools[k].owner});
+      await quantstampToken.transfer(pools[k].owner, stakeholderBudget[parseInt(params[index])-1], {from : owner});
+      await quantstampToken.approve(qspb.address, stakeholderBudget[parseInt(params[index])-1], {from : pools[k].owner});
       await Util.instantiatePool(qspb, pools[k]);
     }
   });
@@ -498,7 +499,6 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
       if (sortedIterations[i] > numberOfIterations) {
         break;
       }
-      console.log("Update policy status");
       // Check if any of the pool policies needs to be violated at this iteration
       for(var l = 0; l < numberOfPools; l++) {
         if (sortedIterations[i] == pools[l].iterationViolated) {
@@ -516,7 +516,6 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
           qspPriceChange = qspPriceChange[l];
         }
       }
-      console.log("Update CCR");
       // Check if some experts need to be added or removed from the whitelist
       for (l in expertListChange) {
         if (sortedIterations[i] == l) {
@@ -531,7 +530,6 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
           }
         }
       } // end for (l in expertListChange)
-      console.log("End of iteration");
     } // end for (var i = 1; i <= sortedIterations.length; i++)
   });
 });
