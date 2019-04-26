@@ -624,12 +624,14 @@ contract QuantstampStaking is Ownable {
         addresses[1] = contractPolicy;
         addresses[2] = msg.sender;
 
-        emit StateChanged(data.createPool(
+        uint poolIndex = data.createPool(
             addresses,
             intParams,
             urlOfAuditReport,
             poolName
-        ), QuantstampStakingData.PoolState.Initialized);
+        );
+        isViolated(poolIndex); // call to confirm it does not throw
+        emit StateChanged(poolIndex, QuantstampStakingData.PoolState.Initialized);
     }
 
     /** Finds the pool index if a pool with the given name exists

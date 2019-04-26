@@ -154,6 +154,19 @@ contract('QuantstampStaking', function(accounts) {
       assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.balanceQspWei()).toNumber());
     });
 
+    it("should not create a pool if specified policy is not compatible with IPolicy interface", async function() {
+      // enable transfers before any payments are allowed
+      await quantstampToken.enableTransfer({from : owner});
+      // transfer poolOwnerBudget QSP tokens to the poolOwner
+      await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
+      // allow the qspb contract use up to 1000QSP
+      await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+      // create pool
+      await Util.assertTxFail(qspb.createPool(candidateContract.address, candidateContract.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName + "2", defaultMaxTotalStake, {from: poolOwner}));
+    });
+
     it("should not create a pool with the same name of a pool that already exists", async function() {
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
