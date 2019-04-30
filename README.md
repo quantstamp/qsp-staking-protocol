@@ -1,6 +1,6 @@
 # qsp-staking-protocol
 
-![Build status](https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiS01CNlNuU3RRaVp6ekJzbTZCNDVWekJwY1psMWczN1FMYTBEMDRLcmQ2ZS90U2ZhbUlkUVdBaEV4S3JIaEo5NTJndWtDbDk1TnMxVm0zbWl6NDFhU3hvPSIsIml2UGFyYW1ldGVyU3BlYyI6IldvaTZHMVpaUnBzYzIvS3UiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
+[![Build Status](https://travis-ci.com/quantstamp/qsp-staking-protocol.svg?token=VYjLsFuxJqPSixFLhdJG&branch=master)](https://travis-ci.com/quantstamp/qsp-staking-protocol)
 [![Coverage Status](https://coveralls.io/repos/github/quantstamp/qsp-staking-protocol/badge.svg?branch=master&t=H4hlEY)](https://coveralls.io/github/quantstamp/qsp-staking-protocol?branch=master)
 
 Quantstamp Assurance Protocol contract.
