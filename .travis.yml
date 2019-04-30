@@ -16,4 +16,4 @@ after_script:
   - npm run coveralls-collect
 branches:
   only:
-  - develop
+  - master
