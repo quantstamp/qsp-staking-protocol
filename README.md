@@ -7,9 +7,7 @@ Quantstamp Assurance Protocol contract.
 
 ## Access deployed contracts
 
-Below is the list of urls associated with version _V1_ of the contract. To retrieve the minor versions, replace the major version with a full
-version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v1.1.0_,
-change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json` in the corresponding url.
+Below is the list of urls associated with version _V1_ of the contract. To retrieve the minor versions, replace the major version with a full version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v1.1.0_, change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json` in the corresponding url.
 
 ### Dev (Ropsten)
 
