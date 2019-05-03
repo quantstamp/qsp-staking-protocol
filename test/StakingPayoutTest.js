@@ -36,7 +36,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
 
   // vars needed for creating pool
   const maxPayoutQspWei = new BigNumber(Util.toQsp(10));
-  const minStakeQspWei = Util.toQsp(10);
+  const minStakeQspWei = new BigNumber(Util.toQsp(10));
   const bonusExpertFactor = 3;
   const bonusFirstExpertFactor = 5;
   const payPeriodInBlocks = 8;
@@ -180,11 +180,59 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       await qspb.withdrawStake(currentPoolIndex, {from: staker3});
       assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
     });
+
+    it("should return 0 if all the stakes have been withdawn", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      await Util.mineNBlocks(minStakeTimeInBlocks);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker1});
+      await qspb.withdrawStake(currentPoolIndex, {from: staker2});
+      await qspb.withdrawStake(currentPoolIndex, {from: staker3});
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
+    });
+
+    it("should return 0 if the policy was violated before the pool was funded", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker1});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.NotViolatedFunded);
+      // set balance to zero to violate policy
+      await candidateContract.withdraw(candidateContractBalance);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker1});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.ViolatedFunded);
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
+    });
+
+    it("should return 0 if the policy was violated before the pool was underfunded", async function() {
+      // deposit a bit more in the pool such that it doesn't get cancelled after the first payout
+      await qspb.depositFunds(currentPoolIndex, maxPayoutQspWei.dividedBy(2), {from: poolOwner});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei.dividedBy(2), {from: staker1});
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker2});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.NotViolatedFunded);
+      // make one payout
+      await Util.mineNBlocks(payPeriodInBlocks);
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
+      await qspb.withdrawInterest(currentPoolIndex, {from: staker2});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.NotViolatedUnderfunded);
+      // set balance to zero to violate policy
+      await candidateContract.withdraw(candidateContractBalance);
+      await qspb.withdrawStake(currentPoolIndex, {from: staker1});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.ViolatedUnderfunded);
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
+    });
+
+    it("should return 0 if the pool was cancelled", async function() {
+      await qspb.stakeFunds(currentPoolIndex, minStakeQspWei.dividedBy(2), {from: staker1});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.Initialized);
+      await qspb.withdrawDeposit(currentPoolIndex, {from: poolOwner});
+      assert.equal((await qspb.getPoolState(currentPoolIndex)).toNumber(), PoolState.Cancelled);
+      assert.equal(await qspb.computePayout(currentPoolIndex, staker1), 0);
+    });
   });
 
   describe("withdrawInterest", async function() {
-    // todo(mderka): uncomment when the function is fixed; the tests may no longer be valid
-    /* it("should reject requests made before the pool has switched into the NotViolatedFunded state", async function() {
+    it("should reject requests made before the pool has switched into the NotViolatedFunded state", async function() {
       assert.equal(await qspb.getPoolState(currentPoolIndex), PoolState.Initialized);
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei/2, {from: staker1});
       await Util.mineNBlocks(payPeriodInBlocks);
@@ -201,7 +249,7 @@ contract('QuantstampStaking: staker requests payout', function(accounts) {
       // even though pool is in the correct state NotViolatedFunded, it should still not give a payout
       await qspb.withdrawInterest(currentPoolIndex, {from: staker1});
       assert.equal((await qspb.getBalanceQspWei()).toNumber(), balance.toNumber());
-    }); */
+    });
 
     it("should reject requests only for stakers that have not placed their stake for the required amount of time", async function() {
       await qspb.stakeFunds(currentPoolIndex, minStakeQspWei, {from: staker3});
