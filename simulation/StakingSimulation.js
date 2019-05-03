@@ -131,6 +131,7 @@ World.prototype = {
     csv_head = "Tick Block";
     console.log("=============== At clock tick: " + this.clock + " ==============");
     // fix input to all agents based on environment
+    assert.equals(numberOfPools, eyes.length);
     for (var i = 0; i < numberOfPools; i++) {
       eyes[i].stakeCount = (await quantstampStakingData.getPoolStakeCount(i)).toNumber();
       console.log("Pool #" + i + ": has a stake count of " + eyes[i].stakeCount);
