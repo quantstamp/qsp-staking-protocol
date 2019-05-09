@@ -153,25 +153,25 @@ World.prototype = {
     for (var i = 0; i < numberOfPools; i++) {
       eyes[i].stakeCount = (await quantstampStakingData.getPoolStakeCount(i)).toNumber();
       console.log(`Pool #${i}: has a stake count of ${eyes[i].stakeCount}`);
-      csvRow[currentIt]["StakeCount" + i] = eyes[i].stakeCount;
+      csvRow[currentIt][`StakeCount${i}`] = eyes[i].stakeCount;
       eyes[i].totalStakeQspWei = (await quantstampStakingData.getPoolTotalStakeQspWei(i)).toNumber();
       console.log(`\t\t total stake ${eyes[i].totalStakeQspWei}`);
-      csvRow[currentIt]["TotalStakeQspWei" + i] = eyes[i].totalStakeQspWei;
+      csvRow[currentIt][`TotalStakeQspWei${i}`] = eyes[i].totalStakeQspWei;
       eyes[i].totalStakers = (await quantstampStakingData.getPoolStakersList(i)).length;
       console.log(`\t\t total stake ${eyes[i].totalStakers}`);
-      csvRow[currentIt]["TotalStakers" + i] = eyes[i].totalStakers;
+      csvRow[currentIt][`TotalStakers${i}`] = eyes[i].totalStakers;
       eyes[i].depositQspWei = (await quantstampStakingData.getPoolDepositQspWei(i)).toNumber();
       console.log(`\t\t deposit of ${eyes[i].depositQspWei}`);
-      csvRow[currentIt]["DepositQspWei" + i] = eyes[i].depositQspWei;
+      csvRow[currentIt][`DepositQspWei${i}`] = eyes[i].depositQspWei;
       eyes[i].state = (await quantstampStakingData.getPoolState(i)).toNumber();
       console.log(`\t\t in state ${eyes[i].state}`);
-      csvRow[currentIt]["PoolState" + i] = eyes[i].state;
+      csvRow[currentIt][`PoolState${i}`] = eyes[i].state;
       eyes[i].poolSizeQspWei = (await quantstampStakingData.getPoolSizeQspWei(i)).toNumber();
       console.log(`\t\t size of ${eyes[i].poolSizeQspWei}`);
-      csvRow[currentIt]["PoolSizeQspWei" + i] = eyes[i].poolSizeQspWei;
+      csvRow[currentIt][`PoolSizeQspWei${i}`] = eyes[i].poolSizeQspWei;
       eyes[i].minStakeStartBlock = (await quantstampStakingData.getPoolMinStakeStartBlock(i)).toNumber();
       console.log(`\t\t minStakeStartBlock of ${eyes[i].minStakeStartBlock}`);
-      csvRow[currentIt]["MinStakeStartBlock" + i] += eyes[i].minStakeStartBlock;
+      csvRow[currentIt][`MinStakeStartBlock${i}`] += eyes[i].minStakeStartBlock;
     }
     
     // let the agents behave in the world based on their input
@@ -183,10 +183,10 @@ World.prototype = {
     for (i = 0; i < this.agents.length; i++) {
       var a = this.agents[i];
       if (a.action == undefined) {
-        csvRow[currentIt]["Method"+i] = undefinedMethod;
-        csvRow[currentIt]["Amount"+i] = zeroAmount;
-        csvRow[currentIt]["PoolId"+i] = noPool;
-        csvRow[currentIt]["Error"+i] = errorFlag;
+        csvRow[currentIt][`Method${i}`] = undefinedMethod;
+        csvRow[currentIt][`Amount${i}`] = zeroAmount;
+        csvRow[currentIt][`PoolId${i}`] = noPool;
+        csvRow[currentIt][`Error${i}`] = errorFlag;
         continue;
       }
       var tmp = a.action % numberOfMultipliers;
@@ -197,33 +197,33 @@ World.prototype = {
       var amount = eyes[pool].lastAmountStaked;
       // execute agent's desired action
       if (tmp % numberOfMethods === 0) { // stakeFunds
-        csvRow[currentIt]["Method"+i] = "stakeFunds";
-        csvRow[currentIt]["Amount"+i] = amount;
-        csvRow[currentIt]["PoolId"+i] = pool;
+        csvRow[currentIt][`Method${i}`] = "stakeFunds";
+        csvRow[currentIt][`Amount${i}`] = amount;
+        csvRow[currentIt][`PoolId${i}`] = pool;
         try {
           await qspb.stakeFunds(pool, amount, {from : a.address});
           a.state = setStateBit(a.state, pool);
           console.log(dec2bin(a.state) + ` Agent ${a.id} stakes ${amount/(10**18)} in pool ${pool}`);
-          csvRow[currentIt]["Error"+i] = noErrorFlag;
+          csvRow[currentIt][`Error${i}`] = noErrorFlag;
         } catch (err) {
           console.log(`Agent ${a.id} could not stake ${amount/(10**18)} in pool ${pool}`);
           console.log(`${err.message} ${err.stack}`);
-          csvRow[currentIt]["Error"+i] = errorFlag;
+          csvRow[currentIt][`Error${i}`] = errorFlag;
           a.action = -1;
         }
       } else if (tmp % numberOfMethods === 1) { // withdrawStake
-        csvRow[currentIt]["Method"+i] = "withdrawStake";
-        csvRow[currentIt]["Amount"+i] = zeroAmount;
-        csvRow[currentIt]["PoolId"+i] = pool;
+        csvRow[currentIt][`Method${i}`] = "withdrawStake";
+        csvRow[currentIt][`Amount${i}`] = zeroAmount;
+        csvRow[currentIt][`PoolId${i}`] = pool;
         try {
           await qspb.withdrawStake(pool, {from : a.address});
           a.state = unsetStateBit(a.state, a.numberOfStates, pool);
           console.log(dec2bin(a.state) + ` Agent ${a.id} withdraws funds from pool ${pool}`);
-          csvRow[currentIt]["Error"+i] = noErrorFlag;
+          csvRow[currentIt][`Error${i}`] = noErrorFlag;
         } catch (err) {
           console.log(`Agent ${a.id} could not withdraw funds from pool ${pool}`);
           console.log(`${err.message} ${err.stack}`);
-          csvRow[currentIt]["Error"+i] = errorFlag;
+          csvRow[currentIt][`Error${i}`] = errorFlag;
           a.action = -1;
         }
       }
@@ -315,7 +315,7 @@ Agent.prototype = {
     const featureVector = Array.from(eyes).push(this.action);
     this.action = this.brain.decide(featureVector);
     console.log(`Agent ${this.id} does ${this.action}`);
-    csvRow[currentIt]["ActionOfAgent" + this.id] = this.action;
+    csvRow[currentIt][`ActionOfAgent${this.id}`] = this.action;
     
     for (var i = 0; i < numberOfPools; i++) {
       try {
@@ -325,15 +325,15 @@ Agent.prototype = {
           const payout = await qspb.computePayout(i, {from : this.address});
           await qspb.withdrawInterest(i, {from : this.address});
           console.log(`Agent ${this.id} withdrew interest from pool ${i}`);
-          csvRow[currentIt]["WithdrawInterestAgent" + this.id] = payout;
+          csvRow[currentIt][`WithdrawInterestAgent${this.id}`] = payout;
           csvRow[currentIt]["PoolId"] = i;
         } else {
-          csvRow[currentIt]["WithdrawInterestAgent" + this.id] = zeroAmount;
+          csvRow[currentIt][`WithdrawInterestAgent${this.id}`] = zeroAmount;
           csvRow[currentIt]["PoolId"] = i;
         }
       } catch (err) {
         console.log(`Agent ${this.id} cannot withdraw interest from pool ${i} ${err.message}`);
-        csvRow[currentIt]["WithdrawInterestAgent" + this.id] = errorFlag;
+        csvRow[currentIt][`WithdrawInterestAgent${this.id}`] = errorFlag;
         csvRow[currentIt]["PoolId"] = i;
       }
     }
@@ -362,8 +362,8 @@ Agent.prototype = {
     // apply QSP price rate
     reward *= qspPriceRate;
     console.log(`Agent ${this.id} gets reward: ${reward}`);
-    csvRow[currentIt]["RewardAgent" + this.id] = reward;
-    csvRow[currentIt]["BalanceAgent" + this.id] = this.balance.toNumber();
+    csvRow[currentIt][`RewardAgent${this.id}`] = reward;
+    csvRow[currentIt][`BalanceAgent${this.id}`] = this.balance.toNumber();
     this.brain.learn(reward);
     this.last_balance = this.balance;
   }
