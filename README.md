@@ -1,15 +1,13 @@
 # qsp-staking-protocol
 
-![Build status](https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiS01CNlNuU3RRaVp6ekJzbTZCNDVWekJwY1psMWczN1FMYTBEMDRLcmQ2ZS90U2ZhbUlkUVdBaEV4S3JIaEo5NTJndWtDbDk1TnMxVm0zbWl6NDFhU3hvPSIsIml2UGFyYW1ldGVyU3BlYyI6IldvaTZHMVpaUnBzYzIvS3UiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
+[![Build Status](https://travis-ci.com/quantstamp/qsp-staking-protocol.svg?token=VYjLsFuxJqPSixFLhdJG&branch=master)](https://travis-ci.com/quantstamp/qsp-staking-protocol)
 [![Coverage Status](https://coveralls.io/repos/github/quantstamp/qsp-staking-protocol/badge.svg?branch=master&t=H4hlEY)](https://coveralls.io/github/quantstamp/qsp-staking-protocol?branch=master)
 
 Quantstamp Assurance Protocol contract.
 
 ## Access deployed contracts
 
-Below is the list of urls associated with version _V1_ of the contract. To retrieve the minor versions, replace the major version with a full
-version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v1.1.0_,
-change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json` in the corresponding url.
+Below is the list of urls associated with version _V1_ of the contract. To retrieve the minor versions, replace the major version with a full version in each path. For example, if you want to retrieve the address of `QuantstampStaking` for _v1.1.0_, change `QuantstampStaking-v-1-meta.json` to `QuantstampStaking-v-1.1.0-meta.json` in the corresponding url.
 
 ### Dev (Ropsten)
 

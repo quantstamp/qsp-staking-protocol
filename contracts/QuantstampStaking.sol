@@ -485,24 +485,21 @@ contract QuantstampStaking is Ownable {
     */
     function computePayout(uint poolIndex, address staker) public view returns(uint) {
         uint numerator = 0; // indicates the unnormalized total payout for the staker
-
-        if (data.getTotalStakes(poolIndex, staker) == 0) { // no stakes have been placed by this staker yet
-            return 0;
-        }
-
-        if (data.getPoolSizeQspWei(poolIndex) == 0) { // all stakes have been withdrawn
-            return 0;
-        }
+        uint minStakeStartBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        QuantstampStakingData.PoolState s = data.getPoolState(poolIndex);
         
-        uint stakeCount = data.getStakeCount(poolIndex, staker);
+        if (minStakeStartBlock == 0 
+            || (S2_NotViolatedUnderfunded != s && S4_NotViolatedFunded != s && S7_PolicyExpired != s)
+            || (data.getTotalStakes(poolIndex, staker) == 0)) { // all stakes have been withdrawn
+            return 0;
+        }
 
         // compute the numerator by adding the staker's stakes together
-        for (uint i = 0; i < stakeCount; i++) {
+        for (uint i = 0; i < data.getStakeCount(poolIndex, staker); i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
             uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
             // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
-            uint startBlockNumber = Math.max(blockPlaced,
-                data.getPoolMinStakeStartBlock(poolIndex));
+            uint startBlockNumber = Math.max(blockPlaced, minStakeStartBlock);
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
             stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
             numerator = numerator.add(stakeAmount);
@@ -624,12 +621,14 @@ contract QuantstampStaking is Ownable {
         addresses[1] = contractPolicy;
         addresses[2] = msg.sender;
 
-        emit StateChanged(data.createPool(
+        uint poolIndex = data.createPool(
             addresses,
             intParams,
             urlOfAuditReport,
             poolName
-        ), QuantstampStakingData.PoolState.Initialized);
+        );
+        isViolated(poolIndex); // call to confirm it does not throw
+        emit StateChanged(poolIndex, QuantstampStakingData.PoolState.Initialized);
     }
 
     /** Finds the pool index if a pool with the given name exists
