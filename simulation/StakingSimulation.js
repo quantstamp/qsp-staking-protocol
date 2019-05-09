@@ -21,6 +21,7 @@ const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const RL = require('reinforce-js');
 const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
+const converter = require('convert-array-to-csv');
 
 const PoolState = Object.freeze({
   None : 0,
@@ -38,15 +39,22 @@ let pools = [];
 let qspb;
 let quantstampStakingData;
 let quantstampToken;
-let csv_head;
-let csv_row;
+let csvRow;
 let params;
+let currentIt;
+// output constants
+const zeroAmount = 0;
+const noErrorFlag = 0;
+const errorFlag = -1;
+const noPool = -1;
+const undefinedMethod = "undefined";
+const noAction = -1;
 
 /**************************************************
  * START of config parameters for simulation stript
 ***************************************************/
 // File containing the simulation configuration parameters
-const inputFile = "file:///home/ubuntu/qsp-staking-protocol/simulation/input/run24.txt";
+const inputFile = "file:///home/sebi/bc/tmp3/qsp-staking-protocol/simulation/input/run24.txt";
 // Allowed range for numberOfPools is 1 to 5.
 var numberOfPools = 5;
 // Allowed range for numberOfAgents is 1 to 5. For more you need to add more elements to staker and stakerBudget
@@ -84,7 +92,6 @@ opt.setBeta(0.1);
 *************************************************/
 
 var eyes = []; // This list of structs that will contain the pool characteristics for all pools in the simulation.
-var csv_head_written = false;
 
 function dec2bin(dec){
   return (dec >>> 0).toString(2);
@@ -117,6 +124,16 @@ function readTextFile(file)
   return retVal;
 }
 
+function setStateBit(state, bitIndex) {
+  state |= (1 << bitIndex);
+  return state;
+}
+
+function unsetStateBit(state, bitIndex, numberOfStates) {
+  state &= (numberOfStates ^ (1 << bitIndex));
+  return state;
+}
+
 var World = function() {
   this.agents = [];
   this.clock = 0;
@@ -125,42 +142,36 @@ var World = function() {
 World.prototype = {
   tick: async function() {
     // tick the environment
-    this.clock++;
+    currentIt = this.clock++;
+    csvRow[currentIt] = [];
     // one row in the output CSV file
-    csv_row = this.clock + " " + (await web3.eth.getBlock("latest")).number;
-    csv_head = "Tick Block";
-    console.log("=============== At clock tick: " + this.clock + " ==============");
+    csvRow[currentIt]["Tick"] = this.clock;
+    csvRow[currentIt]["Block"] = (await web3.eth.getBlock("latest")).number;
+    console.log(`=============== At clock tick: ${this.clock} ==============`);
     // fix input to all agents based on environment
-    assert.equals(numberOfPools, eyes.length);
+    assert.equal(numberOfPools, eyes.length);
     for (var i = 0; i < numberOfPools; i++) {
       eyes[i].stakeCount = (await quantstampStakingData.getPoolStakeCount(i)).toNumber();
-      console.log("Pool #" + i + ": has a stake count of " + eyes[i].stakeCount);
-      csv_row += " " + eyes[i].stakeCount;
-      csv_head += " StakeCount" + i;
+      console.log(`Pool #${i}: has a stake count of ${eyes[i].stakeCount}`);
+      csvRow[currentIt]["StakeCount" + i] = eyes[i].stakeCount;
       eyes[i].totalStakeQspWei = (await quantstampStakingData.getPoolTotalStakeQspWei(i)).toNumber();
-      console.log("\t\t total stake " + eyes[i].totalStakeQspWei);
-      csv_row += " " + eyes[i].totalStakeQspWei;
-      csv_head += " TotalStakeQspWei" + i;
+      console.log(`\t\t total stake ${eyes[i].totalStakeQspWei}`);
+      csvRow[currentIt]["TotalStakeQspWei" + i] = eyes[i].totalStakeQspWei;
       eyes[i].totalStakers = (await quantstampStakingData.getPoolStakersList(i)).length;
-      console.log("\t\t total stake " + eyes[i].totalStakers);
-      csv_row += " " + eyes[i].totalStakers;
-      csv_head += " totalStakers" + i;
+      console.log(`\t\t total stake ${eyes[i].totalStakers}`);
+      csvRow[currentIt]["TotalStakers" + i] = eyes[i].totalStakers;
       eyes[i].depositQspWei = (await quantstampStakingData.getPoolDepositQspWei(i)).toNumber();
-      console.log("\t\t deposit of " + eyes[i].depositQspWei);
-      csv_row += " " + eyes[i].depositQspWei;
-      csv_head += " DepositQspWei" + i;
+      console.log(`\t\t deposit of ${eyes[i].depositQspWei}`);
+      csvRow[currentIt]["DepositQspWei" + i] = eyes[i].depositQspWei;
       eyes[i].state = (await quantstampStakingData.getPoolState(i)).toNumber();
-      console.log("\t\t in state " + eyes[i].state);
-      csv_row += " " + eyes[i].state;
-      csv_head += " PoolState" + i;
+      console.log(`\t\t in state ${eyes[i].state}`);
+      csvRow[currentIt]["PoolState" + i] = eyes[i].state;
       eyes[i].poolSizeQspWei = (await quantstampStakingData.getPoolSizeQspWei(i)).toNumber();
-      console.log("\t\t size of " + eyes[i].poolSizeQspWei);
-      csv_row += " " + eyes[i].poolSizeQspWei;
-      csv_head += " PoolSizeQspWei" + i;
+      console.log(`\t\t size of ${eyes[i].poolSizeQspWei}`);
+      csvRow[currentIt]["PoolSizeQspWei" + i] = eyes[i].poolSizeQspWei;
       eyes[i].minStakeStartBlock = (await quantstampStakingData.getPoolMinStakeStartBlock(i)).toNumber();
-      console.log("\t\t minStakeStartBlock of " + eyes[i].minStakeStartBlock);
-      csv_row += " " + eyes[i].minStakeStartBlock;
-      csv_head += " MinStakeStartBlock" + i;
+      console.log(`\t\t minStakeStartBlock of ${eyes[i].minStakeStartBlock}`);
+      csvRow[currentIt]["MinStakeStartBlock" + i] += eyes[i].minStakeStartBlock;
     }
     
     // let the agents behave in the world based on their input
@@ -172,39 +183,47 @@ World.prototype = {
     for (i = 0; i < this.agents.length; i++) {
       var a = this.agents[i];
       if (a.action == undefined) {
-        csv_row += " undefined 0 -1 1";
+        csvRow[currentIt]["Method"+i] = undefinedMethod;
+        csvRow[currentIt]["Amount"+i] = zeroAmount;
+        csvRow[currentIt]["PoolId"+i] = noPool;
+        csvRow[currentIt]["Error"+i] = errorFlag;
         continue;
       }
       var tmp = a.action % numberOfMultipliers;
       var pool = Math.floor(tmp/numberOfMethods);
+      // The significant digit of the action is the "unit amount staked" - 1. 
+      // numberOfMultipliers is divisible by 10 and stakeMultiplier is an input parameter to the script.
       eyes[pool].lastAmountStaked = (Math.floor(a.action / numberOfMultipliers)+1)*stakeMultiplier;
       var amount = eyes[pool].lastAmountStaked;
-      csv_head += " Method" + i + " Amount" + i + " PoolId" + i + " Error" + i;
       // execute agent's desired action
       if (tmp % numberOfMethods === 0) { // stakeFunds
-        csv_row += " stakeFunds " + amount + " " + pool;
+        csvRow[currentIt]["Method"+i] = "stakeFunds";
+        csvRow[currentIt]["Amount"+i] = amount;
+        csvRow[currentIt]["PoolId"+i] = pool;
         try {
           await qspb.stakeFunds(pool, amount, {from : a.address});
-          a.state |= (1 << pool);
-          console.log(dec2bin(a.state) + " Agent " + a.id + " stakes " + amount/(10**18) + " in pool " + pool);
-          csv_row += " 0";
+          a.state = setStateBit(a.state, pool);
+          console.log(dec2bin(a.state) + ` Agent ${a.id} stakes ${amount/(10**18)} in pool ${pool}`);
+          csvRow[currentIt]["Error"+i] = noErrorFlag;
         } catch (err) {
-          console.log("Agent " + a.id + " could not stake " + amount/(10**18) + " in pool " + pool);
-          console.log(err.message + " " + err.stack);
-          csv_row += " 1";
+          console.log(`Agent ${a.id} could not stake ${amount/(10**18)} in pool ${pool}`);
+          console.log(`${err.message} ${err.stack}`);
+          csvRow[currentIt]["Error"+i] = errorFlag;
           a.action = -1;
         }
       } else if (tmp % numberOfMethods === 1) { // withdrawStake
-        csv_row += " withdrawStake 0 " + pool;
+        csvRow[currentIt]["Method"+i] = "withdrawStake";
+        csvRow[currentIt]["Amount"+i] = zeroAmount;
+        csvRow[currentIt]["PoolId"+i] = pool;
         try {
           await qspb.withdrawStake(pool, {from : a.address});
-          a.state &= (a.numberOfStates ^ (1 << pool));
-          console.log(dec2bin(a.state) + " Agent " + a.id + " withdraws funds from pool " + pool);
-          csv_row += " 0";
+          a.state = unsetStateBit(a.state, a.numberOfStates, pool);
+          console.log(dec2bin(a.state) + ` Agent ${a.id} withdraws funds from pool ${pool}`);
+          csvRow[currentIt]["Error"+i] = noErrorFlag;
         } catch (err) {
-          console.log("Agent " + a.id + " could not withdraw funds from pool " + pool);
-          console.log(err.message + " " + err.stack);
-          csv_row += " 1";
+          console.log(`Agent ${a.id} could not withdraw funds from pool ${pool}`);
+          console.log(`${err.message} ${err.stack}`);
+          csvRow[currentIt]["Error"+i] = errorFlag;
           a.action = -1;
         }
       }
@@ -214,12 +233,6 @@ World.prototype = {
     for (i = 0; i < this.agents.length; i++) {
       await this.agents[i].backward();
     }
-
-    if (!csv_head_written) {
-      console.error(csv_head);
-      csv_head_written = true;
-    }
-    console.error(csv_row);
   }
 };
 
@@ -252,7 +265,7 @@ var Agent = function(id, stakerAddress, budget, eyes) {
   // set from outside
   this.brain = null; 
   this.last_balance = 0;
-  this.action = -1;
+  this.action = noAction;
   // A state encoded as a binary number with the number of bits equal to the number of pools, 
   // indicates if the agent (staker) has placed a stake in a pool or not based on the bit's index. 
   // For example state 11 (in decimal) is equal to 1011 in binary indicating that the agent has stakes in the 1st, 2nd and 4th pools.
@@ -295,30 +308,33 @@ Agent.prototype = {
         actions.push(i*numberOfMethods+1); // allow the agent to withdraw stakes from pool i
       }
     }
-    console.log(dec2bin(this.state) + " Agent " + this.id + " has balance " + this.balance.toNumber() + " and approved " + this.allowance + " and can do: " + actions.join(' '));
+    console.log(dec2bin(this.state) + ` Agent ${this.id} has balance ${this.balance.toNumber()} and approved ${this.allowance} and can do: ${actions.join(' ')}`);
     return actions;
   },
   forward: async function() {
-    this.action = this.brain.decide(eyes.push(this.state));
-    console.log("Agent " + this.id + " does " + this.action);
-    csv_row += " " + this.action;
-    csv_head += " ActionOfAgent" + this.id;
-
+    const featureVector = Array.from(eyes).push(this.action);
+    this.action = this.brain.decide(featureVector);
+    console.log(`Agent ${this.id} does ${this.action}`);
+    csvRow[currentIt]["ActionOfAgent" + this.id] = this.action;
+    
     for (var i = 0; i < numberOfPools; i++) {
-      csv_head += " WithdrawInterestAgent" + this.id + " PoolId";
       try {
         if (eyes[i].minStakeStartBlock > 0
           && (eyes[i].state == PoolState.NotViolatedFunded
           || eyes[i].state == PoolState.NotViolatedUnderfunded)) {
+          const payout = await qspb.computePayout(i, {from : this.address});
           await qspb.withdrawInterest(i, {from : this.address});
-          console.log("Agent " + this.id + " withdrew interest from pool " + i);
-          csv_row += " 1 " + i;
+          console.log(`Agent ${this.id} withdrew interest from pool ${i}`);
+          csvRow[currentIt]["WithdrawInterestAgent" + this.id] = payout;
+          csvRow[currentIt]["PoolId"] = i;
         } else {
-          csv_row += " 0 " + i;
+          csvRow[currentIt]["WithdrawInterestAgent" + this.id] = zeroAmount;
+          csvRow[currentIt]["PoolId"] = i;
         }
       } catch (err) {
-        console.log("Agent " + this.id + " cannot withdraw interest from pool " + i + " " + err.message);
-        csv_row += " -1 " + i;
+        console.log(`Agent ${this.id} cannot withdraw interest from pool ${i} ${err.message}`);
+        csvRow[currentIt]["WithdrawInterestAgent" + this.id] = errorFlag;
+        csvRow[currentIt]["PoolId"] = i;
       }
     }
     // recompute allowance
@@ -340,14 +356,14 @@ Agent.prototype = {
       reward = (reward * (100 - pools[poolIndex].risk) - e.lastAmountStaked * pools[poolIndex].risk)/100;
       // add bribe
       reward += pools[poolIndex].bribe;
-    } else { // action was withdrawStake
+    } else if (this.action % numberOfMethods == 1) { // action was withdrawStake
       reward = this.balance.minus(this.last_balance);
     }
     // apply QSP price rate
     reward *= qspPriceRate;
-    console.log("Agent " + this.id + " gets reward: " + reward);
-    csv_row += " " + reward + " " + this.balance.toNumber();
-    csv_head += " RewardAgent" + this.id + " BalanceAgent" + this.id;
+    console.log(`Agent ${this.id} gets reward: ${reward}`);
+    csvRow[currentIt]["RewardAgent" + this.id] = reward;
+    csvRow[currentIt]["BalanceAgent" + this.id] = this.balance.toNumber();
     this.brain.learn(reward);
     this.last_balance = this.balance;
   }
@@ -386,6 +402,8 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     const changeIteration = parseInt(params[5]);
     const newQspPrice = parseInt(params[6]);
     qspPriceChange[changeIteration] = newQspPrice;
+    // instantiate output CSV file
+    csvRow = new Array(numberOfIterations);
     // instantiate QSP Token
     quantstampToken = await QuantstampToken.new(qspAdmin, {from: owner});
     // instantiate Security Expert TCR
@@ -405,6 +423,9 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     await quantstampStakingData.setWhitelistAddress(qspb.address);
     // initialize stakers
     for(var k = 0; k < numberOfAgents; k++) {
+      // The following formula is due to the format of the input file, i.e.:
+      // The first 7 rows are general parameters that can be seen at the beginning of this it-statement.
+      // The following rows are groups of 4 parameters for each agent.
       var index = 7+k*4;
       stakerBudget[k] = new BigNumber(Util.toQsp(parseInt(params[index])));
       var iterationAdded = parseInt(params[index+1]);
@@ -425,6 +446,10 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     }
     // initialize pools
     for(k = 0; k < numberOfPools; k++) {
+      // The following formula is due to the format of the input file, i.e.:
+      // The first 7 rows are general parameters that can be seen at the beginning of this it-statement.
+      // The following rows are groups of 4 parameters for each agent.
+      // The following rows are groups of 13 parameters for each pool.
       index = 7+numberOfAgents*4+k*13;
       pools.push({
         'candidateContract' : Util.ZERO_ADDRESS,
@@ -491,9 +516,9 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
     // only keep unique elements from list
     var unique = sortedIterations.filter(onlyUnique);
     sortedIterations = unique;
-    console.log(sortedIterations);
-
-    for (i = 1; i <= sortedIterations.length; i++) {
+    sortedIterations.shift(); // ignore first entry
+    
+    for (i = 0; i <= sortedIterations.length; i++) {
       // Each agent in the world can do one protocol interaction per iteration
       for (k = sortedIterations[i-1]; k <= sortedIterations[i]; k++) {
         await w.tick();
@@ -508,7 +533,7 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
           // Set the state of the agents such that they don't see their stake in the violated pool anymore
           for (var j = 0; j < w.agents.length; j++) {
             const a = w.agents[j];
-            a.state &= (a.numberOfStates ^ (1 << l));
+            a.state = unsetStateBit(a.state, a.numberOfStates, l);
           }
         }
       }
@@ -533,5 +558,20 @@ contract('QuantstampStaking: simulation script using smart agents', function(acc
         }
       } // end for (l in expertListChange)
     } // end for (var i = 1; i <= sortedIterations.length; i++)
+    // Get the csv header and rows and print them on stderr
+    const header = Object.keys(csvRow[0]);
+    var newCsv = []; 
+    for (var rowNr in csvRow) {
+      var numericArray = [];
+      var row = csvRow[rowNr];
+      for (var item in row){
+        numericArray.push(row[item]);
+      }
+      newCsv.push(numericArray.slice());
+    }
+    console.error(converter.convertArrayToCSV(newCsv, {
+      header,
+      separator: ','
+    }));
   });
 });

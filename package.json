@@ -9,6 +9,7 @@
   "dependencies": {
     "aws-sdk": "2.194.0",
     "bignumber.js": "5.0.0",
+    "convert-array-to-csv": "1.0.7",
     "coveralls": "3.0.0",
     "eslint": "5.6.1",
     "ethereum-bridge": "0.6.2",
