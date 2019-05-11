@@ -4,7 +4,7 @@ library(RColorBrewer)
 library(rlist)
 
 ## Analysis script inputs
-run_index = 3;
+run_index = 24;
 
 ## Fixed constants
 NUMBER_OF_AGENTS_INDEX = 2;
@@ -14,7 +14,7 @@ options(warn = -1)
 
 ## Read input and output files for the simulation run
 run_in = read_table2(paste("input/run", run_index, ".txt", sep = ""));
-run_out = read_table2(paste("output/run", run_index, ".csv", sep = ""));
+run_out = read_csv(paste("output/run", run_index, ".csv", sep = ""));
 df = tbl_df(run_out);
 
 ## Save plot to PNG, don't display it

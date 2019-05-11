@@ -4,7 +4,7 @@ library(RColorBrewer)
 library(rlist)
 
 ## Analysis script inputs
-#run_index = 3;
+run_index = 24;
 plot_ticks = 25;
 
 ## Fixed constants
@@ -13,10 +13,9 @@ NUMBER_OF_POOLS_INDEX = 3;
 ## Turn warnings off
 options(warn = -1)
 
-for (run_index in 1:24) {
 ## Read input and output files for the simulation run
 run_in = read_table2(paste("input/run", run_index, ".txt", sep = ""));
-run_out = read_table2(paste("output/run", run_index, ".csv", sep = ""));
+run_out = read_csv(paste("output/run", run_index, ".csv", sep = ""));
 df = tbl_df(run_out);
 number_of_pools = max(run_in[NUMBER_OF_POOLS_INDEX,1]);
 
@@ -114,4 +113,3 @@ for (i in seq(0, number_of_pools-1)) {
 }
 ## Save to png file
 dev.off()
-}
