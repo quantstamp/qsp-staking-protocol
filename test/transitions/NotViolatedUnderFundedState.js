@@ -139,7 +139,7 @@ contract('NotViolatedUnderfundedState.js: check transitions', function(accounts)
     await qspb.stakeFunds(poolId, 1, {from : smallStaker});
 
     // deposit enough funds to bring pool to state 4 and back in order to activate it
-    const toDeposit = pool.maxPayoutQspWei.times(4);
+    const toDeposit = pool.maxPayoutQspWei.times(10);
     await token.approve(qspb.address, toDeposit, {from : stakeholder});
     await qspb.depositFunds(poolId, toDeposit, {from : stakeholder});
     await assertPoolState(poolId, PoolState.NotViolatedFunded);
