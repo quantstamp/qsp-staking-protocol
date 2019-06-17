@@ -723,23 +723,17 @@ contract QuantstampStaking is Ownable {
         uint startBlockNumber
     ) internal view returns(uint) {
         // make sure we are not passed the policy expiration time in the current block
-        uint blockNumber = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(startBlockNumber));
         // compute the total number of pay periods for this pool and this staker
-        uint currentPayPeriods = blockNumber.sub(startBlockNumber).div(data.getPoolPayPeriodInBlocks(poolIndex));
+        uint currentPayBlock = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(
+            startBlockNumber));
         // compute the last period this staker asked for a payout
-
-        uint lastPayPeriods;
         uint lastPayoutBlock = data.getStakeLastPayoutBlock(poolIndex, staker, i);
 
         if (startBlockNumber >= lastPayoutBlock) {
             // then avoid integer underflow
-            lastPayPeriods = 0;
-        } else {
-            lastPayPeriods = lastPayoutBlock
-                    .sub(startBlockNumber)
-                    .div(data.getPoolPayPeriodInBlocks(poolIndex));
+            lastPayoutBlock = startBlockNumber;
         }
-        return currentPayPeriods.sub(lastPayPeriods);
+        return currentPayBlock.sub(lastPayoutBlock).div(data.getPoolPayPeriodInBlocks(poolIndex));
     }
 
     /** Sets the state of the pool to a given state, while also marking the block at
