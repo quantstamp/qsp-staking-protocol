@@ -497,11 +497,8 @@ contract QuantstampStaking is Ownable {
         // compute the numerator by adding the staker's stakes together
         for (uint i = 0; i < data.getStakeCount(poolIndex, staker); i++) {
             uint stakeAmount = calculateStakeAmountWithBonuses(poolIndex, staker, i);
-            uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
-            // get the maximum between when the pool because NotViolatedFunded and the staker placed his stake
-            uint startBlockNumber = Math.max(blockPlaced, minStakeStartBlock);
             // multiply the stakeAmount by the number of payPeriods for which the stake has been active and not payed
-            stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker, startBlockNumber));
+            stakeAmount = stakeAmount.mul(getNumberOfPayoutsForStaker(poolIndex, i, staker));
             numerator = numerator.add(stakeAmount);
         }
 
@@ -713,26 +710,23 @@ contract QuantstampStaking is Ownable {
     * @param poolIndex - the index of the pool where the stake was placed
     * @param i - the index of the stake in the stakes array
     * @param staker - the address of the staker which has placed the stake
-    * @param startBlockNumber - the block number where the stake begins to be active (waiting for payouts)
     * @return - the number of payout periods that the staker needs to receive payouts for
     */
     function getNumberOfPayoutsForStaker(
         uint poolIndex,
         uint i,
-        address staker,
-        uint startBlockNumber
+        address staker
     ) internal view returns(uint) {
+        uint minStakeStartBlock = data.getPoolMinStakeStartBlock(poolIndex);
+        uint blockPlaced = data.getStakeBlockPlaced(poolIndex, staker, i);
+        // the block number where the stake begins to be active (waiting for payouts)
+        uint startBlockNumber = Math.max(blockPlaced, minStakeStartBlock);
         // make sure we are not passed the policy expiration time in the current block
         // compute the total number of pay periods for this pool and this staker
-        uint currentPayBlock = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(
-            startBlockNumber));
-        // compute the last period this staker asked for a payout
-        uint lastPayoutBlock = data.getStakeLastPayoutBlock(poolIndex, staker, i);
-
-        if (startBlockNumber >= lastPayoutBlock) {
-            // then avoid integer underflow
-            lastPayoutBlock = startBlockNumber;
-        }
+        uint currentPayBlock = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(minStakeStartBlock));
+        // compute the last block this staker asked for a payout
+        uint lastPayoutBlock = Math.max(data.getStakeLastPayoutBlock(poolIndex, staker, i), startBlockNumber);
+        // get the number of periods for this staker
         return currentPayBlock.sub(lastPayoutBlock).div(data.getPoolPayPeriodInBlocks(poolIndex));
     }
 
@@ -822,11 +816,10 @@ contract QuantstampStaking is Ownable {
                 );
                 data.setStakeBlockPlaced(poolIndex, staker, i, max);
 
-                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, staker,
-                    data.getStakeBlockPlaced(poolIndex, staker, i));
+                uint numberOfPayouts = getNumberOfPayoutsForStaker(poolIndex, i, staker);
 
                 if (numberOfPayouts > 0) {
-                    data.setStakeLastPayoutBlock(poolIndex, staker, i, block.number);
+                    data.increaseStakeLastPayoutBlock(poolIndex, staker, i, numberOfPayouts);
                 }
             }
             safeTransferFromDataContract(staker, payout);
