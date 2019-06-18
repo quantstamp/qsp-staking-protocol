@@ -723,7 +723,8 @@ contract QuantstampStaking is Ownable {
         uint startBlockNumber = Math.max(blockPlaced, minStakeStartBlock);
         // make sure we are not passed the policy expiration time in the current block
         // compute the total number of pay periods for this pool and this staker
-        uint currentPayBlock = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(minStakeStartBlock));
+        uint currentPayBlock = Math.min(block.number, data.getPoolMinStakeTimeInBlocks(poolIndex).add(
+            minStakeStartBlock));
         // compute the last block this staker asked for a payout
         uint lastPayoutBlock = Math.max(data.getStakeLastPayoutBlock(poolIndex, staker, i), startBlockNumber);
         // get the number of periods for this staker
