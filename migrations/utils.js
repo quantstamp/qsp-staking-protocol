@@ -36,7 +36,7 @@ function getMajorVersion() {
 }
 
 function getBucketName() {
-  return `qsp-protocol-contract`;
+  return `qsp-staking-protocol-contract`;
 }
 
 function getFileName(network, contractName, version, type) {

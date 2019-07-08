@@ -12,14 +12,14 @@ Below is the list of urls associated with version _V1_ of the contract. To retri
 ### Dev (Ropsten)
 
 1. Staking contract:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStaking-v-1-abi.json
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/QuantstampStaking-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/QuantstampStaking-v-1-abi.json
 1. Staking data contract:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/QuantstampStakingData-v-1-abi.json
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/QuantstampStakingData-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/QuantstampStakingData-v-1-abi.json
 1. Security expert whitelist:
-    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-meta.json
-    - ABI: https://s3.amazonaws.com/qsp-protocol-contract/dev/WhitelistExpertRegistry-v-1-abi.json
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/WhitelistExpertRegistry-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/WhitelistExpertRegistry-v-1-abi.json
 
 To access other contracts, substitute the corresponding contract name in the URLs above.
 
@@ -42,11 +42,6 @@ For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract
 1. To ensure correct commit hooks:
     1. `ln -s -f $(git rev-parse --show-toplevel)/pre-commit $(git rev-parse --show-toplevel)/.git/hooks/pre-commit`
     1. `chmod +x $(git rev-parse --show-toplevel)/.git/hooks/pre-commit`
-
-## CI Tests
-
-The file `buildspec-ci.yml` contains the commands to run on each push.
-This includes running Truffle tests and collecting coverage report for [Coveralls](https://coveralls.io/github/qsp-staking-protocol).
 
 ## Deploy to Ropsten or MainNet
 

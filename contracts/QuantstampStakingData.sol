@@ -286,9 +286,10 @@ contract QuantstampStakingData is Ownable {
         stakes[poolIndex][staker][stakeIndex].blockPlaced = blockNumber;
     }
     
-    function setStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
-        uint blockNumber) external onlyWhitelisted {
-        stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = blockNumber;
+    function increaseStakeLastPayoutBlock(uint poolIndex, address staker, uint stakeIndex,
+        uint numberOfPayouts) external onlyWhitelisted {
+        stakes[poolIndex][staker][stakeIndex].lastPayoutBlock = numberOfPayouts.mul(
+            getPoolPayPeriodInBlocks(poolIndex)).add(stakes[poolIndex][staker][stakeIndex].lastPayoutBlock);
     }
 
     /** Finds the pool index if a pool with the given name exists
