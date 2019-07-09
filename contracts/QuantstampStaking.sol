@@ -750,21 +750,6 @@ contract QuantstampStaking is Ownable {
         }
     }
 
-    /** Checks if the policy has expired and sets the state accordingly
-     * @param poolIndex - the index of the pool for which the state is updated
-     * @return the current state of the pool
-     */
-    function updatePoolState(uint poolIndex) internal returns(QuantstampStakingData.PoolState) {
-        QuantstampStakingData.PoolState state = data.getPoolState(poolIndex);
-        if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
-            block.number >= data.getPoolMinStakeTimeInBlocks(poolIndex).add(
-                data.getPoolTimeOfStateInBlocks(poolIndex))) {
-            setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
-            state = QuantstampStakingData.PoolState.PolicyExpired;
-        }
-        return state;
-    }
-
     /** Checks if the maximum pool stake was reached
      * @param poolIndex - the index of the pool to check
      */
@@ -782,12 +767,13 @@ contract QuantstampStaking is Ownable {
     function adjustStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        if (max == 0 || current.add(amountQspWei) <= max) {
+        if (max == 0) {
             return amountQspWei;
-        } else if (current.add(amountQspWei) > max) {
-            return max.sub(current);
         }
-        return 0;
+        if (current.add(amountQspWei) <= max) {
+            return amountQspWei;
+        }
+        return max.sub(current);
     }
 
     /**
@@ -808,7 +794,7 @@ contract QuantstampStaking is Ownable {
         }
 
         if (payout >= 0) { // transfer the funds
-            data.setDepositQspWei(poolIndex, deposit.sub(payout));
+            data.setPoolDepositQspWei(poolIndex, deposit.sub(payout));
             data.setBalanceQspWei(data.getBalanceQspWei().sub(payout));
             for (uint i = 0; i < data.getStakeCount(poolIndex, staker); i++) {
                 uint max = Math.max(
@@ -907,7 +893,7 @@ contract QuantstampStaking is Ownable {
     function depositFundsEffect(uint poolIndex, uint depositQspWei) internal {
         address poolOwner = data.getPoolOwner(poolIndex);
         safeTransferToDataContract(poolOwner, depositQspWei);
-        data.setDepositQspWei(poolIndex, data.getDepositQspWei(poolIndex).add(depositQspWei));
+        data.setPoolDepositQspWei(poolIndex, data.getPoolDepositQspWei(poolIndex).add(depositQspWei));
         data.setBalanceQspWei(data.getBalanceQspWei().add(depositQspWei));
         emit DepositMade(poolIndex, poolOwner, depositQspWei);
     }

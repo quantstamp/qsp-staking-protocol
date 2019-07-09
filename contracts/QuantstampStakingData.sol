@@ -257,14 +257,6 @@ contract QuantstampStakingData is Ownable {
         pools[index].totalStakeQspWei = amountQspWei;
     }
 
-    function setTotalStakes(uint poolIndex, address staker, uint amountQspWei) external onlyWhitelisted {
-        totalStakes[poolIndex][staker] = amountQspWei; 
-    }
-
-    function setDepositQspWei(uint poolIndex, uint depositQspWei) external onlyWhitelisted {
-        pools[poolIndex].depositQspWei = depositQspWei;
-    }
-
     function setBalanceQspWei(uint newBalanceQspWei) external onlyWhitelisted {
         balanceQspWei = newBalanceQspWei;
     }
@@ -478,10 +470,6 @@ contract QuantstampStakingData is Ownable {
         Stake memory stake = stakes[poolIndex][staker][i];
         return (stake.amountQspWei, stake.blockPlaced,
             stake.lastPayoutBlock, stake.contributionIndex, stake.expertStake);
-    }
-
-    function getDepositQspWei(uint poolIndex) public view returns (uint) {
-        return pools[poolIndex].depositQspWei;
     }
 
     function getBalanceQspWei() public view returns (uint) {
