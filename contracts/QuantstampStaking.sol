@@ -426,7 +426,7 @@ contract QuantstampStaking is Ownable {
         } else if (S2_NotViolatedUnderfunded == s && !expired && violated) {                      // 2.5
             setState(poolIndex, S3_ViolatedUnderfunded);
         } else if (S1_Initialized == s && !timedout && !violated && minStakeReached && funded) {  // 1.4
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+            setState(poolIndex, S4_NotViolatedFunded);
         } else if (S4_NotViolatedFunded == s && !expired && violated) {                           // 4.5
             setState(poolIndex, S5_ViolatedFunded);
         } else if (S1_Initialized == s && (timedout || violated)               // 1.5
@@ -741,7 +741,7 @@ contract QuantstampStaking is Ownable {
         if (poolState != newState) {
             data.setState(poolIndex, newState); // set the state
             data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
-            if (newState == QuantstampStakingData.PoolState.NotViolatedFunded
+            if (newState == S4_NotViolatedFunded
                 && data.getPoolMinStakeStartBlock(poolIndex) == 0) {
                 data.setPoolMinStakeStartBlock(poolIndex, block.number);
             }
@@ -756,7 +756,7 @@ contract QuantstampStaking is Ownable {
      */
     function updatePoolState(uint poolIndex) internal returns(QuantstampStakingData.PoolState) {
         QuantstampStakingData.PoolState state = data.getPoolState(poolIndex);
-        if (state == QuantstampStakingData.PoolState.NotViolatedFunded &&
+        if (state == S4_NotViolatedFunded &&
             block.number >= data.getPoolMinStakeTimeInBlocks(poolIndex).add(
                 data.getPoolTimeOfStateInBlocks(poolIndex))) {
             setState(poolIndex, QuantstampStakingData.PoolState.PolicyExpired);
