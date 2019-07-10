@@ -60,6 +60,10 @@ For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract
     * `truffle migrate --network prod` (Ethereum MainNet, to be implemented)
 
 *Note*: if deployment does not start, append the `--reset` flag to the command.
+*Note*: DO NOT FORGET to set the minimum deposit value after redeployment by
+calling the `setGlobalMinDepositQspWei(...)` as the owner on every deployment
+of the `QuantstampStaking` contract. The default value is `0` (any deposit
+greater than `0` QSP-wei goes).
 
 ## Deploy to Ganache
 
