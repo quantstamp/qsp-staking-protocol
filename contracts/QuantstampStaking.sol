@@ -61,6 +61,8 @@ contract QuantstampStaking is Ownable {
     
     QuantstampStakingData internal data;
 
+    uint public globalMinDepositQspWei;
+
     /** Allows execution only when the policy of the pool is not violated.
     * @param poolIndex - index of the pool where the policy is checked
     */
@@ -522,6 +524,13 @@ contract QuantstampStaking is Ownable {
         return stakingRegistry.isExpert(addr);
     }
 
+    /** Sets the minimum deposit required for opening a pool
+    * @param newGlobalMinDepositQspWei - the new deposit minimum value
+    */
+    function setGlobalMinDepositQspWei(uint newGlobalMinDepositQspWei) public onlyOwner {
+        globalMinDepositQspWei = newGlobalMinDepositQspWei;
+    }
+
     /** Checks the policy of the pool. If it is violated, it updates the state accordingly.
     * Fails the transaction otherwise.
     * @param poolIndex - the index of the pool for which the state is changed
@@ -592,7 +601,8 @@ contract QuantstampStaking is Ownable {
         uint maxTotalStakeQspWei
     ) public {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
-        require(depositQspWei > 0, "Deposit is not positive when creating a pool.");
+        require(depositQspWei > 0 && depositQspWei >= globalMinDepositQspWei,
+            "Deposit does not meet the requirements.");
         // transfer tokens to this contract
         safeTransferToDataContract(msg.sender, depositQspWei);
         require(maxPayoutQspWei > 0, "Maximum payout cannot be zero.");
