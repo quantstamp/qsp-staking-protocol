@@ -18,10 +18,6 @@ contract WhitelistExpertRegistry is Ownable, IRegistry {
 
     Roles.Role private experts;
 
-    /** Creates the whitelist owned by the message sender. */
-    constructor() public {
-    }
-
     /** Returns true if an address is an expert. This is consistent
     * with the TCR interface.
     * @param account - the address to be checked
@@ -46,4 +42,3 @@ contract WhitelistExpertRegistry is Ownable, IRegistry {
         emit ExpertRemoved(account);
     }
 }
-

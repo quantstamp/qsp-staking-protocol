@@ -14,6 +14,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
 const Util = require('./util.js');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
+const uuid = require('uuid');
 
 contract('QuantstampStaking', function(accounts) {
   const owner = accounts[0];
@@ -46,10 +47,7 @@ contract('QuantstampStaking', function(accounts) {
   const minStakeTimeInBlocks = new BigNumber(10);
   const timeoutInBlocks = new BigNumber(5);
   const urlOfAuditReport = "URL";
-  const poolName = "myPool";
-  const limitedPoolName = "limtedPool";
-  const anotherLimitedPoolName = "anotherLimtedPool";
-  const yetAnotherLimitedPoolName = "yetAnotherLimtedPool";
+  const poolUniqueName = () => uuid.v4();
   const maxStakeQspWei = minStakeQspWei.times(2);
   const defaultMaxTotalStake = new BigNumber(Util.toQsp(100000));
 
@@ -102,15 +100,16 @@ contract('QuantstampStaking', function(accounts) {
       contractPolicy = await ZeroBalancePolicy.deployed();
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
-    it("should not find the pool index of poolName since it was not created", async function() {
+    it("should not find the pool index of a non-existing name", async function() {
       const MAX_INT = new BigNumber(2).pow(256).minus(1);
-      assert.equal((await qspb.getPoolIndex(poolName)).toNumber(), MAX_INT.toNumber());
+      assert.equal((await qspb.getPoolIndex(poolUniqueName())).toNumber(), MAX_INT.toNumber());
     });
 
     it("should add a pool", async function() {
+      const poolName = poolUniqueName();
       // enable transfers before any payments are allowed
       await quantstampToken.enableTransfer({from : owner});
       // transfer poolOwnerBudget QSP tokens to the poolOwner
@@ -164,13 +163,35 @@ contract('QuantstampStaking', function(accounts) {
       // create pool. Note: the second parameter is intentionally incompatible with IPolicy
       await Util.assertTxFail(qspb.createPool(candidateContract.address, candidateContract.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName + "2", defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool with the same name of a pool that already exists", async function() {
+      const poolName = poolUniqueName();
+      // creates a pool successfully
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+    });
+
+    it("should not create a pool if the deposit amount is lower than the minimum", async function() {
+      // creates a pool successfully
+      await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner});
+
+      await qspb.setGlobalMinDepositQspWei(depositQspWei + 1);
+
+      // fails to create a pool
+      await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
+        depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
+
+      await qspb.setGlobalMinDepositQspWei(0);
     });
 
     it("should have an owner", async function() {
@@ -190,21 +211,21 @@ contract('QuantstampStaking', function(accounts) {
       // This would lead to the risk of stakers never getting payed. Therefore, no one will place a stake
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         minStakeQspWei, 0, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool if the maximum payout per period is zero", async function() {
       // This would mean that the stakeholder would not pay any stakers, which would lead to no stakes
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, 0,
         minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool if the minimum stake that needs to be collected is zero", async function() {
       // This would mean that a pool is active without any funds staked, which would not be in the interest of a stakeholder
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         0, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool if the pay period is zero", async function() {
@@ -212,7 +233,7 @@ contract('QuantstampStaking', function(accounts) {
       // payouts are awarded all the time, which could quickly deplate all the deposited funds of the stakeholder
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, 0,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool if the minimum staking time is zero", async function() {
@@ -220,14 +241,14 @@ contract('QuantstampStaking', function(accounts) {
       // stakeholder unprotected in case an attack is discovered
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        0, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        0, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should not create a pool if the timeout period is zero", async function() {
       // This would place the pool in the cancelled state immediately even if the first interaction is placing a stake
       await Util.assertTxFail(qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei,
         minStakeQspWei, depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, 0, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner}));
+        minStakeTimeInBlocks, 0, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner}));
     });
 
     it("should create a pool with a zero maximum", async function() {
@@ -243,28 +264,31 @@ contract('QuantstampStaking', function(accounts) {
       await quantstampToken.transfer(poolOwner, poolOwnerBudget, {from : owner});
       // allow the qspb contract use up to 1000QSP
       await quantstampToken.approve(qspb.address, Util.toQsp(1000), {from : poolOwner});
+      const limitedPoolName = poolUniqueName();
       // create pool
+      const oldPoolLength = parseInt(await quantstampStakingData.getPoolsLength());
+      const currentPoolIndex = oldPoolLength;
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
         minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, limitedPoolName, maxStakeQspWei, {from: poolOwner});
       // check all pool properties
-      assert.equal(await quantstampStakingData.getPoolsLength(), 2);
-      assert.equal(await quantstampStakingData.getPoolCandidateContract(1), candidateContract.address);
-      assert.equal(await quantstampStakingData.getPoolContractPolicy(1), contractPolicy.address);
-      assert.equal(await quantstampStakingData.getPoolOwner(1), poolOwner);
-      assert.equal(await quantstampStakingData.getPoolMaxPayoutQspWei(1), maxPayoutQspWei.toNumber());
-      assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolMinStakeQspWei(1)).toNumber());
-      assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.getPoolDepositQspWei(1)).toNumber());
-      assert.equal(await quantstampStakingData.getPoolBonusExpertFactor(1), bonusExpertFactor.toNumber());
-      assert.equal(await quantstampStakingData.getPoolBonusFirstExpertFactor(1), bonusFirstExpertFactor.toNumber());
-      assert.equal(await quantstampStakingData.getPoolPayPeriodInBlocks(1), payPeriodInBlocks.toNumber());
-      assert.equal(minStakeTimeInBlocks.toNumber(), (await quantstampStakingData.getPoolMinStakeTimeInBlocks(1)).toNumber());
-      assert.equal(await quantstampStakingData.getPoolTimeoutInBlocks(1), timeoutInBlocks.toNumber());
-      assert.equal(await quantstampStakingData.getPoolTimeOfStateInBlocks(1), (await web3.eth.getBlock("latest")).number);
-      assert.equal(await quantstampStakingData.getPoolUrlOfAuditReport(1), urlOfAuditReport);
-      assert.equal(await quantstampStakingData.getPoolState(1), PoolState.Initialized);
-      assert.equal(await quantstampStakingData.getPoolName(1), limitedPoolName);
-      assert.equal((await quantstampStakingData.getPoolMaxTotalStakeQspWei(1)).toNumber(), maxStakeQspWei.toNumber());
+      assert.equal(await quantstampStakingData.getPoolsLength(), oldPoolLength + 1);
+      assert.equal(await quantstampStakingData.getPoolCandidateContract(currentPoolIndex), candidateContract.address);
+      assert.equal(await quantstampStakingData.getPoolContractPolicy(currentPoolIndex), contractPolicy.address);
+      assert.equal(await quantstampStakingData.getPoolOwner(currentPoolIndex), poolOwner);
+      assert.equal(await quantstampStakingData.getPoolMaxPayoutQspWei(currentPoolIndex), maxPayoutQspWei.toNumber());
+      assert.equal(minStakeQspWei.toNumber(), (await quantstampStakingData.getPoolMinStakeQspWei(currentPoolIndex)).toNumber());
+      assert.equal(depositQspWei.toNumber(), (await quantstampStakingData.getPoolDepositQspWei(currentPoolIndex)).toNumber());
+      assert.equal(await quantstampStakingData.getPoolBonusExpertFactor(currentPoolIndex), bonusExpertFactor.toNumber());
+      assert.equal(await quantstampStakingData.getPoolBonusFirstExpertFactor(currentPoolIndex), bonusFirstExpertFactor.toNumber());
+      assert.equal(await quantstampStakingData.getPoolPayPeriodInBlocks(currentPoolIndex), payPeriodInBlocks.toNumber());
+      assert.equal(minStakeTimeInBlocks.toNumber(), (await quantstampStakingData.getPoolMinStakeTimeInBlocks(currentPoolIndex)).toNumber());
+      assert.equal(await quantstampStakingData.getPoolTimeoutInBlocks(currentPoolIndex), timeoutInBlocks.toNumber());
+      assert.equal(await quantstampStakingData.getPoolTimeOfStateInBlocks(currentPoolIndex), (await web3.eth.getBlock("latest")).number);
+      assert.equal(await quantstampStakingData.getPoolUrlOfAuditReport(currentPoolIndex), urlOfAuditReport);
+      assert.equal(await quantstampStakingData.getPoolState(currentPoolIndex), PoolState.Initialized);
+      assert.equal(await quantstampStakingData.getPoolName(currentPoolIndex), limitedPoolName);
+      assert.equal((await quantstampStakingData.getPoolMaxTotalStakeQspWei(currentPoolIndex)).toNumber(), maxStakeQspWei.toNumber());
     });
   });
 
@@ -290,7 +314,8 @@ contract('QuantstampStaking', function(accounts) {
     const timeoutInBlocks = new BigNumber(100);
     const urlOfAuditReport = "URL";
     const policyBalance = 1;
-    const poolName2 = "2ndPool";
+    const poolName = poolUniqueName();
+    const poolName2 = poolUniqueName();
 
     beforeEach("setup token and tcr", async function() {
       quantstampToken = await QuantstampToken.new(qspAdmin, {from : owner});
@@ -566,7 +591,7 @@ contract('QuantstampStaking', function(accounts) {
       await TCRUtil.addToWhitelist(staker3, minDeposit, staker3, quantstampRegistry);
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
     });
@@ -709,7 +734,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should not over-stake for a pool with a maximum", async function () {
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, anotherLimitedPoolName, maxStakeQspWei, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), maxStakeQspWei, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
       const balanceOfStakerOneBeforeStake = await Util.balanceOf(quantstampToken, staker);
@@ -723,7 +748,7 @@ contract('QuantstampStaking', function(accounts) {
     it("should allow staking in a pool with a maximum that has not yet been reached", async function () {
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, yetAnotherLimitedPoolName, maxStakeQspWei, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), maxStakeQspWei, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
       const balanceOfStakerOneBeforeStake = await Util.balanceOf(quantstampToken, staker);
@@ -747,7 +772,7 @@ contract('QuantstampStaking', function(accounts) {
       const candidateAndPolicyContract = await CandidateAndPolicyContract.new(quantstampStakingData.address, 0);
       await qspb.createPool(candidateAndPolicyContract.address, candidateAndPolicyContract.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, yetAnotherLimitedPoolName, maxStakeQspWei, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), maxStakeQspWei, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
       const balanceOfStakerOneBeforeStake = await Util.balanceOf(quantstampToken, staker);
@@ -782,7 +807,7 @@ contract('QuantstampStaking', function(accounts) {
       // create pool and stake funds
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
     });
@@ -879,7 +904,7 @@ contract('QuantstampStaking', function(accounts) {
       // create pool and stake funds
       await qspb.createPool(candidateContract.address, contractPolicy.address, maxPayoutQspWei, minStakeQspWei,
         depositQspWei, bonusExpertFactor, bonusFirstExpertFactor, payPeriodInBlocks,
-        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolName, defaultMaxTotalStake, {from: poolOwner});
+        minStakeTimeInBlocks, timeoutInBlocks, urlOfAuditReport, poolUniqueName(), defaultMaxTotalStake, {from: poolOwner});
       currentPoolNumber = await quantstampStakingData.getPoolsLength();
       currentPoolIndex = currentPoolNumber - 1;
     });
