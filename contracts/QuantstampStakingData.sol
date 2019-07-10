@@ -298,7 +298,7 @@ contract QuantstampStakingData is Ownable {
     */
     function getPoolIndex(string poolName) external view returns(uint) {
         if (poolNameToPoolIndex[poolName] > 0) {
-            return poolNameToPoolIndex[poolName].sub(1);
+            return poolNameToPoolIndex[poolName] - 1;
         } else {
             return MAX_UINT;
         }

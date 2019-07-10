@@ -215,7 +215,7 @@ contract QuantstampStaking is Ownable {
             || S3_ViolatedUnderfunded == s    // 3.1
             || S4_NotViolatedFunded == s && !(!expired && !violated)     // 4.5, 4.8, 4.10 (not 4.11)
             || S6_Cancelled == s              // 6.1
-            || S7_PolicyExpired == s,         // 7.1, 7.4
+            || S7_PolicyExpired == s,         // 7.2, 7.4
             "Pool is not in the right state to withdraw stake.");
 
         /* solhint-disable no-empty-blocks */
@@ -774,7 +774,7 @@ contract QuantstampStaking is Ownable {
         return max != 0 && current >= max;
     }
 
-    /** Returns the maximum statke that can be placed in a pool
+    /** Returns the maximum state that can be placed in a pool
      * @param poolIndex - the index of the pool for which the stake is submitted
      * @param amountQspWei - the stake size
      * @return the current state of the pool
