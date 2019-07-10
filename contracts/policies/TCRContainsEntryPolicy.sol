@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
-import "../test/Registry.sol";
+import "./IPolicy.sol";
+import "../registries/token-curated-registry/Registry.sol";
 
 
 /// @title TCRContainsEntryPolicy - the policy is violated if some entry is not on a TCR

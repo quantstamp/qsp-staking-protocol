@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../test/CandidateContract.sol";
-import "../IPolicy.sol";
+import "./CandidateContract.sol";
+import "./IPolicy.sol";
 
 /// @title ZeroBalancePolicy - is an example policy that is violated when the balance reaches zero
 

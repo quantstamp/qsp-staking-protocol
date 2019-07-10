@@ -3,7 +3,7 @@ pragma solidity 0.4.24;
 /// @title TokenCuratedRegistry - a wrapper around the selected TCR that exposes universal interface
 /// @author Quantstamp
 
-import {Registry} from "./test/Registry.sol";
+import "./token-curated-registry/Registry.sol";
 import "./IRegistry.sol";
 
 

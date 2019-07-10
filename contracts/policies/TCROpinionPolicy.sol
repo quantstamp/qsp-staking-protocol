@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
-import {Registry} from "../test/Registry.sol";
+import "./IPolicy.sol";
+import {Registry} from "../registries/token-curated-registry/Registry.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /// @title TCROpinionPolicy - reports that a candidate contract is violated if

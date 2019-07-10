@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 
 /// @title NeverViolatedPolicy - the policy is never violated.
 

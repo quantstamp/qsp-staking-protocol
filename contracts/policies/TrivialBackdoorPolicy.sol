@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 
 /// @title TrivialBackdoorPolicy - the policy is violated if someone says it is.
 

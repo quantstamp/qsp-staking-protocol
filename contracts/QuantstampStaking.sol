@@ -7,8 +7,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
-import "./IPolicy.sol";
-import "./IRegistry.sol";
+import "./policies/IPolicy.sol";
+import "./registries/IRegistry.sol";
 import "./QuantstampStakingData.sol";
 
 

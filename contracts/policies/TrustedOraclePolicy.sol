@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 
 /// @title TrustedOraclePolicy - the policy is violated if a trusted oracle says it is.
 

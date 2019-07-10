@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 import "../QuantstampStaking.sol";
 import "../QuantstampStakingData.sol";
 import "../test/QuantstampToken.sol";

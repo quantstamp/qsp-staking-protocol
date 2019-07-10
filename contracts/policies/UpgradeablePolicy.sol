@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 
 /// @title UpgradeablePolicy The policy calls a function on another contract.
 ///                          The initial contract it points to returns false;
