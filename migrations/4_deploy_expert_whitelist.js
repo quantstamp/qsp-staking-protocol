@@ -1,4 +1,4 @@
-const WhitelistExpertRegistry = artifacts.require('WhitelistExpertRegistry');
+const WhitelistExpertRegistry = artifacts.require('registries/WhitelistExpertRegistry');
 const utils = require('./utils.js');
 
 module.exports = function(deployer, network) {

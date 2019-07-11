@@ -1,7 +1,7 @@
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('test/QuantstampToken');
-const QuantstampStakingRegistry = artifacts.require('WhitelistExpertRegistry');
+const QuantstampStakingRegistry = artifacts.require('registries/WhitelistExpertRegistry');
 const utils = require('./utils');
 const truffle = require('../truffle.js');
 

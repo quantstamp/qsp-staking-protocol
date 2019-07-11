@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
-import "../test/CandidateToken.sol";
+import "./IPolicy.sol";
+import "./CandidateToken.sol";
 
 
 /// @title TotalSupplyNotExceededPolicy - the policy is violated if too many coins are minted

@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
+import "./IPolicy.sol";
 
 // Source adapted from
 // https://solidity.readthedocs.io/en/develop/solidity-by-example.html

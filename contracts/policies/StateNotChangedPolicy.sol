@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
-import "../test/CandidateContract.sol";
+import "./IPolicy.sol";
+import "./CandidateContract.sol";
 
 /// @title StateNotChangedPolicy - the policy is violated if the state, as
 ///                                indicated by an `enum`, has changed

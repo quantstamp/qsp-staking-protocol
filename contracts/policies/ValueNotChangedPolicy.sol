@@ -1,7 +1,7 @@
 pragma solidity 0.4.24;
 
-import "../IPolicy.sol";
-import "../test/CandidateContract.sol";
+import "./IPolicy.sol";
+import "./CandidateContract.sol";
 
 /// @title ValeStateNotChangedPolicy - the policy is violated if the state
 ///                                       indicated by a int, has changed

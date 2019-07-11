@@ -7,8 +7,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
-import "./IPolicy.sol";
-import "./IRegistry.sol";
+import "./policies/IPolicy.sol";
+import "./registries/IRegistry.sol";
 import "./QuantstampStakingData.sol";
 
 
@@ -217,7 +217,7 @@ contract QuantstampStaking is Ownable {
             || S3_ViolatedUnderfunded == s    // 3.1
             || S4_NotViolatedFunded == s && !(!expired && !violated)     // 4.5, 4.8, 4.10 (not 4.11)
             || S6_Cancelled == s              // 6.1
-            || S7_PolicyExpired == s,         // 7.1, 7.4
+            || S7_PolicyExpired == s,         // 7.2, 7.4
             "Pool is not in the right state to withdraw stake.");
 
         /* solhint-disable no-empty-blocks */
@@ -428,7 +428,7 @@ contract QuantstampStaking is Ownable {
         } else if (S2_NotViolatedUnderfunded == s && !expired && violated) {                      // 2.5
             setState(poolIndex, S3_ViolatedUnderfunded);
         } else if (S1_Initialized == s && !timedout && !violated && minStakeReached && funded) {  // 1.4
-            setState(poolIndex, QuantstampStakingData.PoolState.NotViolatedFunded);
+            setState(poolIndex, S4_NotViolatedFunded);
         } else if (S4_NotViolatedFunded == s && !expired && violated) {                           // 4.5
             setState(poolIndex, S5_ViolatedFunded);
         } else if (S1_Initialized == s && (timedout || violated)               // 1.5
@@ -751,7 +751,7 @@ contract QuantstampStaking is Ownable {
         if (poolState != newState) {
             data.setState(poolIndex, newState); // set the state
             data.setPoolTimeOfStateInBlocks(poolIndex, block.number); // set the time when the state changed
-            if (newState == QuantstampStakingData.PoolState.NotViolatedFunded
+            if (newState == S4_NotViolatedFunded
                 && data.getPoolMinStakeStartBlock(poolIndex) == 0) {
                 data.setPoolMinStakeStartBlock(poolIndex, block.number);
             }
@@ -769,7 +769,7 @@ contract QuantstampStaking is Ownable {
         return max != 0 && current >= max;
     }
 
-    /** Returns the maximum statke that can be placed in a pool
+    /** Returns the maximum state that can be placed in a pool
      * @param poolIndex - the index of the pool for which the stake is submitted
      * @param amountQspWei - the stake size
      * @return the current state of the pool
