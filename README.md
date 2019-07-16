@@ -21,6 +21,18 @@ Below is the list of urls associated with version _V1_ of the contract. To retri
     - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/WhitelistExpertRegistry-v-1-meta.json
     - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/dev/WhitelistExpertRegistry-v-1-abi.json
 
+### Safe (Ropsten)
+
+1. Staking contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/QuantstampStaking-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/QuantstampStaking-v-1-abi.json
+1. Staking data contract:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/QuantstampStakingData-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/QuantstampStakingData-v-1-abi.json
+1. Security expert whitelist:
+    - Metadata (owner and contract address): https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/WhitelistExpertRegistry-v-1-meta.json
+    - ABI: https://s3.amazonaws.com/qsp-staking-protocol-contract/safe/WhitelistExpertRegistry-v-1-abi.json
+
 To access other contracts, substitute the corresponding contract name in the URLs above.
 
 For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract , where `{address}` is `contractAddress` copied from the corresponding metadata file.
@@ -56,7 +68,8 @@ For querying, go to: https://ropsten.etherscan.io/address/{address}#readContract
   ```
 
 1. Deploy the contract(s) to the desired network:
-    * `truffle migrate --network dev` (Ropsten network, development environment)
+    * `truffle migrate --network dev` (Ropsten network, development environment with QSP token)
+    * `truffle migrate --network safe` (Ropsten network, development environment with SAFE token)
     * `truffle migrate --network prod` (Ethereum MainNet, to be implemented)
 
 *Note*: if deployment does not start, append the `--reset` flag to the command.
