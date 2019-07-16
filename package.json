@@ -1,7 +1,7 @@
 {
   "name": "qsp-staking-protocol",
-  "version": "1.0.0",
-  "description": "Quantstamp Staking Protocol",
+  "version": "1.0.1",
+  "description": "Quantstamp Assurance Protocol",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
