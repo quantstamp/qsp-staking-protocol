@@ -6,12 +6,8 @@ const s3 = new AWS.S3({
 });
 
 const QSP_TOKEN_ADDRESS_MAINNET = "0x99ea4db9ee77acd40b119bd1dc4e33e1c070b80d";
-// The following is the address of the SAFE token for the Beta test.
-// There is not point on creating a new token constant just for the Beta test.
-// TODO (sebi): Switch address after Beta-test.
-const QSP_TOKEN_ADDRESS_ROPSTEN = "0xb83597678B6dee7010DaCEE6275f155E158a9984";
-// The following is the address of the QSP token on Ropsten
-//const QSP_TOKEN_ADDRESS_ROPSTEN = "0xc1220b0bA0760817A9E8166C114D3eb2741F5949";
+const QSP_TOKEN_ADDRESS_ROPSTEN = "0xc1220b0bA0760817A9E8166C114D3eb2741F5949";
+const SAFE_TOKEN_ADDRESS_ROPSTEN = "0xb83597678B6dee7010DaCEE6275f155E158a9984";
 
 function tokenAddress(network, defaultArtifact) {
   // defaultArtifact: the smart contract artifact
@@ -23,6 +19,8 @@ function tokenAddress(network, defaultArtifact) {
       // 'ropsten' is useful for deploying to the Ropsten network separately,
       // without affecting Dev or Prod
       return QSP_TOKEN_ADDRESS_ROPSTEN;
+    case 'safe':
+      return SAFE_TOKEN_ADDRESS_ROPSTEN;
     case 'prod':
       return QSP_TOKEN_ADDRESS_MAINNET;
     case 'development':
