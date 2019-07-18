@@ -601,7 +601,7 @@ contract QuantstampStaking is Ownable {
         uint maxTotalStakeQspWei
     ) public {
         require(getPoolIndex(poolName) == MAX_UINT, "Cannot create a pool with the same name as an existing pool.");
-        require(depositQspWei > 0 && depositQspWei >= globalMinDepositQspWei,
+        require(depositQspWei >= maxPayoutQspWei && depositQspWei >= globalMinDepositQspWei,
             "Deposit does not meet the requirements.");
         // transfer tokens to this contract
         safeTransferToDataContract(msg.sender, depositQspWei);
