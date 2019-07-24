@@ -262,7 +262,7 @@ contract QuantstampStakingData is Ownable {
     }
 
     function approveWhitelisted(uint256 amountQspWei) external onlyWhitelisted {
-        token.approve(msg.sender, amountQspWei);
+        require(token.approve(msg.sender, amountQspWei), "Token spending was not approved");
     }
 
     function setWhitelistAddress(address _address) external onlyOwner {
