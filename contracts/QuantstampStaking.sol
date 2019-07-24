@@ -777,10 +777,7 @@ contract QuantstampStaking is Ownable {
     function adjustStakeAmount(uint poolIndex, uint amountQspWei) internal view returns(uint) {
         uint max = data.getPoolMaxTotalStakeQspWei(poolIndex);
         uint current = data.getPoolTotalStakeQspWei(poolIndex);
-        if (max == 0) {
-            return amountQspWei;
-        }
-        if (current.add(amountQspWei) <= max) {
+        if (max == 0 || current.add(amountQspWei) <= max) {
             return amountQspWei;
         }
         return max.sub(current);
