@@ -17,20 +17,18 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract ExpertOpinionPolicy is IPolicy {
     using SafeMath for uint256;
 
-    // This declares a new complex type which will
-    // be used for variables later.
-    // It will represent a single voter.
-    struct Voter {
-        bool voted;  // if true, that person already voted
-        bool vote;   // if true, that person is in favor of violation
-    }
+    enum VoteStatus {
+        NotVoted,
+        VotedInFavorOfViolation,
+        VotedAgainstViolation}
+
     // This declares a state variable that
     // The whitelist of security experts
     IRegistry public registry;
     // Defines the required number of votes before violation can occur
     uint256 public quorum;
-    // stores a `Voter` struct for each possible address.
-    mapping(address => mapping(address => Voter)) public voters;
+    // stores a vote status for each possible address.
+    mapping(address => mapping(address => VoteStatus)) public voters;
     // Counts the totla number of votes received;
     mapping(address => uint256) public numOfVotesReceived;
     // Counts the number of votes recieved in favor of/against violation
@@ -42,21 +40,19 @@ contract ExpertOpinionPolicy is IPolicy {
         registry = IRegistry(whitelistAddress);
     }
 
-
     function vote(address contractAddr, bool voteForViolated) public {
         require(registry.isExpert(msg.sender), "Only whitelisted security experts can vote");
-        Voter storage sender = voters[contractAddr][msg.sender];
         // Prevent vote changes.
-        require(!sender.voted, "Already voted.");
+        require(voters[contractAddr][msg.sender] == VoteStatus.NotVoted, "Already voted.");
 
         numOfVotesReceived[contractAddr] = numOfVotesReceived[contractAddr].add(1);
-        sender.voted = true;
-        sender.vote = voteForViolated;
 
         if(voteForViolated) {
           numOfVotesInFavor[contractAddr] = numOfVotesInFavor[contractAddr].add(1);
+          voters[contractAddr][msg.sender] = VoteStatus.VotedInFavorOfViolation;
         } else {
           numOfVotesAgainst[contractAddr] = numOfVotesAgainst[contractAddr].add(1);
+          voters[contractAddr][msg.sender] = VoteStatus.VotedAgainstViolation;
         }
     }
 
@@ -67,5 +63,4 @@ contract ExpertOpinionPolicy is IPolicy {
         // Require strictly more votes in favor.
         return numOfVotesInFavor[contractAddr] > numOfVotesAgainst[contractAddr];
     }
-
 }
