@@ -1,3 +1,10 @@
+/***************************************************************************************************
+*                                                                                                  *
+* (c) 2018, 2019 Quantstamp, Inc. This content and its use are governed by the license terms at    *
+* <https://raw.githubusercontent.com/quantstamp/qsp-staking-protocol/master/LICENSE>               *
+*                                                                                                  *
+***************************************************************************************************/
+
 const QuantstampStaking = artifacts.require('QuantstampStaking');
 const QuantstampStakingData = artifacts.require('QuantstampStakingData');
 const QuantstampToken = artifacts.require('QuantstampToken');

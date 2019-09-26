@@ -1,3 +1,10 @@
+/***************************************************************************************************
+*                                                                                                  *
+* (c) 2018, 2019 Quantstamp, Inc. This content and its use are governed by the license terms at    *
+* <https://raw.githubusercontent.com/quantstamp/qsp-staking-protocol/master/LICENSE>               *
+*                                                                                                  *
+***************************************************************************************************/
+
 const utils = require('./utils.js');
 const Registry = artifacts.require('registries/token-curated-registry/Registry');
 const TokenCuratedRegistry = artifacts.require('registries/TokenCuratedRegistry');
