@@ -25,59 +25,47 @@ contract ExpertOpinionPolicy is IPolicy {
         bool vote;   // if true, that person is in favor of violation
     }
     // This declares a state variable that
-    // stores a `Voter` struct for each possible address.
-    mapping(address => Voter) public voters;
-    // Defines the required number of votes before violation can occur
-    uint256 public quorum;
-    // Counts the totla number of votes received;
-    uint256 public numOfVotesReceived;
-    // Counts the number of votes recieved in favor of/against violation
-    uint256 public numOfVotesInFavor;
-    uint256 public numOfVotesAgainst;
-    // Never directly interact with the candidate, but noted for voter's reference
-    address public candidateContract;
     // The whitelist of security experts
     IRegistry public registry;
-
-    constructor (uint256 minVotes, address contractAddress, address whitelistAddress) public {
+    // Defines the required number of votes before violation can occur
+    uint256 public quorum;
+    // stores a `Voter` struct for each possible address.
+    mapping(address => mapping(address => Voter)) public voters;
+    // Counts the totla number of votes received;
+    mapping(address => uint256) public numOfVotesReceived;
+    // Counts the number of votes recieved in favor of/against violation
+    mapping(address => uint256) public numOfVotesInFavor;
+    mapping(address => uint256) public numOfVotesAgainst;
+    
+    constructor (uint256 minVotes, address whitelistAddress) public {
         quorum = minVotes;
-        candidateContract = contractAddress;
         registry = IRegistry(whitelistAddress);
-        numOfVotesAgainst = 0;
-        numOfVotesInFavor = 0;
-        numOfVotesReceived = 0;
     }
 
-    function vote(bool voteForViolated) public {
+
+    function vote(address contractAddr, bool voteForViolated) public {
         require(registry.isExpert(msg.sender), "Only whitelisted security experts can vote");
-        Voter storage sender = voters[msg.sender];
+        Voter storage sender = voters[contractAddr][msg.sender];
         // Prevent vote changes.
         require(!sender.voted, "Already voted.");
-        
-        if(!sender.voted){
-          numOfVotesReceived = numOfVotesReceived.add(1);
-          sender.voted = true;
-        } else {
-          bool previousVote = sender.vote;
-          if (previousVote) {
-            numOfVotesInFavor = numOfVotesInFavor.sub(1);
-          } else {
-            numOfVotesAgainst = numOfVotesAgainst.sub(1);
-          }
-        }
+
+        numOfVotesReceived[contractAddr] = numOfVotesReceived[contractAddr].add(1);
+        sender.voted = true;
         sender.vote = voteForViolated;
-        if(voteForViolated){
-          numOfVotesInFavor = numOfVotesInFavor.add(1);
+
+        if(voteForViolated) {
+          numOfVotesInFavor[contractAddr] = numOfVotesInFavor[contractAddr].add(1);
         } else {
-          numOfVotesAgainst = numOfVotesAgainst.add(1);
+          numOfVotesAgainst[contractAddr] = numOfVotesAgainst[contractAddr].add(1);
         }
     }
 
-    function isViolated(address contractAddress) external view returns(bool) {
-        require(contractAddress == candidateContract);
-        if(numOfVotesReceived < quorum) { return false; }
+    function isViolated(address contractAddr) external view returns(bool) {
+        if(numOfVotesReceived[contractAddr] < quorum) { 
+            return false; 
+        }
         // Require strictly more votes in favor.
-        return numOfVotesInFavor > numOfVotesAgainst;
+        return numOfVotesInFavor[contractAddr] > numOfVotesAgainst[contractAddr];
     }
 
 }

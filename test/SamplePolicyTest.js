@@ -26,6 +26,7 @@ const ValueNotChangedPolicy = artifacts.require('policies/ValueNotChangedPolicy'
 const QuantstampAssurancePolicy = artifacts.require('policies/QuantstampAssurancePolicy');
 const BitcoinPricePolicy = artifacts.require('policies/BitcoinPricePolicy');
 const TrustedOraclePolicy = artifacts.require('policies/TrustedOraclePolicy');
+const ExpertOpinionPolicy = artifacts.require('policies/ExpertOpinionPolicy.sol');
 const Registry = artifacts.require('test/Registry');
 const TCRUtil = require('./tcrutils.js');
 const BigNumber = require('bignumber.js');
@@ -53,6 +54,7 @@ contract('CandidateContract', function(accounts) {
   let bitcoinPricePolicy;
   let qaPolicy;
   let trustedOraclePolicy;
+  let expertOpinionPolicy;
   let qspb;
   let quantstampStakingData;
 
@@ -362,6 +364,36 @@ contract('CandidateContract', function(accounts) {
     it("should allow the trusted oracle to trigger a violation", async function() {
       await trustedOraclePolicy.triggerViolation(candidateContract.address, {from: trustedOracle});
       assert.isTrue(await trustedOraclePolicy.isViolated(candidateContract.address));
+    });
+  });
+
+  describe('ExpertOpinionPolicy', () => {
+    beforeEach("when using ExpertOpinionPolicy", async function() {
+      expertOpinionPolicy = await ExpertOpinionPolicy.new(1, whitelistExpertRegistry.address);
+      await whitelistExpertRegistry.addExpert(accounts[1]);
+    });
+
+    it("should return not violated if there are not enough votes", async function() {
+      assert.isFalse(await whitelistExpertRegistry.isViolated(quantstampToken.address));
+    });
+
+    it ("should not allow anyone other than addresses on the whitelist to vote", async function() {
+      assert.isFalse(await whitelistExpertRegistry.isExpert(accounts[0]));
+      await Util.assertTxFail(whitelistExpertRegistry.vote(qspb.address, true, {from: accounts[0]}));
+    });
+
+    it ("should allow addresses on the whitelist to vote", async function() {
+      assert.isTrue(await whitelistExpertRegistry.isExpert(accounts[1]));
+      await whitelistExpertRegistry.vote(qspb.address, true, {from: accounts[1]});
+      // we have set the quorum to 1 voter in the beforeEach statement
+      assert.isTrue(await whitelistExpertRegistry.isViolated(qspb.address));
+    });
+
+    it ("should not affect the votes for another address", async function() {
+      await whitelistExpertRegistry.vote(qspb.address, true, {from: accounts[1]});
+      await whitelistExpertRegistry.vote(quantstampToken.address, false, {from: accounts[1]});
+      assert.isTrue(await whitelistExpertRegistry.isViolated(qspb.address));
+      assert.isFalse(await whitelistExpertRegistry.isViolated(quantstampToken.address));
     });
   });
 });
