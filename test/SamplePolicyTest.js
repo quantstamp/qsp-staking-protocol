@@ -1,3 +1,10 @@
+/***************************************************************************************************
+*                                                                                                  *
+* (c) 2018, 2019 Quantstamp, Inc. This content and its use are governed by the license terms at    *
+* <https://raw.githubusercontent.com/quantstamp/qsp-staking-protocol/master/LICENSE>               *
+*                                                                                                  *
+***************************************************************************************************/
+
 const Util = require("./util.js");
 const Voting = artifacts.require('plcr-revival/contracts/PLCRVoting.sol');
 const QuantstampToken = artifacts.require('QuantstampToken');

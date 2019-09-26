@@ -1,3 +1,10 @@
+/***************************************************************************************************
+*                                                                                                  *
+* (c) 2018, 2019 Quantstamp, Inc. This content and its use are governed by the license terms at    *
+* <https://raw.githubusercontent.com/quantstamp/qsp-staking-protocol/master/LICENSE>               *
+*                                                                                                  *
+***************************************************************************************************/
+
 const BigNumber = require('bignumber.js');
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:7545"));
