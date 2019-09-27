@@ -1,9 +1,9 @@
-# qsp-staking-protocol
+# Quantstamp Assurance Protocol (formerly Staking Protocol)
 
 [![Build Status](https://travis-ci.com/quantstamp/qsp-staking-protocol.svg?token=VYjLsFuxJqPSixFLhdJG&branch=master)](https://travis-ci.com/quantstamp/qsp-staking-protocol)
 [![Coverage Status](https://coveralls.io/repos/github/quantstamp/qsp-staking-protocol/badge.svg?branch=master&t=H4hlEY)](https://coveralls.io/github/quantstamp/qsp-staking-protocol?branch=master)
 
-Quantstamp Assurance Protocol contract.
+This repository contains the smart contracts and test scripts used by the Quantstamp Assurance Protocol. Formerly, this project was called the "Staking Protocol". This is why you will encounter the term "staking" several times in this repository. Note, however, that "staking" is equivalent with "providing assurance". 
 
 ## Access deployed contracts
 
