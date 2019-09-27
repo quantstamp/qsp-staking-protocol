@@ -56,7 +56,8 @@ contract('CandidateContract', function(accounts) {
   let trustedOraclePolicy;
   let qspb;
   let quantstampStakingData;
-  let whitelistExpertRegistry
+  let whitelistExpertRegistry;
+  let expertOpinionPolicy;
 
   beforeEach(async function () {
     quantstampToken = await QuantstampToken.deployed();
