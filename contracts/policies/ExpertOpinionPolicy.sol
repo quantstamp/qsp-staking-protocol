@@ -57,10 +57,7 @@ contract ExpertOpinionPolicy is IPolicy {
     }
 
     function isViolated(address contractAddr) external view returns(bool) {
-        if(numOfVotesReceived[contractAddr] < quorum) { 
-            return false; 
-        }
-        // Require strictly more votes in favor.
-        return numOfVotesInFavor[contractAddr] > numOfVotesAgainst[contractAddr];
+        return numOfVotesReceived[contractAddr] >= quorum
+            && numOfVotesInFavor[contractAddr] > numOfVotesAgainst[contractAddr];
     }
 }
